@@ -18,7 +18,8 @@ class _SplashScreenState extends State<SplashScreen> {
     // Start the timer when the screen is built
     startTimer();
   }
-
+  
+  
   startTimer() {
     // Wait for 3 seconds, then run the code inside
     Timer(const Duration(seconds: 3), () {
@@ -42,14 +43,14 @@ class _SplashScreenState extends State<SplashScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Image.asset(
-              'assets/images/placeholder.png',
-              width: 200,
+              'assets/images/t_racks_logo.png',
+              width: 500,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 40),
             const Text(
               'Intelligent Attendance',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 30,
                 color: Colors.black54,
                 fontWeight: FontWeight.w600,
               ),
