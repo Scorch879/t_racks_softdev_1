@@ -231,10 +231,16 @@ class _LoginScreenState extends State<LoginScreen> {
                             "Don't have an account? ",
                             style: TextStyle(color: Colors.black54),
                           ),
-                          GestureDetector(
-                            onTap: () {
+                          TextButton(
+                            onPressed: () {
                               // TODO: Navigate to Register screen
                             },
+                            // You might need this style to remove default padding
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
                             child: const Text(
                               'Register',
                               style: TextStyle(
