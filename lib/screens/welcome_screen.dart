@@ -78,7 +78,7 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
                   const Text(
-                    'Lorem ipsum dolor sit amet consectetur.\nLorem id sit',
+                    'Manage your attendance and track your progress with ease.',
                     style: TextStyle(fontSize: 16, color: Colors.black54),
                   ),
 
