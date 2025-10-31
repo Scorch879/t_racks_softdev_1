@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/logIn_screen.dart';
+import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -50,17 +51,32 @@ class WelcomeScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // "Welcome" Text
-                  const Text(
-                    'Welcome',
-                    style: TextStyle(
-                      fontSize: 34,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          child: const Text(
+                            "Welcome",
+                            style: TextStyle(
+                              fontSize: 40.0,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF21446D),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Container(
+                          height: 5,
+                          width: 80,
+                          color: const Color(0xFF21446D),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 10),
-
-                  // "Lorem ipsum" Text
+                  const SizedBox(height: 20),
                   const Text(
                     'Lorem ipsum dolor sit amet consectetur.\nLorem id sit',
                     style: TextStyle(fontSize: 16, color: Colors.black54),
@@ -116,42 +132,5 @@ class WelcomeScreen extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-// This is the clipper from your LoginScreen (convex/outward curve)
-class BottomWaveClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    final path = Path();
-    path.lineTo(0, size.height);
-
-    var firstControlPoint = Offset(size.width * 0.25, size.height - 50);
-    var firstEndPoint = Offset(size.width * 0.5, size.height - 20);
-    path.quadraticBezierTo(
-      firstControlPoint.dx,
-      firstControlPoint.dy,
-      firstEndPoint.dx,
-      firstEndPoint.dy,
-    );
-
-    var secondControlPoint = Offset(size.width * 0.75, size.height + 10);
-    var secondEndPoint = Offset(size.width, size.height - 20);
-    path.quadraticBezierTo(
-      secondControlPoint.dx,
-      secondControlPoint.dy,
-      secondEndPoint.dx,
-      secondEndPoint.dy,
-    );
-
-    path.lineTo(size.width, 0);
-    path.lineTo(0, 0);
-    path.close();
-    return path;
-  }
-
-  @override
-  bool shouldReclip(CustomClipper<Path> oldClipper) {
-    return false;
   }
 }
