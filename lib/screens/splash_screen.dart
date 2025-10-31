@@ -1,7 +1,7 @@
 import 'dart:async'; // Import this for the Timer
 import 'package:flutter/material.dart';
 // We'll create this file next
- import 'package:t_racks_softdev_1/screens/welcome_screen.dart'; 
+import 'package:t_racks_softdev_1/screens/welcome_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -11,7 +11,6 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-
   @override
   void initState() {
     super.initState();
@@ -22,13 +21,12 @@ class _SplashScreenState extends State<SplashScreen> {
   startTimer() {
     // Wait for 3 seconds, then run the code inside
     Timer(const Duration(seconds: 3), () {
-      
       // Navigate to the Welcome Screen
       // You'll need to create 'welcome_screen.dart' just like you did this file.
-       Navigator.pushReplacement(
-         context,
-         MaterialPageRoute(builder: (context) => const WelcomeScreen()),
-       );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+      );
     });
   }
 
@@ -41,15 +39,12 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset(
-              'assets/images/placeholder.png',
-              width: 200,
-            ),
-            const SizedBox(height: 16),
+            Image.asset('assets/images/t_racks_logo.png', width: 500),
+            const SizedBox(height: 40),
             const Text(
               'Intelligent Attendance',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 30,
                 color: Colors.black54,
                 fontWeight: FontWeight.w600,
               ),
