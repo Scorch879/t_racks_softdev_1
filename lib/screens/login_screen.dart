@@ -187,7 +187,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       // --- END: NEW ROW ---
                       // --- START: NEW LOGIN BUTTON ---
-                      const SizedBox(height: 80),
+                      const Spacer(),
                       SizedBox(
                         width: double.infinity, // Makes button full-width
                         height: 50,
@@ -246,6 +246,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                       ),
                       // --- END: NEW ROW ---
+                      const SizedBox(height: 20),
                     ],
                   ),
                 ),
