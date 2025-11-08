@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:t_racks_softdev_1/services/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -20,6 +22,57 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isStudent = true; // Default to Student
   bool _isEducator = false;
   bool _isLoading = false;
+//Shorthand for supabase client
+  final _authService = AuthService();
+
+// async function to handle registration
+  Future<void> _handleRegister() async {
+    // 1. Validation (this stays in the UI)
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+    final password = _passwordController.text.trim();
+    final confirmPassword = _confirmPasswordController.text.trim();
+    final String role = _isStudent ? 'student' : 'educator';
+
+    if (password != confirmPassword) {
+      showCustomSnackBar(context,"Passwords do not match.");
+      return;
+    }
+    if (email.isEmpty || phone.isEmpty || password.isEmpty) {
+      showCustomSnackBar(context,"Please fill all fields.");
+      return;
+    }
+
+    // 2. Set loading state
+    setState(() { _isLoading = true; });
+    // 3. Call the service and handle the result
+    try {
+      // --- UPDATED ---
+      // This is the only line that talks to the service
+      await _authService.register(
+        email: email,
+        password: password,
+        phone: phone,
+        role: role,
+      );
+
+      // 4. Handle success
+      if (mounted) {
+        showCustomSnackBar(context,"Success! Please check your email to verify.", isError: false);
+        Navigator.pop(context);
+      }
+    } on AuthException catch (e) {
+      // 5. Handle errors
+      showCustomSnackBar(context,e.message);
+    } catch (e) {
+      showCustomSnackBar(context,"An unexpected error occurred.");
+    }
+
+    // 6. Stop loading (no matter what)
+    if (mounted) {
+      setState(() { _isLoading = false; });
+    }
+  }
 
   @override
   void initState() {
@@ -124,7 +177,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
                         decoration: const InputDecoration(
-                          hintText: 'carlojay.rivera@cit.edu',
+                          hintText: 'Email address',
                           // --- ADD THIS ICON ---
                           prefixIcon: Icon(
                             Icons.email_outlined,
@@ -152,7 +205,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         controller: _phoneController,
                         keyboardType: TextInputType.phone,
                         decoration: const InputDecoration(
-                          hintText: '09123456789',
+                          hintText: 'Phone number',
                           // --- ADD THIS ICON ---
                           prefixIcon: Icon(
                             Icons.phone_android_outlined,
@@ -181,7 +234,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         obscureText: _passwordVisible,
                         decoration: InputDecoration(
                           // Removed const
-                          hintText: 'JJK2025',
+                          hintText: 'Password',
                           // --- ADD THIS ICON ---
                           prefixIcon: const Icon(
                             Icons.lock_outline,
@@ -223,7 +276,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         obscureText: _confirmPasswordVisible,
                         decoration: InputDecoration(
                           // Removed const
-                          hintText: 'JJK2025',
+                          hintText: 'Confirm Password',
                           // --- ADD THIS ICON ---
                           prefixIcon: const Icon(
                             Icons.lock_outline,
@@ -290,9 +343,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: () {
-                            /* ... */
-                          },
+                          onPressed: _isLoading ? null : _handleRegister,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(
                               0xFF26A69A,

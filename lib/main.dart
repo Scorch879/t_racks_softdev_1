@@ -1,9 +1,21 @@
 import 'package:flutter/material.dart';
-// 1. Import your new screen file
-import 'package:t_racks_softdev_1/screens/splash_screen.dart';
+import 'package:t_racks_softdev_1/screens/splash_screen.dart'; // atong import sa screen
+import 'package:supabase_flutter/supabase_flutter.dart'; //database 
+import 'package:flutter_dotenv/flutter_dotenv.dart'; //ambot murag .env rani
 
-void main() {
-  runApp(const MyApp());
+Future<void> main() async {
+  //mag load og variables from the env file
+  await dotenv.load(fileName: ".env");
+
+  //makes sure fluttter is initialized
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // load in with variables gikan sa env
+  await Supabase.initialize(
+      url: dotenv.env['SUPABASE_URL']!,
+      anonKey: dotenv.env['SUPABASE_ANON_KEY']!,  
+    );
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -12,11 +24,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      // This removes the "Debug" banner in the corner
-      debugShowCheckedModeBanner: false,
+      
+      debugShowCheckedModeBanner: false, // This removes the "Debug" banner in the corner
       title: 'T-racks',
       
-      // 2. Set the 'home' to your new SplashScreen
       home: const SplashScreen(),
     );
   }

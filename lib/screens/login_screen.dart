@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
 import 'package:t_racks_softdev_1/screens/register_screen.dart';
+import 'package:t_racks_softdev_1/services/auth_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:t_racks_softdev_1/screens/student_home_screen.dart';
+import 'package:t_racks_softdev_1/screens/educator_home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,6 +19,62 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _rememberMe = false;
   bool _isLoading = false; // For the login button
   bool _passwordVisible = false;
+
+  final _authService = AuthService();
+
+  Future<void> _handleLogin() async{
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      showCustomSnackBar(context,"Please fill all fields.");
+      return;
+    }
+    setState(() { _isLoading = true; });
+    try {
+      // 1. Call the service, which now returns the role
+      final String userRole = await _authService.logIn(
+        email: email,
+        password: password,
+      );
+
+      // 2. Handle success and navigate based on the role
+      if (mounted) {
+        _emailController.clear();
+        _passwordController.clear();
+
+        // 3. Use a switch to decide where to go
+        switch (userRole) {
+          case 'student':
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const StudentHomeScreen()), // TODO: Create StudentHomeScreen
+            );
+            break;
+          case 'educator':
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const EducatorHomeScreen()), // TODO: Create EducatorHomeScreen
+            );
+            break;
+          default:
+            // Handle unknown roles
+            showCustomSnackBar(context, "Unknown user role: $userRole");
+        }
+      }
+    } on AuthException catch (e) {
+      // 4. Handle errors using your global snackbar
+      showCustomSnackBar(context, e.message);
+    } catch (e) {
+      showCustomSnackBar(context, "An unexpected error occurred.");
+    }
+
+    // 5. Stop loading
+    if (mounted) {
+      setState(() { _isLoading = false; });
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -111,7 +171,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
                         decoration: const InputDecoration(
-                          hintText: 'demo@email.com',
+                          hintText: 'Email address',
                           prefixIcon: Icon(
                             Icons.email_outlined,
                             color: Colors.grey,
@@ -140,7 +200,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         obscureText: _passwordVisible,
                         decoration: InputDecoration(
                           // Removed const
-                          hintText: 'JJK2025',
+                          hintText: 'Password',
                           // --- ADD THIS ICON ---
                           prefixIcon: const Icon(
                             Icons.lock_outline,
@@ -215,12 +275,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: double.infinity, // Makes button full-width
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: () {
-                            // TODO: Handle login logic
-                            setState(() {
-                              _isLoading = true;
-                            });
-                          },
+                          onPressed: _isLoading ? null : _handleLogin,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(
                               0xFF26A69A,
