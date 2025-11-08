@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:t_racks_softdev_1/services/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -22,58 +23,54 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isEducator = false;
   bool _isLoading = false;
 //Shorthand for supabase client
-  final supabase = Supabase.instance.client;
+  final _authService = AuthService();
 
 // async function to handle registration
   Future<void> _handleRegister() async {
-    //get all user inputs first
+    // 1. Validation (this stays in the UI)
     final email = _emailController.text.trim();
     final phone = _phoneController.text.trim();
-    final password = _passwordController.text;
-    final confirmPassword = _confirmPasswordController.text;
+    final password = _passwordController.text.trim();
+    final confirmPassword = _confirmPasswordController.text.trim();
     final String role = _isStudent ? 'student' : 'educator';
-    
-    //simple validation
-    if (email.isEmpty ||phone.isEmpty ||password.isEmpty || confirmPassword.isEmpty) {
-      _showErrorSnackBar('Please fill in all fields.');
-      return;
-    }
+
     if (password != confirmPassword) {
-      _showErrorSnackBar('Passwords do not match.');
+      _showErrorSnackBar("Passwords do not match.");
       return;
     }
-    setState(() {
-      _isLoading = true;
-    });
+    if (email.isEmpty || phone.isEmpty || password.isEmpty) {
+      _showErrorSnackBar("Please fill all fields.");
+      return;
+    }
+
+    // 2. Set loading state
+    setState(() { _isLoading = true; });
+    // 3. Call the service and handle the result
     try {
-      final authResponse = await supabase.auth.signUp(
+      // --- UPDATED ---
+      // This is the only line that talks to the service
+      await _authService.register(
         email: email,
         password: password,
-        // This 'data' map stores extra info like phone and role
-        // in the 'user_metadata' column in Supabase
-        data: {
-          'phone_number': phone,
-          'role': role,
-        },
+        phone: phone,
+        role: role,
       );
-      // 5. Handle success
+
+      // 4. Handle success
       if (mounted) {
         _showErrorSnackBar("Success! Please check your email to verify.", isError: false);
-        // Go back to the login screen
-        Navigator.pop(context); 
+        Navigator.pop(context);
       }
-
     } on AuthException catch (e) {
-      // 6. Handle errors (e.g., email already taken)
+      // 5. Handle errors
       _showErrorSnackBar(e.message);
     } catch (e) {
-      // 7. Handle other unexpected errors
       _showErrorSnackBar("An unexpected error occurred.");
     }
+
+    // 6. Stop loading (no matter what)
     if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() { _isLoading = false; });
     }
   }
 
