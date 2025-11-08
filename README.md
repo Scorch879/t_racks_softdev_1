@@ -19,21 +19,29 @@ Before you begin, ensure you have the following installed:
     ```bash
     git clone [https://github.com/Scorch879/t_racks_softdev_1.git](https://github.com/Scorch879/t_racks_softdev_1.git)
     ```
+    or
+    Open Github Desktop and on the toolbar select File > Clone Repository  > URL Tab and then paste the following:
+     ```bash
+     https://github.com/Scorch879/t_racks_softdev_1.git
+     ```
+    Check the local path to ensure you're putting the cloned repository in your desired directory.
 
-2.  **Navigate to the project directory**
+    
+3.  **Navigate to the project directory**
     ```bash
     cd t_racks_softdev_1
     ```
 
-3.  **Install dependencies**
+4.  **Install dependencies**
     Fetch all necessary packages listed in `pubspec.yaml`:
     ```bash
     flutter pub get
     ```
-4.  **Set Up Environment Variables**
+    
+5.  **Set Up Environment Variables**
     This project uses an .env file for environment variables (like API keys or Supabase URLs).
     After creating the file, open .env in your editor and fill in the required values.
-    The environemntal variables are shared in our private group chat on Discord.
+    The environmental variables are shared in our private group chat on Discord.
 
    
 
@@ -43,8 +51,12 @@ Before you begin, ensure you have the following installed:
     ```bash
     flutter devices
     ```
-
-2.  Run the app:
+2. Ensure you have all the necessary dependencies first
+  ```bash
+    flutter pub get
+```
+   
+3.  Run the app:
     ```bash
     flutter run
     ```
