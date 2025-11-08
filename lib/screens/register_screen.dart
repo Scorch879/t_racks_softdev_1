@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -20,6 +21,72 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isStudent = true; // Default to Student
   bool _isEducator = false;
   bool _isLoading = false;
+//Shorthand for supabase client
+  final supabase = Supabase.instance.client;
+
+// async function to handle registration
+  Future<void> _handleRegister() async {
+    //get all user inputs first
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+    final password = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
+    final String role = _isStudent ? 'student' : 'educator';
+    
+    //simple validation
+    if (email.isEmpty ||phone.isEmpty ||password.isEmpty || confirmPassword.isEmpty) {
+      _showErrorSnackBar('Please fill in all fields.');
+      return;
+    }
+    if (password != confirmPassword) {
+      _showErrorSnackBar('Passwords do not match.');
+      return;
+    }
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      final authResponse = await supabase.auth.signUp(
+        email: email,
+        password: password,
+        // This 'data' map stores extra info like phone and role
+        // in the 'user_metadata' column in Supabase
+        data: {
+          'phone_number': phone,
+          'role': role,
+        },
+      );
+      // 5. Handle success
+      if (mounted) {
+        _showErrorSnackBar("Success! Please check your email to verify.", isError: false);
+        // Go back to the login screen
+        Navigator.pop(context); 
+      }
+
+    } on AuthException catch (e) {
+      // 6. Handle errors (e.g., email already taken)
+      _showErrorSnackBar(e.message);
+    } catch (e) {
+      // 7. Handle other unexpected errors
+      _showErrorSnackBar("An unexpected error occurred.");
+    }
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+//for showing snackbar messages
+  void _showErrorSnackBar(String message, {bool isError = true}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Theme.of(context).colorScheme.error : Colors.green,
+      ),
+    );
+  }
+
 
   @override
   void initState() {
@@ -124,7 +191,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
                         decoration: const InputDecoration(
-                          hintText: 'carlojay.rivera@cit.edu',
+                          hintText: 'Email address',
                           // --- ADD THIS ICON ---
                           prefixIcon: Icon(
                             Icons.email_outlined,
@@ -152,7 +219,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         controller: _phoneController,
                         keyboardType: TextInputType.phone,
                         decoration: const InputDecoration(
-                          hintText: '09123456789',
+                          hintText: 'Phone number',
                           // --- ADD THIS ICON ---
                           prefixIcon: Icon(
                             Icons.phone_android_outlined,
@@ -181,7 +248,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         obscureText: _passwordVisible,
                         decoration: InputDecoration(
                           // Removed const
-                          hintText: 'JJK2025',
+                          hintText: 'Password',
                           // --- ADD THIS ICON ---
                           prefixIcon: const Icon(
                             Icons.lock_outline,
@@ -223,7 +290,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         obscureText: _confirmPasswordVisible,
                         decoration: InputDecoration(
                           // Removed const
-                          hintText: 'JJK2025',
+                          hintText: 'Confirm Password',
                           // --- ADD THIS ICON ---
                           prefixIcon: const Icon(
                             Icons.lock_outline,
@@ -290,9 +357,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: () {
-                            /* ... */
-                          },
+                          onPressed: _isLoading ? null : _handleRegister,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(
                               0xFF26A69A,

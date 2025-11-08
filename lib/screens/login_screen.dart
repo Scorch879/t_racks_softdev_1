@@ -111,7 +111,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
                         decoration: const InputDecoration(
-                          hintText: 'demo@email.com',
+                          hintText: 'Email address',
                           prefixIcon: Icon(
                             Icons.email_outlined,
                             color: Colors.grey,
@@ -140,7 +140,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         obscureText: _passwordVisible,
                         decoration: InputDecoration(
                           // Removed const
-                          hintText: 'JJK2025',
+                          hintText: 'Password',
                           // --- ADD THIS ICON ---
                           prefixIcon: const Icon(
                             Icons.lock_outline,
