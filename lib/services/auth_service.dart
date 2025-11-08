@@ -17,41 +17,38 @@ class AuthService {
     // This 'async' function will now do the try/catch
     // It will throw an AuthException if Supabase fails
     try {
-      await _supabase.auth.signUp(
+      final authResponse = await _supabase.auth.signUp(
         email: email,
         password: password,
         emailRedirectTo: _deepLink,
-        data: {
-          'phone_number': phone,
-          'role': role,
-        },
+        data: {'phone_number': phone, 'role': role},
       );
+      if (authResponse.user != null && authResponse.user!.identities!.isEmpty) {
+        // 3. Throw the error you wanted
+        throw const AuthException('Email already in use.');
+      }
     } catch (e) {
       // Re-throw the error to be caught by the UI
       rethrow;
     }
   }
 
-Future<String> logIn({
+  Future<String> logIn({
     required String email,
     required String password,
   }) async {
     try {
-      await _supabase.auth.signInWithPassword(
-        email: email,
-        password: password,
-      );
+      await _supabase.auth.signInWithPassword(email: email, password: password);
 
       final user = _supabase.auth.currentUser;
       if (user == null) {
         throw AuthException('Login failed, user not found.');
       }
-      final role= user.userMetadata?['role'];
-      if(role == null){
+      final role = user.userMetadata?['role'];
+      if (role == null) {
         throw AuthException('User role not found.');
       }
       return role as String;
-
     } catch (e) {
       rethrow;
     }
