@@ -4,6 +4,9 @@ class AuthService {
   // Get a shorthand for the Supabase client
   final _supabase = Supabase.instance.client;
 
+  // This is the deep link you set up in AndroidManifest.xml
+  final String _deepLink = 'com.t-racks-softdev-1://auth/callback';
+
   // This is the function you'll call from your register screen
   Future<void> register({
     required String email,
@@ -17,6 +20,7 @@ class AuthService {
       await _supabase.auth.signUp(
         email: email,
         password: password,
+        emailRedirectTo: _deepLink,
         data: {
           'phone_number': phone,
           'role': role,
@@ -49,6 +53,20 @@ Future<String> logIn({
       return role as String;
 
     } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> signInWithGoogle() async {
+    try {
+      await _supabase.auth.signInWithOAuth(
+        OAuthProvider.google,
+        // This tells Google where to redirect the user
+        // back to after they sign in on the Google website.
+        redirectTo: _deepLink,
+      );
+    } catch (e) {
+      // Handle or rethrow the error
       rethrow;
     }
   }
