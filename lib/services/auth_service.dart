@@ -28,4 +28,28 @@ class AuthService {
     }
   }
 
+Future<String> logIn({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      await _supabase.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+
+      final user = _supabase.auth.currentUser;
+      if (user == null) {
+        throw AuthException('Login failed, user not found.');
+      }
+      final role= user.userMetadata?['role'];
+      if(role == null){
+        throw AuthException('User role not found.');
+      }
+      return role as String;
+
+    } catch (e) {
+      rethrow;
+    }
+  }
 }

@@ -35,11 +35,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final String role = _isStudent ? 'student' : 'educator';
 
     if (password != confirmPassword) {
-      _showErrorSnackBar("Passwords do not match.");
+      showCustomSnackBar(context,"Passwords do not match.");
       return;
     }
     if (email.isEmpty || phone.isEmpty || password.isEmpty) {
-      _showErrorSnackBar("Please fill all fields.");
+      showCustomSnackBar(context,"Please fill all fields.");
       return;
     }
 
@@ -58,14 +58,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       // 4. Handle success
       if (mounted) {
-        _showErrorSnackBar("Success! Please check your email to verify.", isError: false);
+        showCustomSnackBar(context,"Success! Please check your email to verify.", isError: false);
         Navigator.pop(context);
       }
     } on AuthException catch (e) {
       // 5. Handle errors
-      _showErrorSnackBar(e.message);
+      showCustomSnackBar(context,e.message);
     } catch (e) {
-      _showErrorSnackBar("An unexpected error occurred.");
+      showCustomSnackBar(context,"An unexpected error occurred.");
     }
 
     // 6. Stop loading (no matter what)
@@ -73,17 +73,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() { _isLoading = false; });
     }
   }
-
-//for showing snackbar messages
-  void _showErrorSnackBar(String message, {bool isError = true}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Theme.of(context).colorScheme.error : Colors.green,
-      ),
-    );
-  }
-
 
   @override
   void initState() {
