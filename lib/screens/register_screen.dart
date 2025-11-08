@@ -22,10 +22,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isStudent = true; // Default to Student
   bool _isEducator = false;
   bool _isLoading = false;
-//Shorthand for supabase client
+  //Shorthand for supabase client
   final _authService = AuthService();
 
-// async function to handle registration
+  // async function to handle registration
   Future<void> _handleRegister() async {
     // 1. Validation (this stays in the UI)
     final email = _emailController.text.trim();
@@ -35,16 +35,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final String role = _isStudent ? 'student' : 'educator';
 
     if (password != confirmPassword) {
-      showCustomSnackBar(context,"Passwords do not match.");
+      showCustomSnackBar(context, "Passwords do not match.");
       return;
     }
     if (email.isEmpty || phone.isEmpty || password.isEmpty) {
-      showCustomSnackBar(context,"Please fill all fields.");
+      showCustomSnackBar(context, "Please fill all fields.");
       return;
     }
 
     // 2. Set loading state
-    setState(() { _isLoading = true; });
+    setState(() {
+      _isLoading = true;
+    });
     // 3. Call the service and handle the result
     try {
       // --- UPDATED ---
@@ -58,19 +60,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       // 4. Handle success
       if (mounted) {
-        showCustomSnackBar(context,"Success! Please check your email to verify.", isError: false);
+        showCustomSnackBar(
+          context,
+          "Success! Please check your email to verify.",
+          isError: false,
+        );
         Navigator.pop(context);
       }
     } on AuthException catch (e) {
       // 5. Handle errors
-      showCustomSnackBar(context,e.message);
+      showCustomSnackBar(context, e.message);
     } catch (e) {
-      showCustomSnackBar(context,"An unexpected error occurred.");
+      showCustomSnackBar(context, "An unexpected error occurred.");
     }
 
     // 6. Stop loading (no matter what)
     if (mounted) {
-      setState(() { _isLoading = false; });
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -319,16 +327,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         children: [
                           Checkbox(
                             value: _isStudent,
-                            onChanged: (val) {
-                              /* ... */
+                            activeColor: const Color(
+                              0xFF21446D,
+                            ), // Added active color
+                            onChanged: (bool? value) {
+                              // --- ADD THIS ---
+                              setState(() {
+                                _isStudent = true;
+                                _isEducator = false;
+                              });
+                              // -----------------
                             },
                           ),
                           const Text('Student'),
                           const SizedBox(width: 20),
                           Checkbox(
                             value: _isEducator,
-                            onChanged: (val) {
-                              /* ... */
+                            activeColor: const Color(
+                              0xFF21446D,
+                            ), // Added active color
+                            onChanged: (bool? value) {
+                              // --- ADD THIS ---
+                              setState(() {
+                                _isEducator = true;
+                                _isStudent = false;
+                              });
+                              // -----------------
                             },
                           ),
                           const Text('Educator'),
