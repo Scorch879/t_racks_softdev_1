@@ -22,15 +22,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
   final _authService = AuthService();
 
-  Future<void> _handleLogin() async{
+  Future<void> _handleLogin() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
-      showCustomSnackBar(context,"Please fill all fields.");
+      showCustomSnackBar(context, "Please fill all fields.");
       return;
     }
-    setState(() { _isLoading = true; });
+    setState(() {
+      _isLoading = true;
+    });
     try {
       // 1. Call the service, which now returns the role
       final String userRole = await _authService.logIn(
@@ -48,13 +50,17 @@ class _LoginScreenState extends State<LoginScreen> {
           case 'student':
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => const StudentHomeScreen()), // TODO: Create StudentHomeScreen
+              MaterialPageRoute(
+                builder: (context) => const StudentHomeScreen(),
+              ), // TODO: Create StudentHomeScreen
             );
             break;
           case 'educator':
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => const EducatorHomeScreen()), // TODO: Create EducatorHomeScreen
+              MaterialPageRoute(
+                builder: (context) => const EducatorHomeScreen(),
+              ), // TODO: Create EducatorHomeScreen
             );
             break;
           default:
@@ -71,7 +77,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
     // 5. Stop loading
     if (mounted) {
-      setState(() { _isLoading = false; });
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -88,6 +96,7 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
