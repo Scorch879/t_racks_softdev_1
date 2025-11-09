@@ -23,15 +23,10 @@ class AuthService {
         emailRedirectTo: _deepLink,
         data: {'phone_number': phone, 'role': role},
       );
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
       if (authResponse.user != null && authResponse.user!.identities!.isEmpty) {
         // 3. Throw the error you wanted
         throw const AuthException('Email already in use.');
       }
-=======
-=======
->>>>>>> Stashed changes
     } on AuthException catch (e) {
       // Handle specific auth errors
       if (e.message.toLowerCase() == 'user already registered') {
@@ -39,10 +34,6 @@ class AuthService {
       }
       // Re-throw other auth errors to be caught by the UI
       rethrow;
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     } catch (e) {
       // Re-throw any other errors to be caught by the UI
       rethrow;
