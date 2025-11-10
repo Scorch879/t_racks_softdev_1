@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:t_racks_softdev_1/services/educator_service.dart';
 
 class EducatorHomeScreen extends StatefulWidget {
   const EducatorHomeScreen({super.key});
@@ -476,6 +477,7 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
         setState(() {
           currentNavIndex = index;
         });
+        EducatorService.handleNavigationTap(context, index);
       },
       child: Container(
         padding: const EdgeInsets.all(8),
