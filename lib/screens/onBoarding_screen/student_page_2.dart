@@ -80,7 +80,7 @@ class StudentPage2 extends StatelessWidget {
             "Welcome! Please complete your profile so we can personalize your experience.",
             style: TextStyle(fontSize: 16, color: Colors.black54),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
           // --- INSTITUTION (SCHOOL) ---
           Text('Institution (School)', style: _headerStyle),
@@ -97,7 +97,7 @@ class StudentPage2 extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
           // --- EDUCATIONAL LEVEL ---
           Text('Educational Level', style: _headerStyle),
@@ -109,7 +109,7 @@ class StudentPage2 extends StatelessWidget {
               _buildEduRadio(context, 'tertiary', 'tertiary'),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
 
           Text('Grade/Year Level', style: _headerStyle),
           DropdownButtonFormField<String>(
@@ -131,7 +131,7 @@ class StudentPage2 extends StatelessWidget {
             }).toList(),
             onChanged: onGradeYearLevelChanged, // Calls parent function
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
 
           // --- PROGRAM (Conditional) ---
           if (educationalLevel == 'tertiary')
@@ -142,7 +142,7 @@ class StudentPage2 extends StatelessWidget {
                 TextField(
                   controller: programController,
                   decoration: const InputDecoration(
-                    hintText: 'Bachelor of Science in Computer Engineering',
+                    hintText: 'Program',
                     prefixIcon: Icon(Icons.menu_book_outlined, color: Colors.grey),
                     enabledBorder: UnderlineInputBorder(
                       borderSide: BorderSide(color: Colors.grey),

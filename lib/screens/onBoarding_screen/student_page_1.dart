@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 class StudentPage1 extends StatelessWidget {
   // --- CONTROLLERS & CALLBACKS ---
   // These are passed from the parent OnboardingScreen
-  final TextEditingController fullNameController;
+  final TextEditingController lastNameController;
+  final TextEditingController firstNameController;
+  final TextEditingController middleNameController;
   final TextEditingController birthDateController;
   final TextEditingController ageController;
   final String? gender; // The currently selected gender (e.g., 'male')
@@ -11,7 +13,9 @@ class StudentPage1 extends StatelessWidget {
   final VoidCallback onBirthDateTapped;
   const StudentPage1({
     super.key,
-    required this.fullNameController,
+    required this.lastNameController,
+    required this.firstNameController,
+    required this.middleNameController,
     required this.birthDateController,
     required this.ageController,
     required this.gender,
@@ -56,12 +60,11 @@ class StudentPage1 extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
-          // --- FULL NAME ---
-          Text('Full Name', style: _headerStyle),
+          Text('Last Name', style: _headerStyle),
           TextField(
-            controller: fullNameController,
+            controller: lastNameController,
             decoration: const InputDecoration(
-              hintText: 'Full name',
+              hintText: 'Last Name',
               prefixIcon: Icon(Icons.person_outline, color: Colors.grey),
               enabledBorder: UnderlineInputBorder(
                 borderSide: BorderSide(color: Colors.grey),
@@ -71,20 +74,72 @@ class StudentPage1 extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // First Name
+              Expanded(
+                flex: 2, // Give First Name more space
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('First Name', style: _headerStyle),
+                    TextField(
+                      controller: firstNameController,
+                      decoration: const InputDecoration(
+                        hintText: 'First Name',
+                        prefixIcon: Icon(Icons.person_outline, color: Colors.grey),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFF21446D)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 20),
+              // Middle Name
+              Expanded(
+                flex: 1, // Give M.I. less space
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Middle Name', style: _headerStyle),
+                    TextField(
+                      controller: middleNameController,
+                      decoration: const InputDecoration(
+                        hintText: 'M.I',
+                        prefixIcon: Icon(Icons.person_outline, color: Colors.grey),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFF21446D)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
           // --- GENDER ---
           Text('Gender', style: _headerStyle),
-          // We use RadioListTile for a better tap target
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _buildGenderRadio(context, 'Male', 'male'),
               _buildGenderRadio(context, 'Female', 'female'),
-              _buildGenderRadio(context, 'Prefer not to say', 'other'),
+              _buildGenderRadio(context, 'Prefer not to say', 'prefer_not_to_say'),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 14), 
 
           // --- BIRTH DATE & AGE ---
           Row(
