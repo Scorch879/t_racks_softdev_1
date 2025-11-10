@@ -14,6 +14,8 @@ class OnboardingService {
     required String? gender,
     required String institution,
     required String role,
+
+    //Para estyudante type shi
     String? educationalLevel,
     String? gradeYearLevel,
     String? program,
