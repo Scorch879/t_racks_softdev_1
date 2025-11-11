@@ -20,15 +20,17 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
   bool _isLoading = false;
   
   final _pageController = PageController();
-  int currentPage = 0;
-  final _fullNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  final _firstNameController = TextEditingController();
+  final _middleNameController = TextEditingController();
   final _birthDateController = TextEditingController();
   final _ageController = TextEditingController();
-  String? _gender = 'male';
-  List<Widget> _pagesToShow = [];
-
   final _institutionController = TextEditingController();
   final _programController = TextEditingController();
+
+  int currentPage = 0;
+  String? _gender = 'male';
+  List<Widget> _pagesToShow = [];
   String? _educationalLevel = 'primary';
   String? _gradeYearLevel;
 
@@ -75,7 +77,8 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
 
   //validations
   bool _validateStudentPage1() {
-    if (_fullNameController.text.isEmpty ||
+    if (_lastNameController.text.isEmpty ||
+        _firstNameController.text.isEmpty ||
         _birthDateController.text.isEmpty ||
         _gender == null) {
       showCustomSnackBar(context, "Please fill in all fields.");
@@ -101,11 +104,17 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
   }
 
   bool _validateTeacherPage1() {
-    // Teachers have all fields on one page
-    if (_fullNameController.text.isEmpty ||
-        _birthDateController.text.isEmpty ||
-        _gender == null ||
-        _institutionController.text.isEmpty) {
+    if (_lastNameController.text.isEmpty ||
+        _firstNameController.text.isEmpty ||
+        _birthDateController.text.isEmpty) {
+      showCustomSnackBar(context, "Please fill in all fields.");
+      return false;
+    }
+    return true;
+  }
+
+  bool _validateTeacherPage2() {
+    if (_institutionController.text.isEmpty || _gender == null) {
       showCustomSnackBar(context, "Please fill in all fields.");
       return false;
     }
@@ -115,7 +124,9 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
   @override
   void dispose() {
     _pageController.dispose();
-    _fullNameController.dispose();
+    _lastNameController.dispose();
+    _firstNameController.dispose();
+    _middleNameController.dispose();
     _birthDateController.dispose();
     _ageController.dispose();
     _institutionController.dispose();
@@ -124,12 +135,12 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
   }
 
   void _onSaveAndContinue() async {
-    if (currentPage < _pagesToShow.length - 1) {
-      if (_validateStudentPage1()) {
-        _pageController.nextPage(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeIn,
-        );
+    bool isCurrentPageValid = false;
+    if (widget.role == 'student') {
+      if (currentPage == 0) {
+        isCurrentPageValid = _validateStudentPage1();
+      } else if (currentPage == 1) {
+        isCurrentPageValid = _validateStudentPage2();
       }
     } else {
       bool isLastPageValid = false;
@@ -183,13 +194,29 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
       //class ending
       }
     }
+    if (!isCurrentPageValid) {
+      return;
+    }
+
+    if (currentPage < _pagesToShow.length - 1) {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeIn,
+      );
+    } else {
+      // All fields are filled
+      print("Button tapped on LAST page. (All fields are filled)");
+      //database saving logic here
+    }
   }
       
   @override
   Widget build(BuildContext context) {
     final List<Widget> _studentPages = [
       StudentPage1(
-        fullNameController: _fullNameController,
+        lastNameController: _lastNameController,
+        firstNameController: _firstNameController,
+        middleNameController: _middleNameController,
         birthDateController: _birthDateController,
         ageController: _ageController,
         gender: _gender,
@@ -208,12 +235,16 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
 
     final List<Widget> _teacherPages = [
       TeacherPage1(
-        fullNameController: _fullNameController,
+        lastNameController: _lastNameController,
+        firstNameController: _firstNameController,
+        middleNameController: _middleNameController,
         birthDateController: _birthDateController,
         ageController: _ageController,
+        onBirthDateTapped: () => _selectDate(context),
+      ),
+      TeacherPage2(
         gender: _gender,
         onGenderChanged: _onGenderChanged,
-        onBirthDateTapped: () => _selectDate(context),
         institutionController: _institutionController,
       ),
     ];
@@ -226,7 +257,7 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
           Container(color: Colors.white),
           Column(
             children: [
-              // --- TOP BLUE HEADER ---
+              // top wave thingy
               Expanded(
                 flex: 2,
                 child: ClipPath(
@@ -254,14 +285,13 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                 ),
               ),
 
-              // --- BOTTOM WHITE AREA ---
+              // bottom part
               Expanded(
                 flex: 9,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 30.0),
                   child: Column(
                     children: [
-                      // --- PageView ---
                       Expanded(
                         child: PageView(
                           controller: _pageController,
@@ -274,7 +304,6 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                         ),
                       ),
 
-                      // --- The Page Indicator Dots ---
                       SmoothPageIndicator(
                         controller: _pageController,
                         count: _pagesToShow.length,
