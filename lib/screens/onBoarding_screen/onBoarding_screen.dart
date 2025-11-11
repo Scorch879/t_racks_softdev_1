@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:t_racks_softdev_1/screens/onBoarding_screen/boarding_screens.dart';
-
+import 'package:t_racks_softdev_1/services/onboarding_service.dart';
 class OnBoardingScreen extends StatefulWidget {
   final String role;
   const OnBoardingScreen({super.key, required this.role});
