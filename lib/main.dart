@@ -30,7 +30,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false, // This removes the "Debug" banner in the corner
       title: 'T-racks',
       
-      home: const OnBoardingScreen(role: 'educator',), // Set SplashScreen as the initial screen
+      home: const SplashScreen(), // Set SplashScreen as the initial screen
     );
   }
 }

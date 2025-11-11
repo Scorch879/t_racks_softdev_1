@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 
 class StudentPage1 extends StatelessWidget {
-  // --- CONTROLLERS & CALLBACKS ---
+  //  CONTROLLERS & CALLBACKS 
   // These are passed from the parent OnboardingScreen
   final TextEditingController lastNameController;
   final TextEditingController firstNameController;
   final TextEditingController middleNameController;
   final TextEditingController birthDateController;
   final TextEditingController ageController;
-  final String? gender; // The currently selected gender (e.g., 'male')
-  final ValueChanged<String?> onGenderChanged; // Function to call when gender changes
+  final String? gender; 
+  final ValueChanged<String?> onGenderChanged; 
   final VoidCallback onBirthDateTapped;
   const StudentPage1({
     super.key,

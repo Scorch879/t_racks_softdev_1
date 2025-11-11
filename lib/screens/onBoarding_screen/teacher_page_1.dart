@@ -32,64 +32,122 @@ class TeacherPage1 extends StatelessWidget {
   Widget build(BuildContext context) {
     // You're right, this will overflow.
     // The fix will be to wrap this Column in a SingleChildScrollView.
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // --- HEADER ---
-        const Text(
-          "User Onboarding",
-          style: TextStyle(
-            fontSize: 34,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF21446D),
-          ),
-        ),
-        const SizedBox(height: 5),
-        Container(
-          height: 5,
-          width: 80,
-          color: const Color(0xFF21446D),
-        ),
-        const SizedBox(height: 12),
-        const Text(
-          "Welcome! Please complete your profile so we can personalize your experience.",
-          style: TextStyle(fontSize: 16, color: Colors.black54),
-        ),
-        const SizedBox(height: 24),
-
-        // --- FULL NAME ---
-        Text('Last Name', style: _headerStyle),
-          TextField(
-            controller: lastNameController,
-            decoration: const InputDecoration(
-              hintText: 'Last Name',
-              prefixIcon: Icon(Icons.person_outline, color: Colors.grey),
-              enabledBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.grey),
-              ),
-              focusedBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: Color(0xFF21446D)),
-              ),
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // --- HEADER ---
+          const Text(
+            "User Onboarding",
+            style: TextStyle(
+              fontSize: 34,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF21446D),
             ),
           ),
+          const SizedBox(height: 5),
+          Container(
+            height: 5,
+            width: 80,
+            color: const Color(0xFF21446D),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            "Welcome! Please complete your profile so we can personalize your experience.",
+            style: TextStyle(fontSize: 16, color: Colors.black54),
+          ),
           const SizedBox(height: 24),
-
-          // --- FIRST & MIDDLE NAME ---
+      
+          // --- FULL NAME ---
+          Text('Last Name', style: _headerStyle),
+            TextField(
+              controller: lastNameController,
+              decoration: const InputDecoration(
+                hintText: 'Last Name',
+                prefixIcon: Icon(Icons.person_outline, color: Colors.grey),
+                enabledBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: Colors.grey),
+                ),
+                focusedBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: Color(0xFF21446D)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+      
+            // --- FIRST & MIDDLE NAME ---
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // First Name
+                Expanded(
+                  flex: 2, // Give First Name more space
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('First Name', style: _headerStyle),
+                      TextField(
+                        controller: firstNameController,
+                        decoration: const InputDecoration(
+                          hintText: 'First Name',
+                          prefixIcon: Icon(Icons.person_outline, color: Colors.grey),
+                          enabledBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(color: Colors.grey),
+                          ),
+                          focusedBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(color: Color(0xFF21446D)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 20),
+                // Middle Name
+                Expanded(
+                  flex: 1, // Give M.I. less space
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Middle Name', style: _headerStyle),
+                      TextField(
+                        controller: middleNameController,
+                        decoration: const InputDecoration(
+                          hintText: 'M.I',
+                          prefixIcon: Icon(Icons.person_outline, color: Colors.grey),
+                          enabledBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(color: Colors.grey),
+                          ),
+                          focusedBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(color: Color(0xFF21446D)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          const SizedBox(height: 24),
+      
+          // --- BIRTH DATE & AGE ---
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // First Name
+              // Birth Date
               Expanded(
-                flex: 2, // Give First Name more space
+                flex: 2,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('First Name', style: _headerStyle),
+                    Text('Birth date', style: _headerStyle),
                     TextField(
-                      controller: firstNameController,
+                      controller: birthDateController,
+                      readOnly: true,
+                      onTap: onBirthDateTapped,
                       decoration: const InputDecoration(
-                        hintText: 'First Name',
-                        prefixIcon: Icon(Icons.person_outline, color: Colors.grey),
+                        hintText: 'Month/Day/Year',
+                        prefixIcon: Icon(Icons.calendar_today_outlined, color: Colors.grey),
                         enabledBorder: UnderlineInputBorder(
                           borderSide: BorderSide(color: Colors.grey),
                         ),
@@ -102,18 +160,18 @@ class TeacherPage1 extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 20),
-              // Middle Name
+              // Age
               Expanded(
-                flex: 1, // Give M.I. less space
+                flex: 1,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Middle Name', style: _headerStyle),
+                    Text('Age', style: _headerStyle),
                     TextField(
-                      controller: middleNameController,
+                      controller: ageController,
+                      readOnly: true,
                       decoration: const InputDecoration(
-                        hintText: 'M.I',
-                        prefixIcon: Icon(Icons.person_outline, color: Colors.grey),
+                        hintText: 'Age',
                         enabledBorder: UnderlineInputBorder(
                           borderSide: BorderSide(color: Colors.grey),
                         ),
@@ -127,65 +185,9 @@ class TeacherPage1 extends StatelessWidget {
               ),
             ],
           ),
-        const SizedBox(height: 24),
-
-        // --- BIRTH DATE & AGE ---
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Birth Date
-            Expanded(
-              flex: 2,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Birth date', style: _headerStyle),
-                  TextField(
-                    controller: birthDateController,
-                    readOnly: true,
-                    onTap: onBirthDateTapped,
-                    decoration: const InputDecoration(
-                      hintText: 'Month/Day/Year',
-                      prefixIcon: Icon(Icons.calendar_today_outlined, color: Colors.grey),
-                      enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: Colors.grey),
-                      ),
-                      focusedBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF21446D)),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 20),
-            // Age
-            Expanded(
-              flex: 1,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Age', style: _headerStyle),
-                  TextField(
-                    controller: ageController,
-                    readOnly: true,
-                    decoration: const InputDecoration(
-                      hintText: 'Age',
-                      enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: Colors.grey),
-                      ),
-                      focusedBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF21446D)),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-      ],
+          const SizedBox(height: 24),
+        ],
+      ),
     );
   }
 

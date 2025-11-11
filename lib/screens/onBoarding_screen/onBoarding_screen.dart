@@ -152,7 +152,7 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
         curve: Curves.easeIn,
       );
     } else {
-      // All fields have been validated page by page.
+      // All fields are filled
       print("Button tapped on LAST page. (All fields are filled)");
       //database saving logic here
     }
@@ -205,7 +205,7 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
           Container(color: Colors.white),
           Column(
             children: [
-              // --- TOP BLUE HEADER ---
+              // top wave thingy
               Expanded(
                 flex: 2,
                 child: ClipPath(
@@ -233,14 +233,13 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                 ),
               ),
 
-              // --- BOTTOM WHITE AREA ---
+              // bottom part
               Expanded(
                 flex: 9,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 30.0),
                   child: Column(
                     children: [
-                      // --- PageView ---
                       Expanded(
                         child: PageView(
                           controller: _pageController,
@@ -253,7 +252,6 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                         ),
                       ),
 
-                      // --- The Page Indicator Dots ---
                       SmoothPageIndicator(
                         controller: _pageController,
                         count: _pagesToShow.length,
