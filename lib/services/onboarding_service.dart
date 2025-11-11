@@ -13,7 +13,7 @@ class OnboardingService {
     required String role,
 
     //student user's table
-    required String birthData,
+    required String birthDate,
     required int age,
     required String? gender,
     required String institution,
@@ -40,7 +40,7 @@ class OnboardingService {
 
       final studentData = {
         'id' : userId,
-        'birth_data': birthData,
+        'birth_data': birthDate,
         'age': age,
         'gender': gender,
         'institution': institution,

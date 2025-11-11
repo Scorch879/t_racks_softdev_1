@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:t_racks_softdev_1/screens/onBoarding_screen/boarding_screens.dart';
@@ -12,6 +13,13 @@ class OnBoardingScreen extends StatefulWidget {
 }
 
 class _OnBoardingScreenState extends State<OnBoardingScreen> {
+
+final OnboardingService _onboardingService = OnboardingService();
+
+//Loading State
+bool _isLoading = false;
+
+
   final _pageController = PageController();
   final _lastNameController = TextEditingController();
   final _firstNameController = TextEditingController();
@@ -155,6 +163,66 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
       // All fields are filled
       print("Button tapped on LAST page. (All fields are filled)");
       //database saving logic here
+
+      setState (() {_isLoading = true; });
+
+      try {
+
+        if (widget.role == 'student') {
+
+          await _onboardingService.saveStudentProfile(
+            //Profiles
+            firstname: _firstNameController.text,
+            middlename: _middleNameController.text,
+            lastname: _lastNameController.text,
+            role: widget.role,
+
+            //Student_Table
+            birthDate: _birthDateController.text,
+            age: int.parse(_ageController.text),
+            gender: _gender,
+            institution: _institutionController.text,
+            program: _programController.text,
+            educationalLevel: _educationalLevel,
+            gradeYearLevel: _gradeYearLevel,
+          );
+        }
+        else {
+          await _onboardingService.saveEducatorProfile(
+            //Profiles
+            firstname: _firstNameController.text,
+            middlename: _middleNameController.text,
+            lastname: _lastNameController.text,
+            role: widget.role,
+
+            //Educator Table
+            birthDate: _birthDateController.text,
+            age: int.parse(_ageController.text),
+            gender: _gender,
+            institution: _institutionController.text,
+          );
+        
+        }
+
+
+        setState (() {_isLoading = false; });
+
+        if (mounted) {
+          showCustomSnackBar(context, "Profile saved successfully!");
+        }
+      } on AuthException catch (e) {
+        
+        setState (() {_isLoading = false; });
+
+        if (mounted) {
+          showCustomSnackBar(context, 'Error: ${e.message}');
+        }
+      } catch (e) {
+        setState (() {_isLoading = false; });
+        if (mounted) {
+          showCustomSnackBar(context, 'An unexpected error occurred.');
+        } 
+      }
     }
   }
 
