@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:t_racks_softdev_1/screens/educator_home_screen.dart';
 import 'package:t_racks_softdev_1/screens/onBoarding_screen/boarding_screens.dart';
+import 'package:t_racks_softdev_1/screens/student_home_screen.dart';
+import 'package:t_racks_softdev_1/services/onBoarding_service.dart';
+
 
 class OnBoardingScreen extends StatefulWidget {
   final String role;
@@ -12,6 +16,9 @@ class OnBoardingScreen extends StatefulWidget {
 }
 
 class _OnBoardingScreenState extends State<OnBoardingScreen> {
+  final _onboardingService = OnboardingService();
+  bool _isLoading = false;
+  
   final _pageController = PageController();
   final _lastNameController = TextEditingController();
   final _firstNameController = TextEditingController();
@@ -136,10 +143,55 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
         isCurrentPageValid = _validateStudentPage2();
       }
     } else {
-      if (currentPage == 0) {
-        isCurrentPageValid = _validateTeacherPage1();
-      } else if (currentPage == 1) {
-        isCurrentPageValid = _validateTeacherPage2();
+      bool isLastPageValid = false;
+      if (widget.role == 'student') {
+        isLastPageValid = _validateStudentPage2();
+      } else {
+        isLastPageValid = _validateTeacherPage1();
+      }
+      // If PNP tanan edi forda go sa saving
+      if (isLastPageValid) {
+        //print("Button tapped on LAST page. (All fields are filled)") (carlo was here then)
+        setState(() => _isLoading = true);
+
+        try {
+          // 1. Calling the service to save User Profile in the onboarding service
+          await _onboardingService.saveUserProfile(
+            fullName: _fullNameController.text.trim(),
+            birthDate: _birthDateController.text.trim(),
+            age: _ageController.text.trim(),
+            gender: _gender,
+            institution: _institutionController.text.trim(),
+            role: widget.role,
+            educationalLevel: _educationalLevel,
+            gradeYearLevel: _gradeYearLevel,
+            program: _programController.text.trim(),
+          );
+
+          // 2. if success di parehas nato. Proceed sa next level
+          if (mounted) {
+            Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => widget.role == 'student'
+                        ? const StudentHomeScreen()
+                        : const EducatorHomeScreen()),
+                (route) => false);
+          }
+        } catch (e) {
+          // 3. if all things failed...
+          if (mounted) {
+            showCustomSnackBar(context, 'Failed to save profile: $e');
+          }
+        } finally {
+          // 4. loading naa permente
+          if (mounted) {
+              setState(() => _isLoading = false);
+          }
+      }
+
+      
+      //class ending
       }
     }
     if (!isCurrentPageValid) {
@@ -157,7 +209,7 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
       //database saving logic here
     }
   }
-
+      
   @override
   Widget build(BuildContext context) {
     final List<Widget> _studentPages = [
@@ -269,23 +321,26 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: _onSaveAndContinue,
+                          onPressed: _isLoading ? null : _onSaveAndContinue,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF26A69A),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
                           ),
-                          child: Text(
-                            currentPage < _pagesToShow.length - 1
-                                ? 'Save and Continue'
-                                : 'Save and Finish',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          child: _isLoading
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white)
+                              : Text(
+                                  currentPage < _pagesToShow.length - 1
+                                      ? 'Save and Continue'
+                                      : 'Save and Finish',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                         ),
                       ),
                       const SizedBox(height: 40),
