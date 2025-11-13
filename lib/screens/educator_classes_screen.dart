@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/educator_service.dart';
 import 'package:t_racks_softdev_1/screens/educator_classroom_screen.dart';
+import 'package:t_racks_softdev_1/services/educator_notification_service.dart';
 
 class EducatorClassesScreen extends StatefulWidget {
   const EducatorClassesScreen({super.key});
@@ -21,6 +22,7 @@ class _EducatorClassesScreenState extends State<EducatorClassesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    EducatorNotificationService.register(context);
     return Scaffold(
       body: Stack(
         children: [
@@ -131,7 +133,7 @@ class _EducatorClassesScreenState extends State<EducatorClassesScreen> {
                   IconButton(
                     icon: const Icon(Icons.notifications_outlined),
                     color: const Color(0xFF424242),
-                    onPressed: () {},
+                    onPressed: EducatorNotificationService.onNotificationsPressed,
                   ),
                   Positioned(
                     right: 8,
