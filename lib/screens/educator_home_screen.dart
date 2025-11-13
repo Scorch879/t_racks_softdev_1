@@ -15,15 +15,28 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE8F4F8),
       body: Stack(
         children: [
           Positioned.fill(
-            child: Opacity(
-              opacity: 0.3,
-              child: Image.asset(
-                'assets/images/squigglytexture.png',
-                fit: BoxFit.cover,
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Color(0xFF194B61),
+                    Color(0xFF2A7FA3),
+                    Color(0xFF267394),
+                    Color(0xFF349BC7),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+              child: Opacity(
+                opacity: 0.3,
+                child: Image.asset(
+                  'assets/images/squigglytexture.png',
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
           ),
