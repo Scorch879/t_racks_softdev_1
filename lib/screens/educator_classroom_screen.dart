@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/educator_service.dart';
+import 'package:t_racks_softdev_1/screens/educator_add_student_screen.dart';
 
 class EducatorClassroomScreen extends StatefulWidget {
   const EducatorClassroomScreen({
@@ -243,7 +244,26 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
           Align(
             alignment: Alignment.centerRight,
             child: ElevatedButton.icon(
-              onPressed: () {},
+              onPressed: () {
+                final availableStudents = widget.students
+                    .map(
+                      (student) => {
+                        'name': student['name'] ?? '',
+                        'subtitle':
+                            '${student['status'] ?? 'Available'} • ${student['time'] ?? ''}',
+                      },
+                    )
+                    .toList();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => EducatorAddStudentScreen(
+                      className: widget.className,
+                      availableStudents: availableStudents,
+                    ),
+                  ),
+                );
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2A7FA3),
                 foregroundColor: Colors.white,
