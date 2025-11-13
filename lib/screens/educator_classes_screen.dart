@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/educator_service.dart';
+import 'package:t_racks_softdev_1/screens/educator_classroom_screen.dart';
 
 class EducatorClassesScreen extends StatefulWidget {
   const EducatorClassesScreen({super.key});
@@ -317,6 +318,13 @@ class _EducatorClassesScreenState extends State<EducatorClassesScreen> {
         'attendance': 91,
         'next': 'Tomorrow 9:00 AM',
         'status': 'Active',
+        'studentsList': [
+          {'name': 'Carla Jay O. Rimera', 'time': '8:00 AM', 'status': 'Late'},
+          {'name': 'Mama Merto Rodigo', 'time': '8:00 AM', 'status': 'Absent'},
+          {'name': 'One Pablo Reinstal..', 'time': '8:00 AM', 'status': 'Present'},
+          {'name': 'Joaquin De Coco', 'time': '8:00 AM', 'status': 'Present'},
+          {'name': 'Zonrox D. Color', 'time': '8:00 AM', 'status': 'Present'},
+        ],
       },
       {
         'name': 'Physics 138',
@@ -324,6 +332,13 @@ class _EducatorClassesScreenState extends State<EducatorClassesScreen> {
         'attendance': 80,
         'next': 'Tomorrow 9:00 AM',
         'status': 'Active',
+        'studentsList': [
+          {'name': 'Carla Jay O. Rimera', 'time': '8:00 AM', 'status': 'Late'},
+          {'name': 'Mama Merto Rodigo', 'time': '8:00 AM', 'status': 'Absent'},
+          {'name': 'One Pablo Reinstal..', 'time': '8:00 AM', 'status': 'Present'},
+          {'name': 'Joaquin De Coco', 'time': '8:00 AM', 'status': 'Present'},
+          {'name': 'Zonrox D. Color', 'time': '8:00 AM', 'status': 'Present'},
+        ],
       },
       {
         'name': 'Calculus 237',
@@ -331,6 +346,13 @@ class _EducatorClassesScreenState extends State<EducatorClassesScreen> {
         'attendance': 100,
         'next': 'Tomorrow 9:00 AM',
         'status': 'Active',
+        'studentsList': [
+          {'name': 'Carla Jay O. Rimera', 'time': '8:00 AM', 'status': 'Late'},
+          {'name': 'Mama Merto Rodigo', 'time': '8:00 AM', 'status': 'Absent'},
+          {'name': 'One Pablo Reinstal..', 'time': '8:00 AM', 'status': 'Present'},
+          {'name': 'Joaquin De Coco', 'time': '8:00 AM', 'status': 'Present'},
+          {'name': 'Zonrox D. Color', 'time': '8:00 AM', 'status': 'Present'},
+        ],
       },
     ];
 
@@ -342,6 +364,8 @@ class _EducatorClassesScreenState extends State<EducatorClassesScreen> {
           attendance: classData['attendance'] as int,
           next: classData['next'] as String,
           status: classData['status'] as String,
+          studentsList:
+              (classData['studentsList'] as List).cast<Map<String, String>>(),
         );
       }).toList(),
     );
@@ -353,9 +377,21 @@ class _EducatorClassesScreenState extends State<EducatorClassesScreen> {
     required int attendance,
     required String next,
     required String status,
+    required List<Map<String, String>> studentsList,
   }) {
     return GestureDetector(
-      onTap: () {},
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => EducatorClassroomScreen(
+              className: name,
+              nextSchedule: next,
+              students: studentsList,
+            ),
+          ),
+        );
+      },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
