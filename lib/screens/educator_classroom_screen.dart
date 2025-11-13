@@ -33,6 +33,10 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
   Widget build(BuildContext context) {
     EducatorNotificationService.register(context);
     return Scaffold(
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(64),
+        child: _TopBar(),
+      ),
       body: Stack(
         children: [
           Positioned.fill(
@@ -64,9 +68,6 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _buildTopBar(context),
-                  const SizedBox(height: 16),
-                  _buildTeacherCard(),
                   const SizedBox(height: 16),
                   _buildClassroomCard(),
                   const SizedBox(height: 24),
@@ -77,111 +78,6 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
         ],
       ),
       bottomNavigationBar: _buildBottomNavBar(),
-    );
-  }
-
-  Widget _buildTopBar(BuildContext context) {
-    return Row(
-      children: [
-        IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
-        ),
-        const SizedBox(width: 8),
-        const Expanded(
-          child: Text(
-            'Classroom - Teacher',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        IconButton(
-          onPressed: () {},
-          icon: const Icon(Icons.more_horiz, color: Colors.white),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTeacherCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.6), width: 2),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: const Color(0xFFE1F5FE),
-            child: Image.asset(
-              'assets/images/placeholder.png',
-              width: 40,
-              height: 40,
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Teacher',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF194B61),
-                  ),
-                ),
-                Text(
-                  'Teacher',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF2A7FA3),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Stack(
-            alignment: Alignment.topRight,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.notifications_none),
-                color: const Color(0xFF194B61),
-                onPressed: EducatorNotificationService.onNotificationsPressed,
-              ),
-              Positioned(
-                right: 10,
-                top: 10,
-                child: Container(
-                  width: 16,
-                  height: 16,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF2A7FA3),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Center(
-                    child: Text(
-                      '1',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 
@@ -393,12 +289,13 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
 
   Widget _buildBottomNavBar() {
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.grey[300],
-        borderRadius: BorderRadius.circular(16),
+      padding: const EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 10,
+        bottom: 20,
       ),
+      decoration: const BoxDecoration(color: Colors.white),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
@@ -413,7 +310,8 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
 
   Widget _buildNavItem(IconData icon, int index) {
     final isSelected = currentNavIndex == index;
-    return GestureDetector(
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
       onTap: () {
         setState(() {
           currentNavIndex = index;
@@ -421,14 +319,100 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
         EducatorService.handleNavigationTap(context, index);
       },
       child: Container(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFB3E5FC) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+          color: isSelected ? const Color(0xFF93C0D3) : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Icon(
           icon,
-          color: isSelected ? const Color(0xFF194B61) : Colors.grey[600],
+          color: Colors.black87,
+          size: 24,
+        ),
+      ),
+    );
+  }
+}
+
+class _TopBar extends StatelessWidget {
+  const _TopBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      centerTitle: false,
+      titleSpacing: 0,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_ios_new),
+        color: Colors.black87,
+        onPressed: () => Navigator.pop(context),
+      ),
+      title: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: const Color(0xFFB7C5C9),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Teacher',
+                    style: TextStyle(
+                      color: Colors.black87,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    'Teacher',
+                    style: TextStyle(
+                      color: Colors.black54,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                IconButton(
+                  iconSize: 23,
+                  onPressed: EducatorNotificationService.onNotificationsPressed,
+                  icon: const Icon(Icons.notifications_none_rounded),
+                  color: Colors.black87,
+                ),
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(2.5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF167C94),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    child: const Text(
+                      '1',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
