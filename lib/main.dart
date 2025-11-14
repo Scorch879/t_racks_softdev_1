@@ -28,7 +28,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false, // This removes the "Debug" banner in the corner
       title: 'T-racks',
       
-      home: EducatorHomeScreen(),
+      home: const SplashScreen(),
     );
   }
 }
