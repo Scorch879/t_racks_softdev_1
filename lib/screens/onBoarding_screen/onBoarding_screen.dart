@@ -169,24 +169,6 @@ bool _isLoading = false;
       try {
 
         if (widget.role == 'student') {
-            print(
-  """
-  Role: ${widget.role}
-  --- Profile ---
-  First Name: ${_firstNameController.text}
-  Middle Name: ${_middleNameController.text}
-  Last Name: ${_lastNameController.text}
-  --- Student Table ---
-  Birth Date: ${_birthDateController.text}
-  Age: ${int.tryParse(_ageController.text) ?? 'Invalid Age'}
-  Gender: $_gender
-  Institution: ${_institutionController.text}
-  Program: ${_programController.text}
-  Educational Level: $_educationalLevel
-  Grade/Year Level: $_gradeYearLevel
-  --- END OF DATA ---
-  """
-);
           await _onboardingService.saveStudentProfile(
             //Profiles
             firstname: _firstNameController.text,
