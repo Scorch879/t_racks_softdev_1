@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/educator_classes_screen.dart';
 import 'package:t_racks_softdev_1/screens/educator_home_screen.dart';
 import 'package:t_racks_softdev_1/screens/educator_settings_screen.dart';
+import 'package:t_racks_softdev_1/screens/educator_report_screen.dart';
 
 class EducatorService {
   static void navigateToHomeScreen(BuildContext context) {
@@ -31,6 +32,12 @@ class EducatorService {
         navigateToClassesScreen(context);
         break;
       case 2:
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const EducatorReportScreen(),
+          ),
+        );
         break;
       case 3:
         Navigator.push(
