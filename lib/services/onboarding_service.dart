@@ -45,7 +45,7 @@ class OnboardingService {
         'gender': gender,
         'institution': institution,
         'program': program,
-        'educational_level': educationalLevel,
+        'educationalLevel': educationalLevel,
         'gradeYearLevel': gradeYearLevel,
       };
 
@@ -60,7 +60,7 @@ class OnboardingService {
 
       //Simple method for now
       await _superbase.from('profiles').upsert(profileData);
-      await _superbase.from('student_users').upsert(studentData);
+      await _superbase.from('Student_Table').upsert(studentData);
 
     } catch (e) {
         rethrow;
@@ -108,7 +108,7 @@ class OnboardingService {
       
       //Simple method for now
       await _superbase.from('profiles').upsert(profileData);
-      await _superbase.from('educator_users').upsert(educatorData);
+      await _superbase.from('Educator_Table').upsert(educatorData);
 
     } catch (e) {
         rethrow;
