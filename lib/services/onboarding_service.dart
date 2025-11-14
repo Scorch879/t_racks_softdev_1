@@ -32,16 +32,16 @@ class OnboardingService {
 
       final profileData  = {
         'id': userId,
-        'firstname': firstname,
-        'middlename': middlename,
-        'lastname': lastname,
+        'firstName': firstname,
+        'middleName': middlename,
+        'lastName': lastname,
         'role': role,
         //ambot sa phone num
         };
 
       final studentData = {
         'id' : userId,
-        'birthDate': birthDate,
+        'birthData': birthDate,
         'age': age,
         'gender': gender,
         'institution': institution,
@@ -92,9 +92,9 @@ class OnboardingService {
 
       final profileData  = {
         'id': userId,
-        'firstname': firstname,
-        'middlename': middlename,
-        'lastname': lastname,
+        'firstName': firstname,
+        'middleName': middlename,
+        'lastName': lastname,
         'role': role,
         //ambot sa phone num
         };

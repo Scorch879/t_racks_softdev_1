@@ -85,6 +85,7 @@ bool _isLoading = false;
       showCustomSnackBar(context, "Please fill in all fields.");
       return false; // Validation failed
     }
+    
     return true; // Validation passed
   }
 
@@ -164,6 +165,7 @@ bool _isLoading = false;
       print("Button tapped on LAST page. (All fields are filled)");
       //database saving logic here
 
+
       setState (() {_isLoading = true; });
 
       try {
@@ -225,7 +227,7 @@ bool _isLoading = false;
         setState (() {_isLoading = false; });
 
         if (mounted) {
-          
+          //If the onboarding is successfull
           showCustomSnackBar(context, "Profile saved successfully!");
         }
       } on AuthException catch (e) {
