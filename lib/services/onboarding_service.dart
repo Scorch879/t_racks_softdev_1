@@ -40,13 +40,13 @@ class OnboardingService {
 
       final studentData = {
         'id' : userId,
-        'birth_data': birthDate,
+        'birthData': birthDate,
         'age': age,
         'gender': gender,
         'institution': institution,
         'program': program,
         'educational_level': educationalLevel,
-        'grade_year_level': gradeYearLevel,
+        'gradeYearLevel': gradeYearLevel,
       };
 
       ///RPC METHOD IN SUPABASE
