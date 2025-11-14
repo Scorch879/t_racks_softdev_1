@@ -1,7 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class OnboardingService {
-  final _superbase = Supabase.instance.client;
+  final _supabase = Supabase.instance.client;
 
 
   ///Saves Student Data across profile and Student Table
@@ -22,7 +22,8 @@ class OnboardingService {
     required String? gradeYearLevel,
   }) async {
     try {
-      final userId = _superbase.auth.currentUser?.id;
+      final userId = _supabase.auth.currentUser?.id;
+      final phoneNum = _supabase.auth.currentUser?.phone;
       if(userId == null){
         throw 'User is not logged in';
       } 
@@ -40,7 +41,7 @@ class OnboardingService {
 
       final studentData = {
         'id' : userId,
-        'birthData': birthDate,
+        'birthDate': birthDate,
         'age': age,
         'gender': gender,
         'institution': institution,
@@ -59,8 +60,8 @@ class OnboardingService {
       */
 
       //Simple method for now
-      await _superbase.from('profiles').upsert(profileData);
-      await _superbase.from('Student_Table').upsert(studentData);
+      await _supabase.from('profiles').upsert(profileData);
+      await _supabase.from('Student_Table').upsert(studentData);
 
     } catch (e) {
         rethrow;
@@ -82,7 +83,7 @@ class OnboardingService {
     required String institution
   }) async {
     try {
-      final userId = _superbase.auth.currentUser?.id;
+      final userId = _supabase.auth.currentUser?.id;
       if(userId == null){
         throw 'User is not logged in';
       } 
@@ -107,8 +108,8 @@ class OnboardingService {
       };
       
       //Simple method for now
-      await _superbase.from('profiles').upsert(profileData);
-      await _superbase.from('Educator_Table').upsert(educatorData);
+      await _supabase.from('profiles').upsert(profileData);
+      await _supabase.from('Educator_Table').upsert(educatorData);
 
     } catch (e) {
         rethrow;
