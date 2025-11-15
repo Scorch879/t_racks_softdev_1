@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/splash_screen.dart'; // atong import sa screen
 import 'package:supabase_flutter/supabase_flutter.dart'; //database 
 import 'package:flutter_dotenv/flutter_dotenv.dart'; //ambot murag .env rani
-//import 'package:t_racks_softdev_1/screens/educator_home_screen.dart';
+
 Future<void> main() async {
   //mag load og variables from the env file
   await dotenv.load(fileName: ".env");
@@ -28,7 +28,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false, // This removes the "Debug" banner in the corner
       title: 'T-racks',
       
-      home: const SplashScreen(),
+      home: const SplashScreen(), // Set SplashScreen as the initial screen
     );
   }
 }
