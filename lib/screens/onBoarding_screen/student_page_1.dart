@@ -65,6 +65,7 @@ class StudentPage1 extends StatelessWidget {
             controller: lastNameController,
             decoration: const InputDecoration(
               hintText: 'Last Name',
+              hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
               prefixIcon: Icon(Icons.person_outline, color: Colors.grey),
               enabledBorder: UnderlineInputBorder(
                 borderSide: BorderSide(color: Colors.grey),
@@ -90,6 +91,7 @@ class StudentPage1 extends StatelessWidget {
                       controller: firstNameController,
                       decoration: const InputDecoration(
                         hintText: 'First Name',
+                        hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
                         prefixIcon: Icon(Icons.person_outline, color: Colors.grey),
                         enabledBorder: UnderlineInputBorder(
                           borderSide: BorderSide(color: Colors.grey),
@@ -114,6 +116,7 @@ class StudentPage1 extends StatelessWidget {
                       controller: middleNameController,
                       decoration: const InputDecoration(
                         hintText: 'M.I',
+                        hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
                         prefixIcon: Icon(Icons.person_outline, color: Colors.grey),
                         enabledBorder: UnderlineInputBorder(
                           borderSide: BorderSide(color: Colors.grey),
@@ -159,6 +162,7 @@ class StudentPage1 extends StatelessWidget {
                       onTap: onBirthDateTapped,
                       decoration: const InputDecoration(
                         hintText: 'month / day / year',
+                        hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
                         prefixIcon: Icon(Icons.calendar_today_outlined, color: Colors.grey),
                         enabledBorder: UnderlineInputBorder(
                           borderSide: BorderSide(color: Colors.grey),
