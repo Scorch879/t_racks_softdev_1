@@ -4,8 +4,9 @@ import 'package:t_racks_softdev_1/screens/onBoarding_screen/onBoarding_screen.da
 import 'package:t_racks_softdev_1/screens/register_screen.dart';
 import 'package:t_racks_softdev_1/services/auth_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:t_racks_softdev_1/screens/student_home_screen.dart';
 import 'package:t_racks_softdev_1/screens/educator_home_screen.dart';
+
+//import 'package:t_racks_softdev_1/screens/student_home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
