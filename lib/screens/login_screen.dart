@@ -6,6 +6,7 @@ import 'package:t_racks_softdev_1/services/auth_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:t_racks_softdev_1/screens/student_home_screen.dart';
 import 'package:t_racks_softdev_1/screens/educator_home_screen.dart';
+import 'package:t_racks_softdev_1/screens/cameraTest/camera_inference_screen.dart'; // Import the new screen
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -252,7 +253,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               // --- START: NEW "REMEMBER ME" / "FORGOT PASSWORD" ROW ---
                               const SizedBox(height: 16),
                               Row(
-                                mainAxisAlignment:MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   // "Remember Me" Row
                                   Row(
