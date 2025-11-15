@@ -210,7 +210,7 @@ bool _isLoading = false;
 
         if (mounted) {
           //If the onboarding is successfull
-          showCustomSnackBar(context, "Profile saved successfully!");
+          showCustomSnackBar(context, "Profile saved successfully!", isError: false);
         }
       } on AuthException catch (e) {
         
