@@ -52,7 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                builder: (context) =>  OnBoardingScreen(role: userRole),
+                builder: (context) => const StudentHomeScreen(),
               ), // TODO: Create StudentHomeScreen
             );
             break;
@@ -97,6 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
