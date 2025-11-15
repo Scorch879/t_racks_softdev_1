@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
+import 'package:t_racks_softdev_1/screens/onBoarding_screen/onBoarding_screen.dart';
 import 'package:t_racks_softdev_1/screens/register_screen.dart';
 import 'package:t_racks_softdev_1/services/auth_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -135,8 +136,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 30.0),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // "Sign in" Title
                       Align(
@@ -164,122 +163,140 @@ class _LoginScreenState extends State<LoginScreen> {
                           ],
                         ),
                       ),
-
-                      const SizedBox(height: 24), // Space after the title/line
-                      // Email Label
-                      const Text(
-                        'Email',
-                        style: TextStyle(
-                          color: Colors.black54,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-
-                      // Email Field
-                      TextField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(
-                          hintText: 'Email address',
-                          prefixIcon: Icon(
-                            Icons.email_outlined,
-                            color: Colors.grey,
-                          ),
-                          enabledBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(color: Colors.grey),
-                          ),
-                          focusedBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(color: Color(0xFF21446D)),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24), // Space between fields
-                      // Password Label
-                      const Text(
-                        'Password',
-                        style: TextStyle(
-                          color: Colors.black54,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-
-                      // Password Field
-                      TextField(
-                        controller: _passwordController,
-                        obscureText: _passwordVisible,
-                        decoration: InputDecoration(
-                          // Removed const
-                          hintText: 'Password',
-                          // --- ADD THIS ICON ---
-                          prefixIcon: const Icon(
-                            Icons.lock_outline,
-                            color: Colors.grey,
-                          ),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _passwordVisible
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
-                              color: Colors.grey,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _passwordVisible = !_passwordVisible;
-                              });
-                            },
-                          ),
-                          enabledBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: Colors.grey),
-                          ),
-                          focusedBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: Color(0xFF21446D)),
-                          ),
-                        ),
-                      ),
-                      // --- START: NEW "REMEMBER ME" / "FORGOT PASSWORD" ROW ---
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          // "Remember Me" Row
-                          Row(
+                      const SizedBox(height: 24),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          physics: const ClampingScrollPhysics(),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              SizedBox(
-                                width: 24,
+                              const SizedBox(
                                 height: 24,
-                                child: Checkbox(
-                                  value: _rememberMe,
-                                  onChanged: (bool? newValue) {
-                                    setState(() {
-                                      _rememberMe = newValue ?? false;
-                                    });
-                                  },
-                                  activeColor: const Color(
-                                    0xFF26A69A,
-                                  ), // Green/teal
+                              ), // Space after the title/line
+                              // Email Label
+                              const Text(
+                                'Email',
+                                style: TextStyle(
+                                  color: Colors.black54,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              const SizedBox(width: 4),
-                              const Text('Remember Me'),
+
+                              // Email Field
+                              TextField(
+                                controller: _emailController,
+                                keyboardType: TextInputType.emailAddress,
+                                decoration: const InputDecoration(
+                                  hintText: 'Email address',
+                                  prefixIcon: Icon(
+                                    Icons.email_outlined,
+                                    color: Colors.grey,
+                                  ),
+                                  enabledBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(color: Colors.grey),
+                                  ),
+                                  focusedBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: Color(0xFF21446D),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(
+                                height: 24,
+                              ), // Space between fields
+                              // Password Label
+                              const Text(
+                                'Password',
+                                style: TextStyle(
+                                  color: Colors.black54,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+
+                              // Password Field
+                              TextField(
+                                controller: _passwordController,
+                                obscureText: _passwordVisible,
+                                decoration: InputDecoration(
+                                  // Removed const
+                                  hintText: 'Password',
+                                  // --- ADD THIS ICON ---
+                                  prefixIcon: const Icon(
+                                    Icons.lock_outline,
+                                    color: Colors.grey,
+                                  ),
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _passwordVisible
+                                          ? Icons.visibility_off
+                                          : Icons.visibility,
+                                      color: Colors.grey,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _passwordVisible = !_passwordVisible;
+                                      });
+                                    },
+                                  ),
+                                  enabledBorder: const UnderlineInputBorder(
+                                    borderSide: BorderSide(color: Colors.grey),
+                                  ),
+                                  focusedBorder: const UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: Color(0xFF21446D),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              // --- START: NEW "REMEMBER ME" / "FORGOT PASSWORD" ROW ---
+                              const SizedBox(height: 16),
+                              Row(
+                                mainAxisAlignment:MainAxisAlignment.spaceBetween,
+                                children: [
+                                  // "Remember Me" Row
+                                  Row(
+                                    children: [
+                                      SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: Checkbox(
+                                          value: _rememberMe,
+                                          onChanged: (bool? newValue) {
+                                            setState(() {
+                                              _rememberMe = newValue ?? false;
+                                            });
+                                          },
+                                          activeColor: const Color(
+                                            0xFF26A69A,
+                                          ), // Green/teal
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      const Text('Remember Me'),
+                                    ],
+                                  ),
+                                  // "Forgot Password?" Button
+                                  TextButton(
+                                    onPressed: () {
+                                      // TODO: Handle forgot password
+                                    },
+                                    child: const Text(
+                                      'Forgot Password?',
+                                      style: TextStyle(
+                                        color: Color(0xFF26A69A),
+                                      ), // Green/teal
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              // --- END: NEW ROW ---
+                              // --- START: NEW LOGIN BUTTON ---
                             ],
                           ),
-                          // "Forgot Password?" Button
-                          TextButton(
-                            onPressed: () {
-                              // TODO: Handle forgot password
-                            },
-                            child: const Text(
-                              'Forgot Password?',
-                              style: TextStyle(
-                                color: Color(0xFF26A69A),
-                              ), // Green/teal
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                      // --- END: NEW ROW ---
-                      // --- START: NEW LOGIN BUTTON ---
-                      const Spacer(),
+
                       SizedBox(
                         width: double.infinity, // Makes button full-width
                         height: 50,

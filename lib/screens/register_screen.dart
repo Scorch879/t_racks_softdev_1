@@ -43,6 +43,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    //Checks if the email is valid format wise
+    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
+      showCustomSnackBar(context, "Please enter a valid email address.");
+      return;
+    }
+
+    // Checks if the phone number is valid or not
+    if (!RegExp(r'^\+?[0-9]{7,15}$').hasMatch(phone)) {
+      showCustomSnackBar(context, "Please enter a valid phone number.");
+      return;
+    }
+
+    ///Password length validation
+    if (password.length < 8) {
+      showCustomSnackBar(context, "Password must be at least 8 characters.");
+      return;
+    }
+
+    if (!RegExp(r'[A-Z]').hasMatch(password)) {
+      showCustomSnackBar(
+        context,
+        "Password must contain at least one uppercase letter.",
+      );
+      return;
+    }
+
+    if (!RegExp(r'[0-9]').hasMatch(password)) {
+      showCustomSnackBar(context, "Password must contain at least one number.");
+      return;
+    }
+
     // 2. Set loading state
     setState(() {
       _isLoading = true;
@@ -173,194 +204,208 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      // Email Field
-                      const Text(
-                        'Email',
-                        style: TextStyle(
-                          color: Colors.black54,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      TextField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(
-                          hintText: 'Email address',
-                          // --- ADD THIS ICON ---
-                          prefixIcon: Icon(
-                            Icons.email_outlined,
-                            color: Colors.grey,
-                          ),
-                          enabledBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(color: Colors.grey),
-                          ),
-                          focusedBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(color: Color(0xFF21446D)),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              const Text(
+                                'Email',
+                                style: TextStyle(
+                                  color: Colors.black54,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              TextField(
+                                controller: _emailController,
+                                keyboardType: TextInputType.emailAddress,
+                                decoration: const InputDecoration(
+                                  hintText: 'Email address',
+                                  // --- ADD THIS ICON ---
+                                  prefixIcon: Icon(
+                                    Icons.email_outlined,
+                                    color: Colors.grey,
+                                  ),
+                                  enabledBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(color: Colors.grey),
+                                  ),
+                                  focusedBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: Color(0xFF21446D),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 20),
 
-                      // Phone no Field
-                      const Text(
-                        'Phone no',
-                        style: TextStyle(
-                          color: Colors.black54,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      TextField(
-                        controller: _phoneController,
-                        keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(
-                          hintText: 'Phone number',
-                          // --- ADD THIS ICON ---
-                          prefixIcon: Icon(
-                            Icons.phone_android_outlined,
-                            color: Colors.grey,
-                          ),
-                          enabledBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(color: Colors.grey),
-                          ),
-                          focusedBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(color: Color(0xFF21446D)),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
+                              // Phone no Field
+                              const Text(
+                                'Phone no',
+                                style: TextStyle(
+                                  color: Colors.black54,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              TextField(
+                                controller: _phoneController,
+                                keyboardType: TextInputType.phone,
+                                decoration: const InputDecoration(
+                                  hintText: 'Phone number',
+                                  // --- ADD THIS ICON ---
+                                  prefixIcon: Icon(
+                                    Icons.phone_android_outlined,
+                                    color: Colors.grey,
+                                  ),
+                                  enabledBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(color: Colors.grey),
+                                  ),
+                                  focusedBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: Color(0xFF21446D),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 20),
 
-                      // Password Field
-                      const Text(
-                        'Password',
-                        style: TextStyle(
-                          color: Colors.black54,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      TextField(
-                        controller: _passwordController,
-                        obscureText: _passwordVisible,
-                        decoration: InputDecoration(
-                          // Removed const
-                          hintText: 'Password',
-                          // --- ADD THIS ICON ---
-                          prefixIcon: const Icon(
-                            Icons.lock_outline,
-                            color: Colors.grey,
-                          ),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _passwordVisible
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
-                              color: Colors.grey,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _passwordVisible = !_passwordVisible;
-                              });
-                            },
-                          ),
-                          enabledBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: Colors.grey),
-                          ),
-                          focusedBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: Color(0xFF21446D)),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
+                              // Password Field
+                              const Text(
+                                'Password',
+                                style: TextStyle(
+                                  color: Colors.black54,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              TextField(
+                                controller: _passwordController,
+                                obscureText: _passwordVisible,
+                                decoration: InputDecoration(
+                                  // Removed const
+                                  hintText: 'Password',
+                                  // --- ADD THIS ICON ---
+                                  prefixIcon: const Icon(
+                                    Icons.lock_outline,
+                                    color: Colors.grey,
+                                  ),
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _passwordVisible
+                                          ? Icons.visibility_off
+                                          : Icons.visibility,
+                                      color: Colors.grey,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _passwordVisible = !_passwordVisible;
+                                      });
+                                    },
+                                  ),
+                                  enabledBorder: const UnderlineInputBorder(
+                                    borderSide: BorderSide(color: Colors.grey),
+                                  ),
+                                  focusedBorder: const UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: Color(0xFF21446D),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 20),
 
-                      // Confirm Password Field
-                      const Text(
-                        'Confirm Password',
-                        style: TextStyle(
-                          color: Colors.black54,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      TextField(
-                        controller: _confirmPasswordController,
-                        obscureText: _confirmPasswordVisible,
-                        decoration: InputDecoration(
-                          // Removed const
-                          hintText: 'Confirm Password',
-                          // --- ADD THIS ICON ---
-                          prefixIcon: const Icon(
-                            Icons.lock_outline,
-                            color: Colors.grey,
-                          ),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _confirmPasswordVisible
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
-                              color: Colors.grey,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _confirmPasswordVisible =
-                                    !_confirmPasswordVisible;
-                              });
-                            },
-                          ),
-                          enabledBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: Colors.grey),
-                          ),
-                          focusedBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: Color(0xFF21446D)),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
+                              // Confirm Password Field
+                              const Text(
+                                'Confirm Password',
+                                style: TextStyle(
+                                  color: Colors.black54,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              TextField(
+                                controller: _confirmPasswordController,
+                                obscureText: _confirmPasswordVisible,
+                                decoration: InputDecoration(
+                                  // Removed const
+                                  hintText: 'Confirm Password',
+                                  // --- ADD THIS ICON ---
+                                  prefixIcon: const Icon(
+                                    Icons.lock_outline,
+                                    color: Colors.grey,
+                                  ),
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _confirmPasswordVisible
+                                          ? Icons.visibility_off
+                                          : Icons.visibility,
+                                      color: Colors.grey,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _confirmPasswordVisible =
+                                            !_confirmPasswordVisible;
+                                      });
+                                    },
+                                  ),
+                                  enabledBorder: const UnderlineInputBorder(
+                                    borderSide: BorderSide(color: Colors.grey),
+                                  ),
+                                  focusedBorder: const UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: Color(0xFF21446D),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 24),
 
-                      // Checkbox Section
-                      const Text(
-                        'Are you a student or an educator?',
-                        style: TextStyle(
-                          color: Colors.black54,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
+                              // Checkbox Section
+                              const Text(
+                                'Are you a student or an educator?',
+                                style: TextStyle(
+                                  color: Colors.black54,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              Row(
+                                children: [
+                                  Checkbox(
+                                    value: _isStudent,
+                                    activeColor: const Color(
+                                      0xFF21446D,
+                                    ), // Added active color
+                                    onChanged: (bool? value) {
+                                      // --- ADD THIS ---
+                                      setState(() {
+                                        _isStudent = true;
+                                        _isEducator = false;
+                                      });
+                                      // -----------------
+                                    },
+                                  ),
+                                  const Text('Student'),
+                                  const SizedBox(width: 20),
+                                  Checkbox(
+                                    value: _isEducator,
+                                    activeColor: const Color(
+                                      0xFF21446D,
+                                    ), // Added active color
+                                    onChanged: (bool? value) {
+                                      // --- ADD THIS ---
+                                      setState(() {
+                                        _isEducator = true;
+                                        _isStudent = false;
+                                      });
+                                      // -----------------
+                                    },
+                                  ),
+                                  const Text('Educator'),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      Row(
-                        children: [
-                          Checkbox(
-                            value: _isStudent,
-                            activeColor: const Color(
-                              0xFF21446D,
-                            ), // Added active color
-                            onChanged: (bool? value) {
-                              // --- ADD THIS ---
-                              setState(() {
-                                _isStudent = true;
-                                _isEducator = false;
-                              });
-                              // -----------------
-                            },
-                          ),
-                          const Text('Student'),
-                          const SizedBox(width: 20),
-                          Checkbox(
-                            value: _isEducator,
-                            activeColor: const Color(
-                              0xFF21446D,
-                            ), // Added active color
-                            onChanged: (bool? value) {
-                              // --- ADD THIS ---
-                              setState(() {
-                                _isEducator = true;
-                                _isStudent = false;
-                              });
-                              // -----------------
-                            },
-                          ),
-                          const Text('Educator'),
-                        ],
-                      ),
-
                       // This Spacer WILL work, but will cause an overflow
-                      const Spacer(),
 
                       // Create Account Button
                       SizedBox(
