@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/educator_service.dart';
+import 'package:t_racks_softdev_1/services/educator_notification_service.dart';
 
 class EducatorHomeScreen extends StatefulWidget {
   const EducatorHomeScreen({super.key});
@@ -14,7 +15,12 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    EducatorNotificationService.register(context);
     return Scaffold(
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(64),
+        child: _TopBar(),
+      ),
       body: Stack(
         children: [
           Positioned.fill(
@@ -44,7 +50,6 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  _buildTopSection(),
                   const SizedBox(height: 16),
                   _buildSelectClassSection(),
                   const SizedBox(height: 16),
@@ -60,79 +65,7 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomNavBar(),
-    );
-  }
-
-  Widget _buildTopSection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 25,
-            backgroundColor: const Color(0xFFB3E5FC),
-            child: Image.asset(
-              'assets/images/placeholder.png',
-              width: 40,
-              height: 40,
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Teacher',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF194B61),
-                ),
-              ),
-              Text(
-                'Teacher',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF194B61),
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          Stack(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.notifications_outlined),
-                color: const Color(0xFF194B61),
-                onPressed: () {},
-              ),
-              Positioned(
-                right: 8,
-                top: 8,
-                child: Container(
-                  width: 18,
-                  height: 18,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF2A7FA3),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Center(
-                    child: Text(
-                      '1',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+      bottomNavigationBar: _buildBottomNavBar(      ),
     );
   }
 
@@ -465,12 +398,13 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
 
   Widget _buildBottomNavBar() {
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.grey[300],
-        borderRadius: BorderRadius.circular(16),
+      padding: const EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 10,
+        bottom: 20,
       ),
+      decoration: const BoxDecoration(color: Colors.white),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
@@ -485,7 +419,8 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
 
   Widget _buildNavItem(IconData icon, int index) {
     final isSelected = currentNavIndex == index;
-    return GestureDetector(
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
       onTap: () {
         setState(() {
           currentNavIndex = index;
@@ -493,14 +428,95 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
         EducatorService.handleNavigationTap(context, index);
       },
       child: Container(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFB3E5FC) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+          color: isSelected ? const Color(0xFF93C0D3) : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Icon(
           icon,
-          color: isSelected ? const Color(0xFF194B61) : Colors.grey[600],
+          color: Colors.black87,
+          size: 24,
+        ),
+      ),
+    );
+  }
+}
+
+class _TopBar extends StatelessWidget {
+  const _TopBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      centerTitle: false,
+      titleSpacing: 0,
+      title: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: const Color(0xFFB7C5C9),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Teacher',
+                    style: TextStyle(
+                      color: Colors.black87,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    'Teacher',
+                    style: TextStyle(
+                      color: Colors.black54,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                IconButton(
+                  iconSize: 23,
+                  onPressed: EducatorNotificationService.onNotificationsPressed,
+                  icon: const Icon(Icons.notifications_none_rounded),
+                  color: Colors.black87,
+                ),
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(2.5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF167C94),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    child: const Text(
+                      '1',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

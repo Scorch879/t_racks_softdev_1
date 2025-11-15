@@ -23,7 +23,8 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'T-racks',
-      home: const StudentHomeScreen(),
+      
+      home: const SplashScreen(),
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/educator_service.dart';
+import 'package:t_racks_softdev_1/services/educator_notification_service.dart';
 
 class EducatorSettingsScreen extends StatefulWidget {
   const EducatorSettingsScreen({super.key});
@@ -13,7 +14,12 @@ class _EducatorSettingsScreenState extends State<EducatorSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    EducatorNotificationService.register(context);
     return Scaffold(
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(64),
+        child: _TopBar(),
+      ),
       body: Stack(
         children: [
           Positioned.fill(
@@ -31,7 +37,7 @@ class _EducatorSettingsScreenState extends State<EducatorSettingsScreen> {
                 ),
               ),
               child: Opacity(
-                opacity: 0.25,
+                opacity: 0.3,
                 child: Image.asset(
                   'assets/images/squigglytexture.png',
                   fit: BoxFit.cover,
@@ -45,9 +51,6 @@ class _EducatorSettingsScreenState extends State<EducatorSettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _buildTopBar(context),
-                  const SizedBox(height: 16),
-                  _buildTeacherCard(),
                   const SizedBox(height: 16),
                   _buildSettingsCard(),
                   const SizedBox(height: 24),
@@ -58,97 +61,6 @@ class _EducatorSettingsScreenState extends State<EducatorSettingsScreen> {
         ],
       ),
       bottomNavigationBar: _buildBottomNavBar(),
-    );
-  }
-
-  Widget _buildTopBar(BuildContext context) {
-    return const Text(
-      'Settings - Teacher',
-      style: TextStyle(
-        color: Colors.white,
-        fontSize: 18,
-        fontWeight: FontWeight.w600,
-      ),
-      textAlign: TextAlign.left,
-    );
-  }
-
-  Widget _buildTeacherCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.6), width: 2),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: const Color(0xFFE1F5FE),
-            child: Image.asset(
-              'assets/images/placeholder.png',
-              width: 40,
-              height: 40,
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Teacher',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF194B61),
-                  ),
-                ),
-                Text(
-                  'Teacher',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF2A7FA3),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Stack(
-            alignment: Alignment.topRight,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.notifications_none),
-                color: const Color(0xFF194B61),
-                onPressed: () {},
-              ),
-              Positioned(
-                right: 10,
-                top: 10,
-                child: Container(
-                  width: 16,
-                  height: 16,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF2A7FA3),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Center(
-                    child: Text(
-                      '1',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 
@@ -168,7 +80,7 @@ class _EducatorSettingsScreenState extends State<EducatorSettingsScreen> {
         children: [
           Row(
             children: const [
-              Icon(Icons.settings, color: Colors.white),
+              Icon(Icons.settings, color: Color(0xFF93C0D3)),
               SizedBox(width: 8),
               Text(
                 'Settings',
@@ -190,15 +102,15 @@ class _EducatorSettingsScreenState extends State<EducatorSettingsScreen> {
           const SizedBox(height: 12),
           _buildSettingsButton(
             label: 'Account Settings',
-            color: const Color(0xFF43A047),
-            icon: Icons.manage_accounts,
+            color: const Color(0xFF4CAF50),
+            icon: Icons.settings,
             onPressed: () {},
           ),
           const SizedBox(height: 12),
           _buildSettingsButton(
             label: 'Delete Account',
             color: const Color(0xFFE53935),
-            icon: Icons.delete_forever,
+            icon: Icons.person_remove,
             onPressed: () {},
           ),
         ],
@@ -244,12 +156,13 @@ class _EducatorSettingsScreenState extends State<EducatorSettingsScreen> {
 
   Widget _buildBottomNavBar() {
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.grey[300],
-        borderRadius: BorderRadius.circular(16),
+      padding: const EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 10,
+        bottom: 20,
       ),
+      decoration: const BoxDecoration(color: Colors.white),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
@@ -264,7 +177,8 @@ class _EducatorSettingsScreenState extends State<EducatorSettingsScreen> {
 
   Widget _buildNavItem(IconData icon, int index) {
     final isSelected = currentNavIndex == index;
-    return GestureDetector(
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
       onTap: () {
         if (index == currentNavIndex) return;
         setState(() {
@@ -273,14 +187,95 @@ class _EducatorSettingsScreenState extends State<EducatorSettingsScreen> {
         EducatorService.handleNavigationTap(context, index);
       },
       child: Container(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFB3E5FC) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+          color: isSelected ? const Color(0xFF93C0D3) : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Icon(
           icon,
-          color: isSelected ? const Color(0xFF194B61) : Colors.grey[600],
+          color: Colors.black87,
+          size: 24,
+        ),
+      ),
+    );
+  }
+}
+
+class _TopBar extends StatelessWidget {
+  const _TopBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      centerTitle: false,
+      titleSpacing: 0,
+      title: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: const Color(0xFF93C0D3),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Teacher',
+                    style: TextStyle(
+                      color: Colors.black87,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    'Teacher',
+                    style: TextStyle(
+                      color: Colors.black54,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                IconButton(
+                  iconSize: 23,
+                  onPressed: EducatorNotificationService.onNotificationsPressed,
+                  icon: const Icon(Icons.notifications_none_rounded),
+                  color: Colors.black87,
+                ),
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(2.5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF167C94),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    child: const Text(
+                      '1',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
