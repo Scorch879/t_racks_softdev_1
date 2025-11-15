@@ -37,7 +37,7 @@ class _EducatorSettingsScreenState extends State<EducatorSettingsScreen> {
                 ),
               ),
               child: Opacity(
-                opacity: 0.25,
+                opacity: 0.3,
                 child: Image.asset(
                   'assets/images/squigglytexture.png',
                   fit: BoxFit.cover,
@@ -80,7 +80,7 @@ class _EducatorSettingsScreenState extends State<EducatorSettingsScreen> {
         children: [
           Row(
             children: const [
-              Icon(Icons.settings, color: Colors.white),
+              Icon(Icons.settings, color: Color(0xFF93C0D3)),
               SizedBox(width: 8),
               Text(
                 'Settings',
@@ -102,15 +102,15 @@ class _EducatorSettingsScreenState extends State<EducatorSettingsScreen> {
           const SizedBox(height: 12),
           _buildSettingsButton(
             label: 'Account Settings',
-            color: const Color(0xFF43A047),
-            icon: Icons.manage_accounts,
+            color: const Color(0xFF4CAF50),
+            icon: Icons.settings,
             onPressed: () {},
           ),
           const SizedBox(height: 12),
           _buildSettingsButton(
             label: 'Delete Account',
             color: const Color(0xFFE53935),
-            icon: Icons.delete_forever,
+            icon: Icons.person_remove,
             onPressed: () {},
           ),
         ],
@@ -218,7 +218,7 @@ class _TopBar extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 20,
-              backgroundColor: const Color(0xFFB7C5C9),
+              backgroundColor: const Color(0xFF93C0D3),
             ),
             const SizedBox(width: 12),
             const Expanded(
