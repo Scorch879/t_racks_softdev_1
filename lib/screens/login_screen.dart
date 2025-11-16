@@ -188,6 +188,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 keyboardType: TextInputType.emailAddress,
                                 decoration: const InputDecoration(
                                   hintText: 'Email address',
+                                  hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
                                   prefixIcon: Icon(
                                     Icons.email_outlined,
                                     color: Colors.grey,
@@ -221,6 +222,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 decoration: InputDecoration(
                                   // Removed const
                                   hintText: 'Password',
+                                  hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
                                   // --- ADD THIS ICON ---
                                   prefixIcon: const Icon(
                                     Icons.lock_outline,
@@ -274,7 +276,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                         ),
                                       ),
                                       const SizedBox(width: 4),
-                                      const Text('Remember Me'),
+                                      const Text('Remember Me',
+                                          style: TextStyle(
+                                              color: Color.fromARGB(
+                                                  255, 100, 100, 100))),
                                     ],
                                   ),
                                   // "Forgot Password?" Button

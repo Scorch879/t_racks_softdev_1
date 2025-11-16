@@ -221,6 +221,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 keyboardType: TextInputType.emailAddress,
                                 decoration: const InputDecoration(
                                   hintText: 'Email address',
+                                  hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
                                   // --- ADD THIS ICON ---
                                   prefixIcon: Icon(
                                     Icons.email_outlined,
