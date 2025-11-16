@@ -74,4 +74,9 @@ class AuthService {
       rethrow;
     }
   }
+
+  //Sign Out Service
+  Future<void> signOut() async {
+    await _supabase.auth.signOut();
+  }
 }
