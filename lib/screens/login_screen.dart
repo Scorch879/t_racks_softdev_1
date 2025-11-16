@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
 import 'package:t_racks_softdev_1/screens/onBoarding_screen/onBoarding_screen.dart';
 import 'package:t_racks_softdev_1/screens/register_screen.dart';
+import 'package:t_racks_softdev_1/screens/student_home_screen.dart';
 import 'package:t_racks_softdev_1/services/auth_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:t_racks_softdev_1/screens/educator_home_screen.dart';
-
-//import 'package:t_racks_softdev_1/screens/student_home_screen.dart';
+import 'package:t_racks_softdev_1/services/database_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -21,8 +21,9 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _rememberMe = false;
   bool _isLoading = false; // For the login button
   bool _passwordVisible = false;
-
+  bool hasProfile = false;
   final _authService = AuthService();
+  final _databaseService = DatabaseService();
 
   Future<void> _handleLogin() async {
     final email = _emailController.text.trim();
@@ -47,28 +48,42 @@ class _LoginScreenState extends State<LoginScreen> {
         _emailController.clear();
         _passwordController.clear();
 
-        // 3. Use a switch to decide where to go
-        switch (userRole) {
-          case 'student':
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>  OnBoardingScreen(role: userRole),
-              ), // TODO: Create StudentHomeScreen
-            );
-            break;
-          case 'educator':
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const EducatorHomeScreen(),
-              ), // TODO: Create EducatorHomeScreen
-            );
-            break;
-          default:
-            // Handle unknown roles
-            showCustomSnackBar(context, "Unknown user role: $userRole");
+        hasProfile = await _databaseService.checkProfileExists();
+
+        if (hasProfile == false) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OnBoardingScreen(role: userRole),
+            ),
+          );
+        } 
+        else 
+        {
+          switch (userRole) 
+          {
+            case 'student':
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => StudentHomeScreen(),
+                ),
+              );
+              break;
+            case 'educator':
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const EducatorHomeScreen(),
+                ),
+              );
+              break;
+            default:
+              // Handle unknown roles
+              showCustomSnackBar(context, "Unknown user role: $userRole");
+          }
         }
+        // 3. Use a switch to decide where to go
       }
     } on AuthException catch (e) {
       // 4. Handle errors using your global snackbar
@@ -98,6 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
@@ -188,7 +204,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                 keyboardType: TextInputType.emailAddress,
                                 decoration: const InputDecoration(
                                   hintText: 'Email address',
-                                  hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
                                   prefixIcon: Icon(
                                     Icons.email_outlined,
                                     color: Colors.grey,
@@ -222,7 +237,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                 decoration: InputDecoration(
                                   // Removed const
                                   hintText: 'Password',
-                                  hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
                                   // --- ADD THIS ICON ---
                                   prefixIcon: const Icon(
                                     Icons.lock_outline,
@@ -254,7 +268,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               // --- START: NEW "REMEMBER ME" / "FORGOT PASSWORD" ROW ---
                               const SizedBox(height: 16),
                               Row(
-                                mainAxisAlignment:MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   // "Remember Me" Row
                                   Row(
@@ -275,10 +290,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         ),
                                       ),
                                       const SizedBox(width: 4),
-                                      const Text('Remember Me',
-                                          style: TextStyle(
-                                              color: Color.fromARGB(
-                                                  255, 100, 100, 100))),
+                                      const Text('Remember Me'),
                                     ],
                                   ),
                                   // "Forgot Password?" Button

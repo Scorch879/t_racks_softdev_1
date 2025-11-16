@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:t_racks_softdev_1/services/models/profile_model.dart';
 
 final _supabase = Supabase.instance.client;
 
@@ -7,7 +8,7 @@ final _supabase = Supabase.instance.client;
 
 class DatabaseService {
   //Profile Checker Service
-  Future<bool> checkIfUserExists() async {
+  Future<bool> checkProfileExists() async {
     try {
       final userId = _supabase.auth.currentUser?.id;
 
@@ -23,4 +24,21 @@ class DatabaseService {
       return false;
     }
   }
+
+  Future<Profile> getProfile() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+
+      if (userId == null) {
+        throw 'User is not logged in';
+      }
+      final data = await _supabase.from('profiles').select().eq('id', userId).single();
+
+      return Profile.fromJson(data);
+    } catch (e) {
+      // Return null if profile not found or an error occursv
+      rethrow;
+    }
+  }
 }
+
