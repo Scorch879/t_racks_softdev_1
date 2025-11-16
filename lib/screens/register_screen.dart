@@ -43,6 +43,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    //Checks if the email is valid format wise
+    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
+      showCustomSnackBar(context, "Please enter a valid email address.");
+      return;
+    }
+
+    // Checks if the phone number is valid or not
+    if (!RegExp(r'^\+?[0-9]{7,15}$').hasMatch(phone)) {
+      showCustomSnackBar(context, "Please enter a valid phone number.");
+      return;
+    }
+
+    ///Password length validation
+    if (password.length < 8) {
+      showCustomSnackBar(context, "Password must be at least 8 characters.");
+      return;
+    }
+
+    if (!RegExp(r'[A-Z]').hasMatch(password)) {
+      showCustomSnackBar(
+        context,
+        "Password must contain at least one uppercase letter.",
+      );
+      return;
+    }
+
+    if (!RegExp(r'[0-9]').hasMatch(password)) {
+      showCustomSnackBar(context, "Password must contain at least one number.");
+      return;
+    }
+
     // 2. Set loading state
     setState(() {
       _isLoading = true;
@@ -190,6 +221,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 keyboardType: TextInputType.emailAddress,
                                 decoration: const InputDecoration(
                                   hintText: 'Email address',
+                                  hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
                                   // --- ADD THIS ICON ---
                                   prefixIcon: Icon(
                                     Icons.email_outlined,

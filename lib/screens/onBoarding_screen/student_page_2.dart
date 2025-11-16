@@ -88,6 +88,7 @@ class StudentPage2 extends StatelessWidget {
             controller: institutionController,
             decoration: const InputDecoration(
               hintText: 'Cebu Institute of Technology - University',
+              hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
               prefixIcon: Icon(Icons.school_outlined, color: Colors.grey),
               enabledBorder: UnderlineInputBorder(
                 borderSide: BorderSide(color: Colors.grey),
@@ -116,6 +117,7 @@ class StudentPage2 extends StatelessWidget {
             value: isGradeLevelValid ? gradeYearLevel : null, // Show selected value
             hint: const Text('Select Level'),
             decoration: const InputDecoration(
+              hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
               enabledBorder: UnderlineInputBorder(
                 borderSide: BorderSide(color: Colors.grey),
               ),
@@ -143,6 +145,7 @@ class StudentPage2 extends StatelessWidget {
                   controller: programController,
                   decoration: const InputDecoration(
                     hintText: 'Program',
+                    hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
                     prefixIcon: Icon(Icons.menu_book_outlined, color: Colors.grey),
                     enabledBorder: UnderlineInputBorder(
                       borderSide: BorderSide(color: Colors.grey),

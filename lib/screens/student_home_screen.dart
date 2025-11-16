@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/student_service.dart';
 
-// Screen color palette
 const _bgTeal = Color(0xFF167C94);
 const _cardSurface = Color(0xFF173C45);
 const _cardHeader = Color(0xFF1B4A55);
@@ -15,11 +14,10 @@ class StudentHomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    registerStudentPageContext(context);
     return LayoutBuilder(
       builder: (context, constraints) {
+        registerStudentPageContext(context);
         final width = constraints.maxWidth;
-        // Scale derived from width for responsiveness.
         final scale = (width / 430).clamp(0.8, 1.6);
         final horizontalPadding = 16.0 * scale;
         final cardRadius = 16.0 * scale;
@@ -32,7 +30,6 @@ class StudentHomeScreen extends StatelessWidget {
           ),
           body: Stack(
             children: [
-              // Background texture
               Positioned.fill(
                 child: Opacity(
                   opacity: 0.12,
@@ -47,7 +44,7 @@ class StudentHomeScreen extends StatelessWidget {
                   horizontalPadding,
                   12 * scale,
                   horizontalPadding,
-                  100 * scale, // leave room for bottom nav
+                  100 * scale,
                 ),
                 child: Center(
                   child: ConstrainedBox(
@@ -87,7 +84,6 @@ class _WelcomeAndOngoingCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Welcome section
           Padding(
             padding: EdgeInsets.all(16 * scale),
             child: Column(
@@ -128,7 +124,6 @@ class _WelcomeAndOngoingCard extends StatelessWidget {
               ],
             ),
           ),
-          // Divider shadow
           Container(
             height: 8 * scale,
             decoration: BoxDecoration(
@@ -141,7 +136,6 @@ class _WelcomeAndOngoingCard extends StatelessWidget {
               ],
             ),
           ),
-          // Ongoing header
           Container(
             width: double.infinity,
             padding: EdgeInsets.symmetric(horizontal: 16 * scale, vertical: 10 * scale),
@@ -155,7 +149,6 @@ class _WelcomeAndOngoingCard extends StatelessWidget {
               ),
             ),
           ),
-          // Ongoing class row
           Padding(
             padding: EdgeInsets.all(12 * scale),
             child: Row(
