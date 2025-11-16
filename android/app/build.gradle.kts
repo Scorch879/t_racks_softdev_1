@@ -24,6 +24,7 @@ android {
         applicationId = "com.example.t_racks_softdev_1"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
+        // Minimum SDK 21 required for camera plugin, TensorFlow Lite supports 19+
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

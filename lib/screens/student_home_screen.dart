@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/student_service.dart';
+import 'package:t_racks_softdev_1/screens/camera_detection_screen.dart';
 
 const _bgTeal = Color(0xFF167C94);
 const _cardSurface = Color(0xFF173C45);
@@ -63,6 +64,20 @@ class StudentHomeScreen extends StatelessWidget {
             ],
           ),
           bottomNavigationBar: _BottomNav(scale: scale),
+          // Test button for camera detection (remove in production)
+          floatingActionButton: FloatingActionButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CameraDetectionScreen(),
+                ),
+              );
+            },
+            backgroundColor: Colors.blue,
+            child: const Icon(Icons.camera_alt, color: Colors.white),
+            tooltip: 'Test Camera Detection',
+          ),
         );
       },
     );
