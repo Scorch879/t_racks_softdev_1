@@ -184,8 +184,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               // Email Field
                               TextField(
                                 controller: _emailController,
+                                textAlignVertical: TextAlignVertical.center,
                                 keyboardType: TextInputType.emailAddress,
                                 decoration: const InputDecoration(
+                                  isDense: true, // Aligns icon and hint text
                                   hintText: 'Email address',
                                   hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
                                   prefixIcon: Icon(
@@ -217,8 +219,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               // Password Field
                               TextField(
                                 controller: _passwordController,
+                                textAlignVertical: TextAlignVertical.center,
                                 obscureText: _passwordVisible,
                                 decoration: InputDecoration(
+                                  isDense: true, // Aligns icon and hint text
                                   // Removed const
                                   hintText: 'Password',
                                   hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
