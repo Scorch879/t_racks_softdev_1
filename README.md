@@ -1,4 +1,4 @@
-# T-Racks SoftDev 1
+# T-Racks | Software Development 1 Project
 
 ## Getting Started
 
