@@ -314,6 +314,7 @@ bool _isLoading = false;
                       Expanded(
                         child: PageView(
                           controller: _pageController,
+                          physics: const NeverScrollableScrollPhysics(),
                           onPageChanged: (int page) {
                             setState(() {
                               currentPage = page;

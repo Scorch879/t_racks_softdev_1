@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/splash_screen.dart'; // atong import sa screen
 import 'package:supabase_flutter/supabase_flutter.dart'; //database 
 import 'package:flutter_dotenv/flutter_dotenv.dart'; //ambot murag .env rani
-
+import 'package:t_racks_softdev_1/screens/forgetPassword/forgot_password_screen.dart'; //common widgets
 Future<void> main() async {
   await dotenv.load(fileName: ".env");
   WidgetsFlutterBinding.ensureInitialized();
