@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:t_racks_softdev_1/services/models/educator_model.dart';
 import 'package:t_racks_softdev_1/services/models/profile_model.dart';
+import 'package:t_racks_softdev_1/services/models/student_model.dart';
 
 final _supabase = Supabase.instance.client;
 
@@ -40,5 +42,48 @@ class DatabaseService {
       return null;
     }
   }
-}
 
+  /// Fetches the complete data for a student user.
+  Future<Student?> getStudentData() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw 'User not logged in';
+
+      // This query joins 'profiles' with 'Student_Table'.
+      // 'student_data:Student_Table(*)' creates a nested object with the alias 'student_data'.
+      final data = await _supabase
+          .from('profiles')
+          .select('*, student_data:Student_Table(*)')
+          .eq('id', userId)
+          .single();
+
+      return Student.fromJson(data);
+    } catch (e) {
+      // Handle errors, e.g., user is not a student or data is missing.
+      print('Error fetching student data: $e');
+      return null;
+    }
+  }
+
+  /// Fetches the complete data for an educator user.
+  Future<Educator?> getEducatorData() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw 'User not logged in';
+
+      // This query joins 'profiles' with 'Educator_Table'.
+      // 'educator_data:Educator_Table(*)' creates a nested object with the alias 'educator_data'.
+      final data = await _supabase
+          .from('profiles')
+          .select('*, educator_data:Educator_Table(*)')
+          .eq('id', userId)
+          .single();
+
+      return Educator.fromJson(data);
+    } catch (e) {
+      // Handle errors, e.g., user is not an educator or data is missing.
+      print('Error fetching educator data: $e');
+      return null;
+    }
+  }
+}

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/student_service.dart';
 
 const _bgTeal = Color(0xFF167C94);
@@ -12,7 +11,6 @@ const _titleRed = Color(0xFFE57373);
 
 class StudentHomeScreen extends StatelessWidget {
 
-  final _databaseService = DatabaseService();
 
   const StudentHomeScreen({super.key});
 
@@ -322,6 +320,7 @@ class _MyClassesCard extends StatelessWidget {
       radius: radius,
       scale: scale,
       borderColor: const Color(0xFF6AAFBF).withOpacity(0.55),
+      background: const _CardBackground(),
       child: Padding(
         padding: EdgeInsets.all(16 * scale),
         child: Column(
@@ -381,7 +380,6 @@ class _MyClassesCard extends StatelessWidget {
           ],
         ),
       ),
-      background: const _CardBackground(),
     );
   }
 }

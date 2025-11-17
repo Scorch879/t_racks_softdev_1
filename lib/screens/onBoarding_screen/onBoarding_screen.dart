@@ -25,7 +25,7 @@ bool _isLoading = false;
   final _lastNameController = TextEditingController();
   final _firstNameController = TextEditingController();
   final _middleNameController = TextEditingController();
-  final _birthDateController = TextEditingController();
+  final _birthDateController = TextEditingController(); 
   final _ageController = TextEditingController();
   final _institutionController = TextEditingController();
   final _programController = TextEditingController();
@@ -211,7 +211,17 @@ bool _isLoading = false;
 
         if (mounted) {
           //If the onboarding is successfull
-          showCustomSnackBar(context, "Profile saved successfully!", isError: false);
+          showCustomSnackBar(context, "Profile saved successfully!");
+
+          ///If student, register face and voice here later
+          ///
+          ///
+          
+          /// For now, redirect to educator or student
+          Navigator.pushReplacementNamed(
+            context,
+            (widget.role == 'student') ? '/studentHome' : '/educatorHome',
+          );
         }
       } on AuthException catch (e) {
         
@@ -231,7 +241,7 @@ bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> _studentPages = [
+    final List<Widget> studentPages = [
       StudentPage1(
         lastNameController: _lastNameController,
         firstNameController: _firstNameController,
@@ -252,7 +262,7 @@ bool _isLoading = false;
       ),
     ];
 
-    final List<Widget> _teacherPages = [
+    final List<Widget> teacherPages = [
       TeacherPage1(
         lastNameController: _lastNameController,
         firstNameController: _firstNameController,
@@ -268,7 +278,7 @@ bool _isLoading = false;
       ),
     ];
 
-    _pagesToShow = (widget.role == 'student') ? _studentPages : _teacherPages;
+    _pagesToShow = (widget.role == 'student') ? studentPages : teacherPages;
 
     return Scaffold(
       body: Stack(

@@ -1,7 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthService {
-  // Get a shorthand for the Supabase client
+
   final _supabase = Supabase.instance.client;
 
   // This is the deep link you set up in AndroidManifest.xml
@@ -78,5 +78,18 @@ class AuthService {
   //Sign Out Service
   Future<void> signOut() async {
     await _supabase.auth.signOut();
+  }
+
+  Future<void> forgotPassword({
+    required String email,
+  }) async {
+    try {
+      await _supabase.auth.resetPasswordForEmail(
+        email,
+        redirectTo: _deepLink,
+      );
+    } catch (e) {
+      rethrow;
+    }
   }
 }
