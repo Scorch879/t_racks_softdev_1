@@ -38,7 +38,7 @@ class DatabaseService {
 
       return Profile.fromJson(data);
     } catch (e) {
-      // Return null if profile not found or an error occursv
+      // Return null if profile not found or an error occurs
       return null;
     }
   }

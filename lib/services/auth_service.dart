@@ -92,4 +92,33 @@ class AuthService {
       rethrow;
     }
   }
+
+  /// Verifies the password reset OTP code sent to the user's email.
+  Future<void> verifyPasswordResetOtp({
+    required String email,
+    required String token,
+  }) async {
+    try {
+      final response = await _supabase.auth.verifyOTP(
+        type: OtpType.recovery,
+        token: token,
+        email: email,
+      );
+      // If there's no error, the user is temporarily authenticated
+      // and can now update their password.
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Updates the user's password after a successful OTP verification.
+  Future<void> updateUserPassword({required String newPassword}) async {
+    try {
+      await _supabase.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
 }

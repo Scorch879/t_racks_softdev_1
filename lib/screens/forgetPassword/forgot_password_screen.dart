@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
 import 'package:t_racks_softdev_1/screens/forgetPassword/forgot_password_pages.dart';
+import 'package:t_racks_softdev_1/services/auth_service.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({Key? key}) : super(key: key);
@@ -10,12 +11,13 @@ class ForgotPasswordScreen extends StatefulWidget {
   _ForgotPasswordScreenState createState() => _ForgotPasswordScreenState();
 }
 
+final _authService = AuthService();
+
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _pageController = PageController();
   final _emailController = TextEditingController();
-  // List of 5 controllers for the OTP boxes
   final List<TextEditingController> _otpControllers = List.generate(
-    5,
+    6, // Changed to 6 to match the 6 OTP input boxes
     (index) => TextEditingController(),
   );
   final _newPasswordController = TextEditingController();
@@ -51,40 +53,114 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   void _onContinuePressed() async {
-    if (currentPage == 0) {
-      // -STEP 1: SEND EMAIL
-      if (_emailController.text.isEmpty) {
-        showCustomSnackBar(context, "Please enter your email");
-        return;
-      }
-      // TODO: Call API to send reset code
-      print("Sending reset code to ${_emailController.text}");
-      _goToNextPage();
-    } else if (currentPage == 1) {
-      //  STEP 2: VERIFY CODE
-      String code = _otpControllers.map((c) => c.text).join();
-      if (code.length < 5) {
-        showCustomSnackBar(context, "Please enter the full code");
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      if (currentPage == 0) {
+        // -STEP 1: SEND EMAIL
+        if (_emailController.text.isEmpty) {
+          showCustomSnackBar(context, "Please enter your email");
+          setState(() => _isLoading = false); // Add this line
+          return;
+        }
 
-        return;
+        /// This is the api for sending an otp
+        await _authService.forgotPassword(email: _emailController.text);
+        showCustomSnackBar(
+          context,
+          "Reset code sent to the email",
+          isError: false,
+        );
+
+        print("Sending reset code to ${_emailController.text}");
+        _goToNextPage();
+      } else if (currentPage == 1) {
+        //  STEP 2: VERIFY CODE
+        String code = _otpControllers.map((c) => c.text).join();
+
+        if (code.length < 6) {
+          showCustomSnackBar(context, "Please enter the full code");
+          setState(() => _isLoading = false); // Add this line
+          return;
+        }
+
+        ///Api for verifying the password reset otp
+        await _authService.verifyPasswordResetOtp(
+          email: _emailController.text,
+          token: code,
+        );
+
+        //more validation here like if error code or what
+        print("Verifying code: $code");
+        _goToNextPage();
+      } else {
+        // STEP 3: RESET PASSWORD
+        ///Password validations
+        final newPassword = _newPasswordController.text;
+        if (newPassword.isEmpty || newPassword.length < 8) {
+          showCustomSnackBar(
+            context,
+            "Passwords must be at least 8 characters",
+          );
+          setState(() => _isLoading = false); // Add this line
+          return;
+        }
+        if (newPassword != _confirmPasswordController.text) {
+          showCustomSnackBar(context, "Passwords do not match");
+          return;
+        }
+
+        if (!RegExp(r'[A-Z]').hasMatch(newPassword)) {
+          showCustomSnackBar(
+            context,
+            "Password must contain at least one uppercase letter.",
+          );
+          setState(() => _isLoading = false); // Add this line
+          return;
+        }
+
+        if (!RegExp(r'[0-9]').hasMatch(newPassword)) {
+          showCustomSnackBar(
+            context,
+            "Password must contain at least one number.",
+          );
+          setState(() => _isLoading = false); // Add this line
+          return;
+        }
+
+        //if all validation suceeds
+
+        await _authService.updateUserPassword(newPassword: newPassword);
+        if (mounted) {
+          showCustomSnackBar(
+            context,
+            "Password updated successfully",
+            isError: false,
+          );
+        }
+
+        print("Updating password...");
+        Navigator.pop(context); // Go back to login
       }
-      // TODO: Call API to verify code
-      //more validation here like if error code or what
-      print("Verifying code: $code");
-      _goToNextPage();
-    } else {
-      // STEP 3: RESET PASSWORD
-      if (_newPasswordController.text != _confirmPasswordController.text) {
-         showCustomSnackBar(context, "Passwords do not match");
-        return;
+    } catch (e) {
+      showCustomSnackBar(context, "Error: ${e.toString()}");
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
-      // TODO: Call API to update password
-      print("Updating password...");
-      // Navigator.pop(context); // Go back to login
+    } finally {
+      // The loading state is now handled inside the try/catch blocks,
+      // so we can remove this to avoid setting state after the page has changed.
     }
   }
 
   void _goToNextPage() {
+    // We set isLoading to false here to stop the loader before switching pages.
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
     _pageController.nextPage(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeIn,
@@ -162,22 +238,25 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: _onContinuePressed,
+                          onPressed: _isLoading ? null : _onContinuePressed,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF26A69A),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
                           ),
-                          child: Text(
-                            
-                            'Continue',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          child: _isLoading
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white,
+                                )
+                              : Text(
+                                  'Continue',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                         ),
                       ),
                       const SizedBox(height: 40),
