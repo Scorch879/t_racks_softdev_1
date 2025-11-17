@@ -7,6 +7,7 @@ import 'package:t_racks_softdev_1/services/auth_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_home_screen.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
+import 'package:t_racks_softdev_1/screens/forgetPassword/forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -57,17 +58,12 @@ class _LoginScreenState extends State<LoginScreen> {
               builder: (context) => OnBoardingScreen(role: userRole),
             ),
           );
-        } 
-        else 
-        {
-          switch (userRole) 
-          {
+        } else {
+          switch (userRole) {
             case 'student':
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => StudentHomeScreen(),
-                ),
+                MaterialPageRoute(builder: (context) => StudentHomeScreen()),
               );
               break;
             case 'educator':
@@ -300,7 +296,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                   // "Forgot Password?" Button
                                   TextButton(
                                     onPressed: () {
-                                      // TODO: Handle forgot password
+                                      Navigator.push(
+                                        context,MaterialPageRoute(
+                                          builder: (context) =>const ForgotPasswordScreen(),
+                                        ),
+                                      );
                                     },
                                     child: const Text(
                                       'Forgot Password?',
@@ -358,7 +358,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           TextButton(
                             onPressed: () {
-                              // TODO: Navigate to Register screen
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -366,7 +365,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               );
                             },
-                            // You might need this style to remove default padding
+                            // You might need this style to rFmove default padding
                             style: TextButton.styleFrom(
                               padding: EdgeInsets.zero,
                               minimumSize: Size.zero,
