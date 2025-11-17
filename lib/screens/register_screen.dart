@@ -218,8 +218,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                               TextField(
                                 controller: _emailController,
+                                textAlignVertical: TextAlignVertical.center,
                                 keyboardType: TextInputType.emailAddress,
                                 decoration: const InputDecoration(
+                                  isDense: true,
                                   hintText: 'Email address',
                                   hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
                                   // --- ADD THIS ICON ---
@@ -249,9 +251,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                               TextField(
                                 controller: _phoneController,
+                                textAlignVertical: TextAlignVertical.center,
                                 keyboardType: TextInputType.phone,
                                 decoration: const InputDecoration(
+                                  isDense: true,
                                   hintText: 'Phone number',
+                                  hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
                                   // --- ADD THIS ICON ---
                                   prefixIcon: Icon(
                                     Icons.phone_android_outlined,
@@ -279,10 +284,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                               TextField(
                                 controller: _passwordController,
+                                textAlignVertical: TextAlignVertical.center,
                                 obscureText: _passwordVisible,
                                 decoration: InputDecoration(
                                   // Removed const
+                                  isDense: true,
                                   hintText: 'Password',
+                                  hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
                                   // --- ADD THIS ICON ---
                                   prefixIcon: const Icon(
                                     Icons.lock_outline,
@@ -323,10 +331,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                               TextField(
                                 controller: _confirmPasswordController,
+                                textAlignVertical: TextAlignVertical.center,
                                 obscureText: _confirmPasswordVisible,
                                 decoration: InputDecoration(
                                   // Removed const
+                                  isDense: true,
                                   hintText: 'Confirm Password',
+                                  hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
                                   // --- ADD THIS ICON ---
                                   prefixIcon: const Icon(
                                     Icons.lock_outline,

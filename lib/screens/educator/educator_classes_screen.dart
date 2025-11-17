@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/educator_service.dart';
-import 'package:t_racks_softdev_1/screens/educator_classroom_screen.dart';
+import 'package:t_racks_softdev_1/screens/educator/educator_classroom_screen.dart';
 import 'package:t_racks_softdev_1/services/educator_notification_service.dart';
 
 class EducatorClassesScreen extends StatefulWidget {

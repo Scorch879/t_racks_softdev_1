@@ -63,6 +63,7 @@ class StudentPage1 extends StatelessWidget {
           Text('Last Name', style: _headerStyle),
           TextField(
             controller: lastNameController,
+            textAlignVertical: TextAlignVertical.center,
             decoration: const InputDecoration(
               hintText: 'Last Name',
               hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
@@ -89,7 +90,9 @@ class StudentPage1 extends StatelessWidget {
                     Text('First Name', style: _headerStyle),
                     TextField(
                       controller: firstNameController,
+                      textAlignVertical: TextAlignVertical.center,
                       decoration: const InputDecoration(
+                        isDense: true, // Aligns icon and hint text
                         hintText: 'First Name',
                         hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
                         prefixIcon: Icon(Icons.person_outline, color: Colors.grey),
@@ -114,7 +117,9 @@ class StudentPage1 extends StatelessWidget {
                     Text('Middle Name', style: _headerStyle),
                     TextField(
                       controller: middleNameController,
+                      textAlignVertical: TextAlignVertical.center,
                       decoration: const InputDecoration(
+                        isDense: true, // Aligns icon and hint text
                         hintText: 'M.I',
                         hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
                         prefixIcon: Icon(Icons.person_outline, color: Colors.grey),
@@ -157,10 +162,12 @@ class StudentPage1 extends StatelessWidget {
                     Text('Birth date', style: _headerStyle),
                     TextField(
                       controller: birthDateController,
+                      textAlignVertical: TextAlignVertical.center,
                       // We'd add a date picker to this
                       readOnly: true, // Make it read-only
                       onTap: onBirthDateTapped,
                       decoration: const InputDecoration(
+                        isDense: true, // Aligns icon and hint text
                         hintText: 'month / day / year',
                         hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
                         prefixIcon: Icon(Icons.calendar_today_outlined, color: Colors.grey),
