@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/student_service.dart';
 
 const _bgTeal = Color(0xFF167C94);
@@ -10,7 +11,12 @@ const _statusRed = Color(0xFFDA6A6A);
 const _titleRed = Color(0xFFE57373);
 
 class StudentHomeScreen extends StatelessWidget {
+
+  final _databaseService = DatabaseService();
+
   const StudentHomeScreen({super.key});
+
+
 
   @override
   Widget build(BuildContext context) {

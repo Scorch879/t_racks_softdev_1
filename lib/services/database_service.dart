@@ -25,7 +25,7 @@ class DatabaseService {
     }
   }
 
-  Future<Profile> getProfile() async {
+  Future<Profile?> getProfile() async {
     try {
       final userId = _supabase.auth.currentUser?.id;
 
@@ -37,7 +37,7 @@ class DatabaseService {
       return Profile.fromJson(data);
     } catch (e) {
       // Return null if profile not found or an error occursv
-      rethrow;
+      return null;
     }
   }
 }
