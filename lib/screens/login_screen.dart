@@ -201,8 +201,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               // Email Field
                               TextField(
                                 controller: _emailController,
+                                textAlignVertical: TextAlignVertical.center,
                                 keyboardType: TextInputType.emailAddress,
                                 decoration: const InputDecoration(
+                                  isDense: true, // Aligns icon and hint text
                                   hintText: 'Email address',
                                   prefixIcon: Icon(
                                     Icons.email_outlined,
@@ -233,8 +235,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               // Password Field
                               TextField(
                                 controller: _passwordController,
+                                textAlignVertical: TextAlignVertical.center,
                                 obscureText: _passwordVisible,
                                 decoration: InputDecoration(
+                                  isDense: true, // Aligns icon and hint text
                                   // Removed const
                                   hintText: 'Password',
                                   // --- ADD THIS ICON ---
