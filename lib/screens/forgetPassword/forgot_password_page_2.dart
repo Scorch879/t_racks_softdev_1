@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class ForgotPage2 extends StatelessWidget {
-  // We receive the list of 5 controllers from the parent
+  // We receive the list of  controllers from the parent
   final List<TextEditingController> otpControllers;
 
   const ForgotPage2({super.key, required this.otpControllers});
@@ -31,7 +31,7 @@ class ForgotPage2 extends StatelessWidget {
           // --- 5 OTP BOXES ROW ---
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: List.generate(5, (index) {
+            children: List.generate(6, (index) {
               return SizedBox(
                 width: 50,
                 height: 60,
@@ -57,7 +57,7 @@ class ForgotPage2 extends StatelessWidget {
                   ),
                   onChanged: (value) {
                     // Logic to move focus automatically
-                    if (value.length == 1 && index < 4) {
+                    if (value.length == 1 && index < otpControllers.length - 1) {
                       // If they typed a number, go to NEXT box
                       FocusScope.of(context).nextFocus();
                     } else if (value.isEmpty && index > 0) {

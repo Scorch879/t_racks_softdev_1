@@ -1,14 +1,14 @@
 class Profile {
   final String id;
   final String firstName;
-  final String middleName;
+  final String? middleName;
   final String lastName;
   final String role;
 
   Profile({
     required this.id,
     required this.firstName,
-    required this.middleName,
+    this.middleName,
     required this.lastName,
     required this.role,
   });
@@ -19,7 +19,7 @@ class Profile {
     return Profile(
       id: json['id'] as String,
       firstName: json['firstName'] as String,
-      middleName: json['middleName'] as String,
+      middleName: json['middleName'] as String?,
       lastName: json['lastName'] as String,
       role: json['role'] as String,
     );
