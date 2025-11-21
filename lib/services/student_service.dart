@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:t_racks_softdev_1/screens/student_home_screen.dart';
-import 'package:t_racks_softdev_1/screens/student_settings_screen.dart';
+import 'package:t_racks_softdev_1/screens/student/student_settings_screen.dart';
 
 class StudentService {
   static DateTime? _lastNavTime;

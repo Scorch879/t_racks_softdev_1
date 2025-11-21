@@ -8,9 +8,14 @@ const _chipGreen = Color(0xFF4DBD88);
 const _statusRed = Color(0xFFDA6A6A);
 const _borderTeal = Color(0xFF6AAFBF);
 
-class StudentSettingsScreen extends StatelessWidget {
+class StudentSettingsScreen extends StatefulWidget {
   const StudentSettingsScreen({super.key});
 
+  @override
+  State<StudentSettingsScreen> createState() => _StudentSettingsScreenState();
+}
+
+class _StudentSettingsScreenState extends State<StudentSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(

@@ -9,13 +9,14 @@ const _chipGreen = Color(0xFF4DBD88);
 const _statusRed = Color(0xFFDA6A6A);
 const _titleRed = Color(0xFFE57373);
 
-class StudentHomeScreen extends StatelessWidget {
-
-
+class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
 
+  @override
+  State<StudentHomeScreen> createState() => _StudentHomeScreenState();
+}
 
-
+class _StudentHomeScreenState extends State<StudentHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -26,7 +27,7 @@ class StudentHomeScreen extends StatelessWidget {
         final horizontalPadding = 16.0 * scale;
         final cardRadius = 16.0 * scale;
 
-    return Scaffold(
+        return Scaffold(
           backgroundColor: _bgTeal,
           appBar: PreferredSize(
             preferredSize: Size.fromHeight(64 * scale),
