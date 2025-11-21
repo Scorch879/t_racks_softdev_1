@@ -1,16 +1,27 @@
 import 'package:flutter/material.dart';
 
 const _bgTeal = Color(0xFF167C94);
+// Summary/top-stat cards background (dark slate sampled from Figma)
+const _summaryCardSurface = Color(0xFF0F3A40);
+// Panel behind "My Classes"
+const _myClassesPanel = Color(0xFF0B2F33);
+// Class list cards must be this exact color per request
+const _myClassCardSurface = Color(0xFF32657D);
 const _cardSurface = Color(0xFF173C45);
 const _accentCyan = Color(0xFF93C0D3);
 const _chipGreen = Color(0xFF4DBD88);
 const _statusRed = Color(0xFFDA6A6A);
 const _statusYellow = Color(0xFFFFC107);
 
-// Home Content View
-class StudentClassHomeContent extends StatelessWidget {
-  const StudentClassHomeContent({super.key});
+// --- MAIN CLASSES CONTENT VIEW ---
+class StudentClassClassesContent extends StatefulWidget {
+  const StudentClassClassesContent({super.key});
 
+  @override
+  State<StudentClassClassesContent> createState() => _StudentClassClassesContentState();
+}
+
+class _StudentClassClassesContentState extends State<StudentClassClassesContent> {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -21,6 +32,7 @@ class StudentClassHomeContent extends StatelessWidget {
 
         return Stack(
           children: [
+            // Background Texture
             Positioned.fill(
               child: Opacity(
                 opacity: 0.12,
@@ -30,19 +42,22 @@ class StudentClassHomeContent extends StatelessWidget {
                 ),
               ),
             ),
+            // Scrollable Content
             SingleChildScrollView(
               padding: EdgeInsets.fromLTRB(
                 horizontalPadding,
                 12 * scale,
                 horizontalPadding,
-                100 * scale,
+                100 * scale, // Padding for bottom nav
               ),
-              child: Center(
+              child: Align(
+                alignment: Alignment.topCenter,
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 980),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      // 1. Top Summary Row
                       Row(
                         children: [
                           Expanded(
@@ -66,87 +81,70 @@ class StudentClassHomeContent extends StatelessWidget {
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
+                      SizedBox(height: 16 * scale),
 
-// Classes Content View (Main View)
-class StudentClassClassesContent extends StatelessWidget {
-  const StudentClassClassesContent({super.key});
+                      // 2. Main 'My Classes' Container
+                      Container(
+                        padding: EdgeInsets.all(16 * scale),
+                        decoration: BoxDecoration(
+                          color: _myClassesPanel,
+                          borderRadius: BorderRadius.circular(16 * scale),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.25),
+                              blurRadius: 10 * scale,
+                              offset: Offset(0, 6 * scale),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Header
+                            _MyClassesHeader(scale: scale),
+                            SizedBox(height: 12 * scale),
+                            
+                            // Search
+                            _SearchBar(scale: scale),
+                            SizedBox(height: 12 * scale),
 
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final scale = (width / 430).clamp(0.8, 1.6);
-        final horizontalPadding = 16.0 * scale;
-
-        return Stack(
-          children: [
-            Positioned.fill(
-              child: Opacity(
-                opacity: 0.12,
-                child: Image.asset(
-                  'assets/images/squigglytexture.png',
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-            SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                horizontalPadding,
-                12 * scale,
-                horizontalPadding,
-                100 * scale,
-              ),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 980),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _MyClassesHeader(scale: scale),
-                      SizedBox(height: 16 * scale),
-                      _SearchBar(scale: scale),
-                      SizedBox(height: 16 * scale),
-                      _ClassCard(
-                        scale: scale,
-                        title: 'Calculus 137',
-                        students: 28,
-                        present: 26,
-                        time: 'Yesterday 10:00 AM',
-                        status: 'Absent',
-                        statusColor: _statusRed,
-                      ),
-                      SizedBox(height: 16 * scale),
-                      _ClassCard(
-                        scale: scale,
-                        title: 'Physics 138',
-                        students: 38,
-                        present: 35,
-                        time: 'Ongoing 9:00 AM',
-                        status: 'Ongoing',
-                        statusColor: _chipGreen,
-                      ),
-                      SizedBox(height: 16 * scale),
-                      _ClassCard(
-                        scale: scale,
-                        title: 'Calculus 237',
-                        students: 18,
-                        present: 0,
-                        time: 'Next: Tomorrow 9:00 AM',
-                        status: 'Upcoming',
-                        statusColor: _statusYellow,
-                        isUpcoming: true,
+                            // Class List
+                            _ClassCard(
+                              scale: scale,
+                              title: 'Calculus 137',
+                              students: 28,
+                              present: 26,
+                              time: 'Yesterday 10:00 AM',
+                              status: 'Absent',
+                              statusColor: _statusRed,
+                              // enforce requested hex for class cards
+                              cardColor: _myClassCardSurface,
+                            ),
+                            SizedBox(height: 12 * scale),
+                            _ClassCard(
+                              scale: scale,
+                              title: 'Physics 138',
+                              students: 38,
+                              present: 35,
+                              time: 'Ongoing 9:00 AM',
+                              status: 'Ongoing',
+                              statusColor: _chipGreen,
+                              cardColor: _myClassCardSurface,
+                            ),
+                            SizedBox(height: 12 * scale),
+                            _ClassCard(
+                              scale: scale,
+                              title: 'Calculus 237',
+                              students: 18,
+                              present: 0,
+                              time: 'Next: Tomorrow 9:00 AM',
+                              status: 'Upcoming',
+                              statusColor: _statusYellow,
+                              isUpcoming: true,
+                              cardColor: _myClassCardSurface,
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -160,112 +158,33 @@ class StudentClassClassesContent extends StatelessWidget {
   }
 }
 
-// Schedule Content View
-class StudentClassScheduleContent extends StatelessWidget {
+// --- SCHEDULE CONTENT VIEW (Now Stateful) ---
+class StudentClassScheduleContent extends StatefulWidget {
   const StudentClassScheduleContent({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final scale = (width / 430).clamp(0.8, 1.6);
-        final horizontalPadding = 16.0 * scale;
+  State<StudentClassScheduleContent> createState() => _StudentClassScheduleContentState();
+}
 
-        return Stack(
-          children: [
-            Positioned.fill(
-              child: Opacity(
-                opacity: 0.12,
-                child: Image.asset(
-                  'assets/images/squigglytexture.png',
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-            SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                horizontalPadding,
-                12 * scale,
-                horizontalPadding,
-                100 * scale,
-              ),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 980),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        'Schedule',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 28 * scale,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      SizedBox(height: 24 * scale),
-                      _ScheduleCard(
-                        scale: scale,
-                        day: 'Monday',
-                        classes: [
-                          _ScheduleItem(
-                            time: '9:00 AM - 10:30 AM',
-                            className: 'Calculus 137',
-                            location: 'Room 201',
-                          ),
-                          _ScheduleItem(
-                            time: '2:00 PM - 3:30 PM',
-                            className: 'Physics 138',
-                            location: 'Room 305',
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 16 * scale),
-                      _ScheduleCard(
-                        scale: scale,
-                        day: 'Tuesday',
-                        classes: [
-                          _ScheduleItem(
-                            time: '10:00 AM - 11:30 AM',
-                            className: 'Calculus 237',
-                            location: 'Room 201',
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 16 * scale),
-                      _ScheduleCard(
-                        scale: scale,
-                        day: 'Wednesday',
-                        classes: [
-                          _ScheduleItem(
-                            time: '9:00 AM - 10:30 AM',
-                            className: 'Calculus 137',
-                            location: 'Room 201',
-                          ),
-                          _ScheduleItem(
-                            time: '2:00 PM - 3:30 PM',
-                            className: 'Physics 138',
-                            location: 'Room 305',
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
+class _StudentClassScheduleContentState extends State<StudentClassScheduleContent> {
+  @override
+  Widget build(BuildContext context) {
+    // Render the Classes content in place of the daily schedule cards.
+    // Using the Classes component directly avoids nested scrollables
+    // and shows totals, absences, search, and class cards as requested.
+    return const StudentClassClassesContent();
   }
 }
 
-// Settings Content View
-class StudentClassSettingsContent extends StatelessWidget {
+// --- SETTINGS CONTENT VIEW  ---
+class StudentClassSettingsContent extends StatefulWidget {
   const StudentClassSettingsContent({super.key});
 
+  @override
+  State<StudentClassSettingsContent> createState() => _StudentClassSettingsContentState();
+}
+
+class _StudentClassSettingsContentState extends State<StudentClassSettingsContent> {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -297,7 +216,8 @@ class StudentClassSettingsContent extends StatelessWidget {
                   horizontalPadding,
                   100 * scale,
                 ),
-                child: Center(
+                child: Align(
+                  alignment: Alignment.topCenter,
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 980),
                     child: Column(
@@ -317,8 +237,9 @@ class StudentClassSettingsContent extends StatelessWidget {
   }
 }
 
-// Helper Widgets
-class _SummaryCard extends StatelessWidget {
+// --- HELPER WIDGETS ---
+
+class _SummaryCard extends StatefulWidget {
   const _SummaryCard({
     required this.scale,
     required this.icon,
@@ -334,38 +255,43 @@ class _SummaryCard extends StatelessWidget {
   final Color iconColor;
 
   @override
+  State<_SummaryCard> createState() => _SummaryCardState();
+}
+
+class _SummaryCardState extends State<_SummaryCard> {
+  @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(20 * scale),
+      padding: EdgeInsets.all(20 * widget.scale),
       decoration: BoxDecoration(
-        color: _cardSurface,
-        borderRadius: BorderRadius.circular(16 * scale),
+        color: _summaryCardSurface,
+        borderRadius: BorderRadius.circular(16 * widget.scale),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.25),
-            blurRadius: 10 * scale,
-            offset: Offset(0, 6 * scale),
+            blurRadius: 10 * widget.scale,
+            offset: Offset(0, 6 * widget.scale),
           ),
         ],
       ),
       child: Column(
         children: [
-          Icon(icon, color: iconColor, size: 32 * scale),
-          SizedBox(height: 12 * scale),
+          Icon(widget.icon, color: widget.iconColor, size: 32 * widget.scale),
+          SizedBox(height: 12 * widget.scale),
           Text(
-            value,
+            widget.value,
             style: TextStyle(
               color: Colors.white,
-              fontSize: 32 * scale,
+              fontSize: 32 * widget.scale,
               fontWeight: FontWeight.w800,
             ),
           ),
-          SizedBox(height: 4 * scale),
+          SizedBox(height: 4 * widget.scale),
           Text(
-            label,
+            widget.label,
             style: TextStyle(
               color: Colors.white70,
-              fontSize: 14 * scale,
+              fontSize: 14 * widget.scale,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -375,10 +301,15 @@ class _SummaryCard extends StatelessWidget {
   }
 }
 
-class _MyClassesHeader extends StatelessWidget {
+class _MyClassesHeader extends StatefulWidget {
   const _MyClassesHeader({required this.scale});
   final double scale;
 
+  @override
+  State<_MyClassesHeader> createState() => _MyClassesHeaderState();
+}
+
+class _MyClassesHeaderState extends State<_MyClassesHeader> {
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -386,15 +317,15 @@ class _MyClassesHeader extends StatelessWidget {
         Icon(
           Icons.star_rounded,
           color: _accentCyan,
-          size: 28 * scale,
+          size: 28 * widget.scale,
         ),
-        SizedBox(width: 8 * scale),
+        SizedBox(width: 8 * widget.scale),
         Expanded(
           child: Text(
             'My Classes',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 28 * scale,
+              fontSize: 28 * widget.scale,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -404,7 +335,7 @@ class _MyClassesHeader extends StatelessWidget {
           icon: Icon(
             Icons.add_circle_rounded,
             color: _chipGreen,
-            size: 28 * scale,
+            size: 28 * widget.scale,
           ),
         ),
       ],
@@ -412,32 +343,37 @@ class _MyClassesHeader extends StatelessWidget {
   }
 }
 
-class _SearchBar extends StatelessWidget {
+class _SearchBar extends StatefulWidget {
   const _SearchBar({required this.scale});
   final double scale;
 
   @override
+  State<_SearchBar> createState() => _SearchBarState();
+}
+
+class _SearchBarState extends State<_SearchBar> {
+  @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16 * scale, vertical: 12 * scale),
+      padding: EdgeInsets.symmetric(horizontal: 16 * widget.scale, vertical: 12 * widget.scale),
       decoration: BoxDecoration(
         color: const Color(0xFF6AAFBF).withOpacity(0.3),
-        borderRadius: BorderRadius.circular(22 * scale),
+        borderRadius: BorderRadius.circular(22 * widget.scale),
       ),
       child: Row(
         children: [
           Icon(
             Icons.search_rounded,
             color: Colors.white70,
-            size: 20 * scale,
+            size: 20 * widget.scale,
           ),
-          SizedBox(width: 12 * scale),
+          SizedBox(width: 12 * widget.scale),
           Expanded(
             child: Text(
               'Search Class',
               style: TextStyle(
                 color: Colors.white70,
-                fontSize: 16 * scale,
+                fontSize: 16 * widget.scale,
               ),
             ),
           ),
@@ -447,7 +383,7 @@ class _SearchBar extends StatelessWidget {
   }
 }
 
-class _ClassCard extends StatelessWidget {
+class _ClassCard extends StatefulWidget {
   const _ClassCard({
     required this.scale,
     required this.title,
@@ -457,6 +393,7 @@ class _ClassCard extends StatelessWidget {
     required this.status,
     required this.statusColor,
     this.isUpcoming = false,
+    this.cardColor,
   });
 
   final double scale;
@@ -467,19 +404,25 @@ class _ClassCard extends StatelessWidget {
   final String status;
   final Color statusColor;
   final bool isUpcoming;
+  final Color? cardColor;
 
+  @override
+  State<_ClassCard> createState() => _ClassCardState();
+}
+
+class _ClassCardState extends State<_ClassCard> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(16 * scale),
+      padding: EdgeInsets.all(16 * widget.scale),
       decoration: BoxDecoration(
-        color: _cardSurface,
-        borderRadius: BorderRadius.circular(16 * scale),
+        color: widget.cardColor ?? _cardSurface,
+        borderRadius: BorderRadius.circular(16 * widget.scale),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.25),
-            blurRadius: 10 * scale,
-            offset: Offset(0, 6 * scale),
+            blurRadius: 10 * widget.scale,
+            offset: Offset(0, 6 * widget.scale),
           ),
         ],
       ),
@@ -487,59 +430,59 @@ class _ClassCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            title,
+            widget.title,
             style: TextStyle(
               color: Colors.white,
-              fontSize: 20 * scale,
+              fontSize: 20 * widget.scale,
               fontWeight: FontWeight.w800,
             ),
           ),
-          SizedBox(height: 8 * scale),
+          SizedBox(height: 8 * widget.scale),
           Row(
             children: [
               Text(
-                'Students $students',
+                'Students ${widget.students}',
                 style: TextStyle(
                   color: Colors.white70,
-                  fontSize: 14 * scale,
+                  fontSize: 14 * widget.scale,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              SizedBox(width: 16 * scale),
+              SizedBox(width: 16 * widget.scale),
               Text(
-                isUpcoming ? 'Present Upcoming' : 'Present $present',
+                widget.isUpcoming ? 'Present Upcoming' : 'Present ${widget.present}',
                 style: TextStyle(
                   color: Colors.white70,
-                  fontSize: 14 * scale,
+                  fontSize: 14 * widget.scale,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ],
           ),
-          SizedBox(height: 8 * scale),
+          SizedBox(height: 8 * widget.scale),
           Text(
-            time,
+            widget.time,
             style: TextStyle(
               color: Colors.white60,
-              fontSize: 12 * scale,
+              fontSize: 12 * widget.scale,
               fontWeight: FontWeight.w500,
             ),
           ),
-          SizedBox(height: 12 * scale),
+          SizedBox(height: 12 * widget.scale),
           Container(
             padding: EdgeInsets.symmetric(
-              horizontal: 16 * scale,
-              vertical: 8 * scale,
+              horizontal: 16 * widget.scale,
+              vertical: 8 * widget.scale,
             ),
             decoration: BoxDecoration(
-              color: statusColor,
-              borderRadius: BorderRadius.circular(20 * scale),
+              color: widget.statusColor,
+              borderRadius: BorderRadius.circular(20 * widget.scale),
             ),
             child: Text(
-              status,
+              widget.status,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 14 * scale,
+                fontSize: 14 * widget.scale,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -550,67 +493,72 @@ class _ClassCard extends StatelessWidget {
   }
 }
 
-class _SettingsCard extends StatelessWidget {
+class _SettingsCard extends StatefulWidget {
   const _SettingsCard({required this.scale, required this.radius});
   final double scale;
   final double radius;
 
   @override
+  State<_SettingsCard> createState() => _SettingsCardState();
+}
+
+class _SettingsCardState extends State<_SettingsCard> {
+  @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         color: _cardSurface,
-        borderRadius: BorderRadius.circular(radius),
+        borderRadius: BorderRadius.circular(widget.radius),
         border: Border.all(
           color: const Color(0xFF6AAFBF).withOpacity(0.45),
         ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.25),
-            blurRadius: 10 * scale,
-            offset: Offset(0, 6 * scale),
+            blurRadius: 10 * widget.scale,
+            offset: Offset(0, 6 * widget.scale),
           ),
         ],
       ),
       child: Padding(
-        padding: EdgeInsets.all(18 * scale),
+        padding: EdgeInsets.all(18 * widget.scale),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(Icons.settings, color: Colors.white, size: 24 * scale),
-                SizedBox(width: 8 * scale),
+                Icon(Icons.settings, color: Colors.white, size: 24 * widget.scale),
+                SizedBox(width: 8 * widget.scale),
                 Text(
                   'Settings',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 20 * scale,
+                    fontSize: 20 * widget.scale,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
-            SizedBox(height: 20 * scale),
+            SizedBox(height: 20 * widget.scale),
             _SettingsPill(
               label: 'Profile Settings',
               icon: Icons.person,
               color: _chipGreen,
-              scale: scale,
+              scale: widget.scale,
             ),
-            SizedBox(height: 14 * scale),
+            SizedBox(height: 14 * widget.scale),
             _SettingsPill(
               label: 'Account Settings',
               icon: Icons.settings,
               color: _chipGreen,
-              scale: scale,
+              scale: widget.scale,
             ),
-            SizedBox(height: 14 * scale),
+            SizedBox(height: 14 * widget.scale),
             _SettingsPill(
               label: 'Delete Account',
               icon: Icons.person_off,
               color: _statusRed,
-              scale: scale,
+              scale: widget.scale,
             ),
           ],
         ),
@@ -619,7 +567,7 @@ class _SettingsCard extends StatelessWidget {
   }
 }
 
-class _SettingsPill extends StatelessWidget {
+class _SettingsPill extends StatefulWidget {
   const _SettingsPill({
     required this.label,
     required this.icon,
@@ -633,38 +581,43 @@ class _SettingsPill extends StatelessWidget {
   final double scale;
 
   @override
+  State<_SettingsPill> createState() => _SettingsPillState();
+}
+
+class _SettingsPillState extends State<_SettingsPill> {
+  @override
   Widget build(BuildContext context) {
     return InkWell(
-      borderRadius: BorderRadius.circular(22 * scale),
+      borderRadius: BorderRadius.circular(22 * widget.scale),
       onTap: () {},
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 18 * scale, vertical: 16 * scale),
+        padding: EdgeInsets.symmetric(horizontal: 18 * widget.scale, vertical: 16 * widget.scale),
         decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(22 * scale),
+          color: widget.color,
+          borderRadius: BorderRadius.circular(22 * widget.scale),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.25),
-              blurRadius: 10 * scale,
-              offset: Offset(0, 6 * scale),
+              blurRadius: 10 * widget.scale,
+              offset: Offset(0, 6 * widget.scale),
             ),
           ],
         ),
         child: Row(
           children: [
-            Icon(icon, color: Colors.white, size: 20 * scale),
-            SizedBox(width: 12 * scale),
+            Icon(widget.icon, color: Colors.white, size: 20 * widget.scale),
+            SizedBox(width: 12 * widget.scale),
             Expanded(
               child: Text(
-                label,
+                widget.label,
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 16 * scale,
+                  fontSize: 16 * widget.scale,
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: Colors.white, size: 22 * scale),
+            Icon(Icons.chevron_right_rounded, color: Colors.white, size: 22 * widget.scale),
           ],
         ),
       ),
@@ -672,7 +625,7 @@ class _SettingsPill extends StatelessWidget {
   }
 }
 
-class _ScheduleCard extends StatelessWidget {
+class _ScheduleCard extends StatefulWidget {
   const _ScheduleCard({
     required this.scale,
     required this.day,
@@ -684,17 +637,22 @@ class _ScheduleCard extends StatelessWidget {
   final List<_ScheduleItem> classes;
 
   @override
+  State<_ScheduleCard> createState() => _ScheduleCardState();
+}
+
+class _ScheduleCardState extends State<_ScheduleCard> {
+  @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(16 * scale),
+      padding: EdgeInsets.all(16 * widget.scale),
       decoration: BoxDecoration(
         color: _cardSurface,
-        borderRadius: BorderRadius.circular(16 * scale),
+        borderRadius: BorderRadius.circular(16 * widget.scale),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.25),
-            blurRadius: 10 * scale,
-            offset: Offset(0, 6 * scale),
+            blurRadius: 10 * widget.scale,
+            offset: Offset(0, 6 * widget.scale),
           ),
         ],
       ),
@@ -702,18 +660,18 @@ class _ScheduleCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            day,
+            widget.day,
             style: TextStyle(
               color: Colors.white,
-              fontSize: 20 * scale,
+              fontSize: 20 * widget.scale,
               fontWeight: FontWeight.w800,
             ),
           ),
-          SizedBox(height: 12 * scale),
-          ...classes.map((item) => Padding(
-                padding: EdgeInsets.only(bottom: 12 * scale),
+          SizedBox(height: 12 * widget.scale),
+          ...widget.classes.map((item) => Padding(
+                padding: EdgeInsets.only(bottom: 12 * widget.scale),
                 child: _ScheduleItemWidget(
-                  scale: scale,
+                  scale: widget.scale,
                   item: item,
                 ),
               )),
@@ -735,7 +693,7 @@ class _ScheduleItem {
   final String location;
 }
 
-class _ScheduleItemWidget extends StatelessWidget {
+class _ScheduleItemWidget extends StatefulWidget {
   const _ScheduleItemWidget({
     required this.scale,
     required this.item,
@@ -745,47 +703,52 @@ class _ScheduleItemWidget extends StatelessWidget {
   final _ScheduleItem item;
 
   @override
+  State<_ScheduleItemWidget> createState() => _ScheduleItemWidgetState();
+}
+
+class _ScheduleItemWidgetState extends State<_ScheduleItemWidget> {
+  @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(12 * scale),
+      padding: EdgeInsets.all(12 * widget.scale),
       decoration: BoxDecoration(
         color: const Color(0xFF1B4A55),
-        borderRadius: BorderRadius.circular(12 * scale),
+        borderRadius: BorderRadius.circular(12 * widget.scale),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            item.time,
+            widget.item.time,
             style: TextStyle(
               color: _accentCyan,
-              fontSize: 14 * scale,
+              fontSize: 14 * widget.scale,
               fontWeight: FontWeight.w600,
             ),
           ),
-          SizedBox(height: 4 * scale),
+          SizedBox(height: 4 * widget.scale),
           Text(
-            item.className,
+            widget.item.className,
             style: TextStyle(
               color: Colors.white,
-              fontSize: 16 * scale,
+              fontSize: 16 * widget.scale,
               fontWeight: FontWeight.w700,
             ),
           ),
-          SizedBox(height: 4 * scale),
+          SizedBox(height: 4 * widget.scale),
           Row(
             children: [
               Icon(
                 Icons.location_on_rounded,
                 color: Colors.white60,
-                size: 14 * scale,
+                size: 14 * widget.scale,
               ),
-              SizedBox(width: 4 * scale),
+              SizedBox(width: 4 * widget.scale),
               Text(
-                item.location,
+                widget.item.location,
                 style: TextStyle(
                   color: Colors.white60,
-                  fontSize: 12 * scale,
+                  fontSize: 12 * widget.scale,
                 ),
               ),
             ],
@@ -795,4 +758,3 @@ class _ScheduleItemWidget extends StatelessWidget {
     );
   }
 }
-

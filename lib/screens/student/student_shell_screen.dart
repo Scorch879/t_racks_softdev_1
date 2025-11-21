@@ -94,16 +94,24 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
   }
 }
 
-class _TopBar extends StatelessWidget {
+class _TopBar extends StatefulWidget {
   const _TopBar({
     required this.scale,
     required this.onNotificationsPressed,
   });
+
   final double scale;
   final VoidCallback onNotificationsPressed;
 
   @override
+  State<_TopBar> createState() => _TopBarState();
+}
+
+class _TopBarState extends State<_TopBar> {
+  @override
   Widget build(BuildContext context) {
+    final scale = widget.scale;
+
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
@@ -146,7 +154,7 @@ class _TopBar extends StatelessWidget {
               children: [
                 IconButton(
                   iconSize: 22 * scale + 1,
-                  onPressed: onNotificationsPressed,
+                  onPressed: widget.onNotificationsPressed,
                   icon: const Icon(Icons.notifications_none_rounded),
                   color: Colors.black87,
                 ),

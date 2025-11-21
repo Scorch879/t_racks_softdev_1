@@ -4,7 +4,7 @@ import 'package:t_racks_softdev_1/screens/student/student_class_content.dart';
 const _bgTeal = Color(0xFF167C94);
 const _accentCyan = Color(0xFF93C0D3);
 
-enum ClassNavTab { home, schedule, classes, settings }
+enum ClassNavTab { classes, schedule, settings }
 
 class StudentClassScreen extends StatefulWidget {
   const StudentClassScreen({super.key});
@@ -14,6 +14,7 @@ class StudentClassScreen extends StatefulWidget {
 }
 
 class _StudentClassScreenState extends State<StudentClassScreen> {
+  // State: Tracks which tab is active
   ClassNavTab _currentTab = ClassNavTab.classes;
 
   void _onTabChanged(ClassNavTab tab) {
@@ -50,13 +51,12 @@ class _StudentClassScreenState extends State<StudentClassScreen> {
   }
 
   Widget _buildContent() {
+    // Switches between the stateful content widgets based on the tab
     switch (_currentTab) {
-      case ClassNavTab.home:
-        return const StudentClassHomeContent();
-      case ClassNavTab.schedule:
-        return const StudentClassScheduleContent();
       case ClassNavTab.classes:
         return const StudentClassClassesContent();
+      case ClassNavTab.schedule:
+        return const StudentClassScheduleContent();
       case ClassNavTab.settings:
         return const StudentClassSettingsContent();
     }
@@ -90,7 +90,7 @@ class _StudentClassScreenState extends State<StudentClassScreen> {
   }
 }
 
-class _TopBar extends StatelessWidget {
+class _TopBar extends StatefulWidget {
   const _TopBar({
     required this.scale,
     required this.onNotificationsPressed,
@@ -99,7 +99,13 @@ class _TopBar extends StatelessWidget {
   final VoidCallback onNotificationsPressed;
 
   @override
+  State<_TopBar> createState() => _TopBarState();
+}
+
+class _TopBarState extends State<_TopBar> {
+  @override
   Widget build(BuildContext context) {
+    final scale = widget.scale;
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
@@ -142,7 +148,7 @@ class _TopBar extends StatelessWidget {
               children: [
                 IconButton(
                   iconSize: 22 * scale + 1,
-                  onPressed: onNotificationsPressed,
+                  onPressed: widget.onNotificationsPressed,
                   icon: const Icon(Icons.notifications_none_rounded),
                   color: Colors.black87,
                 ),
@@ -175,7 +181,7 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-class _BottomNav extends StatelessWidget {
+class _BottomNav extends StatefulWidget {
   const _BottomNav({
     required this.scale,
     required this.currentTab,
@@ -186,7 +192,13 @@ class _BottomNav extends StatelessWidget {
   final ValueChanged<ClassNavTab> onTabChanged;
 
   @override
+  State<_BottomNav> createState() => _BottomNavState();
+}
+
+class _BottomNavState extends State<_BottomNav> {
+  @override
   Widget build(BuildContext context) {
+    final scale = widget.scale;
     return Container(
       padding: EdgeInsets.only(
         left: 24 * scale,
@@ -202,22 +214,22 @@ class _BottomNav extends StatelessWidget {
             icon: Icons.home_rounded,
             label: 'Home',
             scale: scale,
-            isActive: currentTab == ClassNavTab.home,
-            onTap: () => onTabChanged(ClassNavTab.home),
+            isActive: widget.currentTab == ClassNavTab.classes,
+            onTap: () => widget.onTabChanged(ClassNavTab.classes),
           ),
           _BottomItem(
             icon: Icons.calendar_month_rounded,
             label: 'Schedule',
             scale: scale,
-            isActive: currentTab == ClassNavTab.schedule,
-            onTap: () => onTabChanged(ClassNavTab.schedule),
+            isActive: widget.currentTab == ClassNavTab.schedule,
+            onTap: () => widget.onTabChanged(ClassNavTab.schedule),
           ),
           _BottomItem(
             icon: Icons.settings_rounded,
             label: 'Settings',
             scale: scale,
-            isActive: currentTab == ClassNavTab.settings,
-            onTap: () => onTabChanged(ClassNavTab.settings),
+            isActive: widget.currentTab == ClassNavTab.settings,
+            onTap: () => widget.onTabChanged(ClassNavTab.settings),
           ),
         ],
       ),
@@ -225,7 +237,7 @@ class _BottomNav extends StatelessWidget {
   }
 }
 
-class _BottomItem extends StatelessWidget {
+class _BottomItem extends StatefulWidget {
   const _BottomItem({
     required this.icon,
     required this.label,
@@ -241,28 +253,34 @@ class _BottomItem extends StatelessWidget {
   final bool isActive;
 
   @override
+  State<_BottomItem> createState() => _BottomItemState();
+}
+
+class _BottomItemState extends State<_BottomItem> {
+  @override
   Widget build(BuildContext context) {
     final Color iconAndTextColor = Colors.black87;
     final Color activeBg = _accentCyan;
     return Semantics(
-      label: label,
+      label: widget.label,
       button: true,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16 * scale),
-        onTap: onTap,
+        borderRadius: BorderRadius.circular(16 * widget.scale),
+        onTap: widget.onTap,
         child: Container(
-          padding: EdgeInsets.all(12 * scale),
+          padding: EdgeInsets.all(12 * widget.scale),
           decoration: BoxDecoration(
-            color: isActive ? activeBg : Colors.transparent,
-            borderRadius: BorderRadius.circular(16 * scale),
+            color: widget.isActive ? activeBg : Colors.transparent,
+            borderRadius: BorderRadius.circular(16 * widget.scale),
           ),
-          child: Icon(icon, color: iconAndTextColor, size: 24 * scale),
+          child: Icon(widget.icon, color: iconAndTextColor, size: 24 * widget.scale),
         ),
       ),
     );
   }
 }
 
+// --- Notification Data & Widgets ---
 enum _NotificationType { success, warning, info }
 
 class _StudentNotification {
@@ -298,27 +316,9 @@ const List<_StudentNotification> _notifications = [
     timestamp: '2 hours ago',
     type: _NotificationType.info,
   ),
-  _StudentNotification(
-    title: 'Lab Report Submitted',
-    subtitle: 'Physics 138 - 18 students have submitted their report',
-    timestamp: '5 hours ago',
-    type: _NotificationType.success,
-  ),
-  _StudentNotification(
-    title: 'Parent Meeting Scheduled',
-    subtitle: "Meeting with Mama Merto's parents tomorrow at 3 PM",
-    timestamp: '5 hours ago',
-    type: _NotificationType.info,
-  ),
-  _StudentNotification(
-    title: 'Parent Meeting Scheduled',
-    subtitle: "Meeting with Papa Merto's parents tomorrow at 3 PM",
-    timestamp: '5 hours ago',
-    type: _NotificationType.warning,
-  ),
 ];
 
-class _NotificationDialog extends StatelessWidget {
+class _NotificationDialog extends StatefulWidget {
   const _NotificationDialog({
     required this.notifications,
     required this.isFull,
@@ -332,9 +332,14 @@ class _NotificationDialog extends StatelessWidget {
   final VoidCallback onToggle;
 
   @override
+  State<_NotificationDialog> createState() => _NotificationDialogState();
+}
+
+class _NotificationDialogState extends State<_NotificationDialog> {
+  @override
   Widget build(BuildContext context) {
-    final double maxHeight = isFull ? 520 : 360;
-    final String toggleLabel = isFull ? 'See Less' : 'View All Notifications';
+    final double maxHeight = widget.isFull ? 520 : 360;
+    final String toggleLabel = widget.isFull ? 'See Less' : 'View All Notifications';
 
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
@@ -358,7 +363,7 @@ class _NotificationDialog extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  onPressed: onClose,
+                  onPressed: widget.onClose,
                   icon: const Icon(Icons.close_rounded),
                   color: const Color(0xFF1A2B3C),
                 ),
@@ -369,13 +374,13 @@ class _NotificationDialog extends StatelessWidget {
               constraints: BoxConstraints(maxHeight: maxHeight),
               child: ListView.separated(
                 shrinkWrap: true,
-                physics: isFull
+                physics: widget.isFull
                     ? const BouncingScrollPhysics()
                     : const NeverScrollableScrollPhysics(),
-                itemCount: notifications.length,
+                itemCount: widget.notifications.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
-                  final item = notifications[index];
+                  final item = widget.notifications[index];
                   return _NotificationTile(item: item);
                 },
               ),
@@ -384,7 +389,7 @@ class _NotificationDialog extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: TextButton(
-                onPressed: onToggle,
+                onPressed: widget.onToggle,
                 style: TextButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   backgroundColor: const Color(0xFFEFF5F9),
@@ -410,14 +415,19 @@ class _NotificationDialog extends StatelessWidget {
   }
 }
 
-class _NotificationTile extends StatelessWidget {
+class _NotificationTile extends StatefulWidget {
   const _NotificationTile({required this.item});
 
   final _StudentNotification item;
 
   @override
+  State<_NotificationTile> createState() => _NotificationTileState();
+}
+
+class _NotificationTileState extends State<_NotificationTile> {
+  @override
   Widget build(BuildContext context) {
-    final _Indicator indicator = _indicatorFor(item.type);
+    final _Indicator indicator = _indicatorFor(widget.item.type);
 
     return Container(
       decoration: BoxDecoration(
@@ -455,7 +465,7 @@ class _NotificationTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item.title,
+                  widget.item.title,
                   style: const TextStyle(
                     color: Color(0xFF1A2B3C),
                     fontSize: 16,
@@ -464,7 +474,7 @@ class _NotificationTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  item.subtitle,
+                  widget.item.subtitle,
                   style: const TextStyle(
                     color: Color(0xFF2A5F84),
                     fontSize: 13,
@@ -473,7 +483,7 @@ class _NotificationTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  item.timestamp,
+                  widget.item.timestamp,
                   style: const TextStyle(
                     color: Color(0xFF7C8CA0),
                     fontSize: 12,
@@ -528,4 +538,3 @@ class _Indicator {
   final Color backgroundColor;
   final Color borderColor;
 }
-

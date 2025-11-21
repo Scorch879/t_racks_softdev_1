@@ -204,7 +204,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   }
 }
 
-class _WelcomeAndOngoingCard extends StatelessWidget {
+class _WelcomeAndOngoingCard extends StatefulWidget {
   const _WelcomeAndOngoingCard({
     required this.scale,
     required this.radius,
@@ -215,7 +215,14 @@ class _WelcomeAndOngoingCard extends StatelessWidget {
   final VoidCallback onOngoingClassStatusPressed;
 
   @override
+  State<_WelcomeAndOngoingCard> createState() => _WelcomeAndOngoingCardState();
+}
+
+class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
+  @override
   Widget build(BuildContext context) {
+    final scale = widget.scale;
+    final radius = widget.radius;
     return _CardContainer(
       radius: radius,
       scale: scale,
@@ -335,7 +342,7 @@ class _WelcomeAndOngoingCard extends StatelessWidget {
                   ),
                 ),
                 GestureDetector(
-                  onTap: onOngoingClassStatusPressed,
+                  onTap: widget.onOngoingClassStatusPressed,
                   child: Container(
                     padding: EdgeInsets.symmetric(
                       vertical: 8 * scale,
@@ -364,13 +371,19 @@ class _WelcomeAndOngoingCard extends StatelessWidget {
   }
 }
 
-class _TopBar extends StatelessWidget {
+class _TopBar extends StatefulWidget {
   const _TopBar({required this.scale, required this.onNotificationsPressed});
   final double scale;
   final VoidCallback onNotificationsPressed;
 
   @override
+  State<_TopBar> createState() => _TopBarState();
+}
+
+class _TopBarState extends State<_TopBar> {
+  @override
   Widget build(BuildContext context) {
+    final scale = widget.scale;
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
@@ -413,7 +426,7 @@ class _TopBar extends StatelessWidget {
               children: [
                 IconButton(
                   iconSize: 22 * scale + 1,
-                  onPressed: onNotificationsPressed,
+                  onPressed: widget.onNotificationsPressed,
                   icon: const Icon(Icons.notifications_none_rounded),
                   color: Colors.black87,
                 ),
@@ -446,7 +459,7 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-class _MyClassesCard extends StatelessWidget {
+class _MyClassesCard extends StatefulWidget {
   const _MyClassesCard({
     required this.scale,
     required this.radius,
@@ -459,7 +472,14 @@ class _MyClassesCard extends StatelessWidget {
   final VoidCallback onClassPressed;
 
   @override
+  State<_MyClassesCard> createState() => _MyClassesCardState();
+}
+
+class _MyClassesCardState extends State<_MyClassesCard> {
+  @override
   Widget build(BuildContext context) {
+    final scale = widget.scale;
+    final radius = widget.radius;
     return _CardContainer(
       radius: radius,
       scale: scale,
@@ -492,7 +512,7 @@ class _MyClassesCard extends StatelessWidget {
             SizedBox(height: 16 * scale),
             _FilterChipRow(
               scale: scale,
-              onTap: onFilterAllClasses,
+              onTap: widget.onFilterAllClasses,
               title: 'All Classes',
               trailingText: 'Total: 3',
               backgroundColor: _chipGreen,
@@ -503,7 +523,7 @@ class _MyClassesCard extends StatelessWidget {
               title: 'Calculus 137',
               statusText: 'Absent',
               statusColor: _statusRed,
-              onTap: onClassPressed,
+              onTap: widget.onClassPressed,
             ),
             SizedBox(height: 16 * scale),
             _ClassRow(
@@ -511,7 +531,7 @@ class _MyClassesCard extends StatelessWidget {
               title: 'Physics 138',
               statusText: 'Ongoing',
               statusColor: _chipGreen,
-              onTap: onClassPressed,
+              onTap: widget.onClassPressed,
             ),
             SizedBox(height: 16 * scale),
             _ClassRow(
@@ -519,7 +539,7 @@ class _MyClassesCard extends StatelessWidget {
               title: 'Calculus 237',
               statusText: 'Upcoming',
               statusColor: _chipGreen,
-              onTap: onClassPressed,
+              onTap: widget.onClassPressed,
             ),
           ],
         ),
@@ -528,7 +548,7 @@ class _MyClassesCard extends StatelessWidget {
   }
 }
 
-class _FilterChipRow extends StatelessWidget {
+class _FilterChipRow extends StatefulWidget {
   const _FilterChipRow({
     required this.scale,
     required this.onTap,
@@ -544,16 +564,22 @@ class _FilterChipRow extends StatelessWidget {
   final Color backgroundColor;
 
   @override
+  State<_FilterChipRow> createState() => _FilterChipRowState();
+}
+
+class _FilterChipRowState extends State<_FilterChipRow> {
+  @override
   Widget build(BuildContext context) {
+    final scale = widget.scale;
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Container(
         padding: EdgeInsets.symmetric(
           horizontal: 14 * scale,
           vertical: 12 * scale,
         ),
         decoration: BoxDecoration(
-          color: backgroundColor,
+          color: widget.backgroundColor,
           borderRadius: BorderRadius.circular(22 * scale),
           boxShadow: [
             BoxShadow(
@@ -567,7 +593,7 @@ class _FilterChipRow extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                title,
+                widget.title,
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18 * scale,
@@ -576,7 +602,7 @@ class _FilterChipRow extends StatelessWidget {
               ),
             ),
             Text(
-              trailingText,
+              widget.trailingText,
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 18 * scale,
@@ -590,7 +616,7 @@ class _FilterChipRow extends StatelessWidget {
   }
 }
 
-class _ClassRow extends StatelessWidget {
+class _ClassRow extends StatefulWidget {
   const _ClassRow({
     required this.scale,
     required this.title,
@@ -606,13 +632,19 @@ class _ClassRow extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_ClassRow> createState() => _ClassRowState();
+}
+
+class _ClassRowState extends State<_ClassRow> {
+  @override
   Widget build(BuildContext context) {
+    final scale = widget.scale;
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 16 * scale, vertical: 16 * scale),
         decoration: BoxDecoration(
-          color: statusColor,
+          color: widget.statusColor,
           borderRadius: BorderRadius.circular(22 * scale),
           boxShadow: [
             BoxShadow(
@@ -626,7 +658,7 @@ class _ClassRow extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                title,
+                widget.title,
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
@@ -635,7 +667,7 @@ class _ClassRow extends StatelessWidget {
               ),
             ),
             Text(
-              statusText,
+              widget.statusText,
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w800,
@@ -649,7 +681,7 @@ class _ClassRow extends StatelessWidget {
   }
 }
 
-class _CardContainer extends StatelessWidget {
+class _CardContainer extends StatefulWidget {
   const _CardContainer({
     required this.child,
     required this.radius,
@@ -665,12 +697,21 @@ class _CardContainer extends StatelessWidget {
   final Color? borderColor;
 
   @override
+  State<_CardContainer> createState() => _CardContainerState();
+}
+
+class _CardContainerState extends State<_CardContainer> {
+  @override
   Widget build(BuildContext context) {
+    final radius = widget.radius;
+    final scale = widget.scale;
+    final background = widget.background;
+    final borderColor = widget.borderColor;
     return Container(
       decoration: BoxDecoration(
         color: _cardSurface,
         borderRadius: BorderRadius.circular(radius),
-        border: borderColor != null ? Border.all(color: borderColor!) : null,
+        border: borderColor != null ? Border.all(color: borderColor) : null,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.25),
@@ -682,16 +723,22 @@ class _CardContainer extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
-          if (background != null) background!,
-          child,
+          if (background != null) background,
+          widget.child,
         ],
       ),
     );
   }
 }
 
-class _CardBackground extends StatelessWidget {
+class _CardBackground extends StatefulWidget {
   const _CardBackground();
+
+  @override
+  State<_CardBackground> createState() => _CardBackgroundState();
+}
+
+class _CardBackgroundState extends State<_CardBackground> {
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
@@ -706,7 +753,7 @@ class _CardBackground extends StatelessWidget {
   }
 }
 
-class _BottomNav extends StatelessWidget {
+class _BottomNav extends StatefulWidget {
   const _BottomNav({
     required this.scale,
     required this.onNavHome,
@@ -719,7 +766,13 @@ class _BottomNav extends StatelessWidget {
   final VoidCallback onNavSettings;
 
   @override
+  State<_BottomNav> createState() => _BottomNavState();
+}
+
+class _BottomNavState extends State<_BottomNav> {
+  @override
   Widget build(BuildContext context) {
+    final scale = widget.scale;
     return Container(
       padding: EdgeInsets.only(
         left: 24 * scale,
@@ -736,19 +789,19 @@ class _BottomNav extends StatelessWidget {
             label: 'Home',
             scale: scale,
             isActive: true,
-            onTap: onNavHome,
+            onTap: widget.onNavHome,
           ),
           _BottomItem(
             icon: Icons.calendar_month_rounded,
             label: 'Schedule',
             scale: scale,
-            onTap: onNavSchedule,
+            onTap: widget.onNavSchedule,
           ),
           _BottomItem(
             icon: Icons.settings_rounded,
             label: 'Settings',
             scale: scale,
-            onTap: onNavSettings,
+            onTap: widget.onNavSettings,
           ),
         ],
       ),
@@ -756,7 +809,7 @@ class _BottomNav extends StatelessWidget {
   }
 }
 
-class _BottomItem extends StatelessWidget {
+class _BottomItem extends StatefulWidget {
   const _BottomItem({
     required this.icon,
     required this.label,
@@ -772,22 +825,28 @@ class _BottomItem extends StatelessWidget {
   final bool isActive;
 
   @override
+  State<_BottomItem> createState() => _BottomItemState();
+}
+
+class _BottomItemState extends State<_BottomItem> {
+  @override
   Widget build(BuildContext context) {
+    final scale = widget.scale;
     final Color iconAndTextColor = Colors.black87;
     final Color activeBg = _accentCyan;
     return Semantics(
-      label: label,
+      label: widget.label,
       button: true,
       child: InkWell(
         borderRadius: BorderRadius.circular(16 * scale),
-        onTap: onTap,
+        onTap: widget.onTap,
         child: Container(
           padding: EdgeInsets.all(12 * scale),
           decoration: BoxDecoration(
-            color: isActive ? activeBg : Colors.transparent,
+            color: widget.isActive ? activeBg : Colors.transparent,
             borderRadius: BorderRadius.circular(16 * scale),
           ),
-          child: Icon(icon, color: iconAndTextColor, size: 24 * scale),
+          child: Icon(widget.icon, color: iconAndTextColor, size: 24 * scale),
         ),
       ),
     );
@@ -849,7 +908,7 @@ const List<_StudentNotification> _notifications = [
   ),
 ];
 
-class _NotificationDialog extends StatelessWidget {
+class _NotificationDialog extends StatefulWidget {
   const _NotificationDialog({
     required this.notifications,
     required this.isFull,
@@ -863,9 +922,14 @@ class _NotificationDialog extends StatelessWidget {
   final VoidCallback onToggle;
 
   @override
+  State<_NotificationDialog> createState() => _NotificationDialogState();
+}
+
+class _NotificationDialogState extends State<_NotificationDialog> {
+  @override
   Widget build(BuildContext context) {
-    final double maxHeight = isFull ? 520 : 360;
-    final String toggleLabel = isFull ? 'See Less' : 'View All Notifications';
+    final double maxHeight = widget.isFull ? 520 : 360;
+    final String toggleLabel = widget.isFull ? 'See Less' : 'View All Notifications';
 
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
@@ -889,7 +953,7 @@ class _NotificationDialog extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  onPressed: onClose,
+                  onPressed: widget.onClose,
                   icon: const Icon(Icons.close_rounded),
                   color: const Color(0xFF1A2B3C),
                 ),
@@ -900,13 +964,13 @@ class _NotificationDialog extends StatelessWidget {
               constraints: BoxConstraints(maxHeight: maxHeight),
               child: ListView.separated(
                 shrinkWrap: true,
-                physics: isFull
+                physics: widget.isFull
                     ? const BouncingScrollPhysics()
                     : const NeverScrollableScrollPhysics(),
-                itemCount: notifications.length,
+                itemCount: widget.notifications.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
-                  final item = notifications[index];
+                  final item = widget.notifications[index];
                   return _NotificationTile(item: item);
                 },
               ),
@@ -915,7 +979,7 @@ class _NotificationDialog extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: TextButton(
-                onPressed: onToggle,
+                onPressed: widget.onToggle,
                 style: TextButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   backgroundColor: const Color(0xFFEFF5F9),
@@ -941,13 +1005,19 @@ class _NotificationDialog extends StatelessWidget {
   }
 }
 
-class _NotificationTile extends StatelessWidget {
+class _NotificationTile extends StatefulWidget {
   const _NotificationTile({required this.item});
 
   final _StudentNotification item;
 
   @override
+  State<_NotificationTile> createState() => _NotificationTileState();
+}
+
+class _NotificationTileState extends State<_NotificationTile> {
+  @override
   Widget build(BuildContext context) {
+    final item = widget.item;
     final _Indicator indicator = _indicatorFor(item.type);
 
     return Container(

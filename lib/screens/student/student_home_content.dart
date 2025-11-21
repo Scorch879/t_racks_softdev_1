@@ -8,7 +8,7 @@ const _chipGreen = Color(0xFF4DBD88);
 const _statusRed = Color(0xFFDA6A6A);
 const _titleRed = Color(0xFFE57373);
 
-class StudentHomeContent extends StatelessWidget {
+class StudentHomeContent extends StatefulWidget {
   const StudentHomeContent({
     super.key,
     required this.onNotificationsPressed,
@@ -16,6 +16,11 @@ class StudentHomeContent extends StatelessWidget {
 
   final VoidCallback onNotificationsPressed;
 
+  @override
+  State<StudentHomeContent> createState() => _StudentHomeContentState();
+}
+
+class _StudentHomeContentState extends State<StudentHomeContent> {
   void onOngoingClassStatusPressed() {}
 
   void onFilterAllClasses() {}
@@ -79,7 +84,7 @@ class StudentHomeContent extends StatelessWidget {
   }
 }
 
-class _WelcomeAndOngoingCard extends StatelessWidget {
+class _WelcomeAndOngoingCard extends StatefulWidget {
   const _WelcomeAndOngoingCard({
     required this.scale,
     required this.radius,
@@ -90,9 +95,15 @@ class _WelcomeAndOngoingCard extends StatelessWidget {
   final VoidCallback onOngoingClassStatusPressed;
 
   @override
+  State<_WelcomeAndOngoingCard> createState() => _WelcomeAndOngoingCardState();
+}
+
+class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
+  @override
   Widget build(BuildContext context) {
+    final scale = widget.scale;
     return _CardContainer(
-      radius: radius,
+      radius: widget.radius,
       scale: scale,
       borderColor: const Color(0xFF6AAFBF).withOpacity(0.35),
       background: const _CardBackground(),
@@ -210,7 +221,7 @@ class _WelcomeAndOngoingCard extends StatelessWidget {
                   ),
                 ),
                 GestureDetector(
-                  onTap: onOngoingClassStatusPressed,
+                  onTap: widget.onOngoingClassStatusPressed,
                   child: Container(
                     padding: EdgeInsets.symmetric(
                       vertical: 8 * scale,
@@ -239,7 +250,7 @@ class _WelcomeAndOngoingCard extends StatelessWidget {
   }
 }
 
-class _MyClassesCard extends StatelessWidget {
+class _MyClassesCard extends StatefulWidget {
   const _MyClassesCard({
     required this.scale,
     required this.radius,
@@ -252,9 +263,15 @@ class _MyClassesCard extends StatelessWidget {
   final VoidCallback onClassPressed;
 
   @override
+  State<_MyClassesCard> createState() => _MyClassesCardState();
+}
+
+class _MyClassesCardState extends State<_MyClassesCard> {
+  @override
   Widget build(BuildContext context) {
+    final scale = widget.scale;
     return _CardContainer(
-      radius: radius,
+      radius: widget.radius,
       scale: scale,
       borderColor: const Color(0xFF6AAFBF).withOpacity(0.55),
       background: const _CardBackground(),
@@ -285,7 +302,7 @@ class _MyClassesCard extends StatelessWidget {
             SizedBox(height: 16 * scale),
             _FilterChipRow(
               scale: scale,
-              onTap: onFilterAllClasses,
+              onTap: widget.onFilterAllClasses,
               title: 'All Classes',
               trailingText: 'Total: 3',
               backgroundColor: _chipGreen,
@@ -296,7 +313,7 @@ class _MyClassesCard extends StatelessWidget {
               title: 'Calculus 137',
               statusText: 'Absent',
               statusColor: _statusRed,
-              onTap: onClassPressed,
+              onTap: widget.onClassPressed,
             ),
             SizedBox(height: 16 * scale),
             _ClassRow(
@@ -304,7 +321,7 @@ class _MyClassesCard extends StatelessWidget {
               title: 'Physics 138',
               statusText: 'Ongoing',
               statusColor: _chipGreen,
-              onTap: onClassPressed,
+              onTap: widget.onClassPressed,
             ),
             SizedBox(height: 16 * scale),
             _ClassRow(
@@ -312,7 +329,7 @@ class _MyClassesCard extends StatelessWidget {
               title: 'Calculus 237',
               statusText: 'Upcoming',
               statusColor: _chipGreen,
-              onTap: onClassPressed,
+              onTap: widget.onClassPressed,
             ),
           ],
         ),
@@ -321,7 +338,7 @@ class _MyClassesCard extends StatelessWidget {
   }
 }
 
-class _FilterChipRow extends StatelessWidget {
+class _FilterChipRow extends StatefulWidget {
   const _FilterChipRow({
     required this.scale,
     required this.onTap,
@@ -337,16 +354,22 @@ class _FilterChipRow extends StatelessWidget {
   final Color backgroundColor;
 
   @override
+  State<_FilterChipRow> createState() => _FilterChipRowState();
+}
+
+class _FilterChipRowState extends State<_FilterChipRow> {
+  @override
   Widget build(BuildContext context) {
+    final scale = widget.scale;
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Container(
         padding: EdgeInsets.symmetric(
           horizontal: 14 * scale,
           vertical: 12 * scale,
         ),
         decoration: BoxDecoration(
-          color: backgroundColor,
+          color: widget.backgroundColor,
           borderRadius: BorderRadius.circular(22 * scale),
           boxShadow: [
             BoxShadow(
@@ -360,7 +383,7 @@ class _FilterChipRow extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                title,
+                widget.title,
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18 * scale,
@@ -369,7 +392,7 @@ class _FilterChipRow extends StatelessWidget {
               ),
             ),
             Text(
-              trailingText,
+              widget.trailingText,
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 18 * scale,
@@ -383,7 +406,7 @@ class _FilterChipRow extends StatelessWidget {
   }
 }
 
-class _ClassRow extends StatelessWidget {
+class _ClassRow extends StatefulWidget {
   const _ClassRow({
     required this.scale,
     required this.title,
@@ -399,13 +422,19 @@ class _ClassRow extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_ClassRow> createState() => _ClassRowState();
+}
+
+class _ClassRowState extends State<_ClassRow> {
+  @override
   Widget build(BuildContext context) {
+    final scale = widget.scale;
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 16 * scale, vertical: 16 * scale),
         decoration: BoxDecoration(
-          color: statusColor,
+          color: widget.statusColor,
           borderRadius: BorderRadius.circular(22 * scale),
           boxShadow: [
             BoxShadow(
@@ -419,7 +448,7 @@ class _ClassRow extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                title,
+                widget.title,
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
@@ -428,7 +457,7 @@ class _ClassRow extends StatelessWidget {
               ),
             ),
             Text(
-              statusText,
+              widget.statusText,
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w800,
@@ -442,7 +471,7 @@ class _ClassRow extends StatelessWidget {
   }
 }
 
-class _CardContainer extends StatelessWidget {
+class _CardContainer extends StatefulWidget {
   const _CardContainer({
     required this.child,
     required this.radius,
@@ -458,33 +487,44 @@ class _CardContainer extends StatelessWidget {
   final Color? borderColor;
 
   @override
+  State<_CardContainer> createState() => _CardContainerState();
+}
+
+class _CardContainerState extends State<_CardContainer> {
+  @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         color: _cardSurface,
-        borderRadius: BorderRadius.circular(radius),
-        border: borderColor != null ? Border.all(color: borderColor!) : null,
+        borderRadius: BorderRadius.circular(widget.radius),
+        border: widget.borderColor != null ? Border.all(color: widget.borderColor!) : null,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.25),
-            blurRadius: 10 * scale,
-            offset: Offset(0, 6 * scale),
+            blurRadius: 10 * widget.scale,
+            offset: Offset(0, 6 * widget.scale),
           ),
         ],
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
-          if (background != null) background!,
-          child,
+          if (widget.background != null) widget.background!,
+          widget.child,
         ],
       ),
     );
   }
 }
 
-class _CardBackground extends StatelessWidget {
+class _CardBackground extends StatefulWidget {
   const _CardBackground();
+
+  @override
+  State<_CardBackground> createState() => _CardBackgroundState();
+}
+
+class _CardBackgroundState extends State<_CardBackground> {
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(

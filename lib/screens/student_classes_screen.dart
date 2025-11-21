@@ -232,7 +232,7 @@ const List<_StudentNotification> _notifications = [
 // NOTIFICATION DIALOG UI
 // --------------------------------------------------
 
-class _NotificationDialog extends StatelessWidget {
+class _NotificationDialog extends StatefulWidget {
   const _NotificationDialog({
     required this.notifications,
     required this.isFull,
@@ -246,9 +246,14 @@ class _NotificationDialog extends StatelessWidget {
   final VoidCallback onToggle;
 
   @override
+  State<_NotificationDialog> createState() => _NotificationDialogState();
+}
+
+class _NotificationDialogState extends State<_NotificationDialog> {
+  @override
   Widget build(BuildContext context) {
-    final double maxHeight = isFull ? 520 : 360;
-    final String toggleLabel = isFull ? 'See Less' : 'View All Notifications';
+    final double maxHeight = widget.isFull ? 520 : 360;
+    final String toggleLabel = widget.isFull ? 'See Less' : 'View All Notifications';
 
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
@@ -272,7 +277,7 @@ class _NotificationDialog extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  onPressed: onClose,
+                  onPressed: widget.onClose,
                   icon: const Icon(Icons.close_rounded),
                   color: const Color(0xFF1A2B3C),
                 ),
@@ -283,13 +288,13 @@ class _NotificationDialog extends StatelessWidget {
               constraints: BoxConstraints(maxHeight: maxHeight),
               child: ListView.separated(
                 shrinkWrap: true,
-                physics: isFull
+                physics: widget.isFull
                     ? const BouncingScrollPhysics()
                     : const NeverScrollableScrollPhysics(),
-                itemCount: notifications.length,
+                itemCount: widget.notifications.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
-                  final item = notifications[index];
+                  final item = widget.notifications[index];
                   return _NotificationTile(item: item);
                 },
               ),
@@ -298,7 +303,7 @@ class _NotificationDialog extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: TextButton(
-                onPressed: onToggle,
+                onPressed: widget.onToggle,
                 style: TextButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   backgroundColor: const Color(0xFFEFF5F9),
