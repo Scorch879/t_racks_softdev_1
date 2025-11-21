@@ -77,7 +77,7 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
         color: const Color(0xFF0C3343),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: const Color(0xFFC8C8C8).withOpacity(1),
+          color: const Color(0xFFB4B4B4).withOpacity(1),
           width: 0.7,
         ),
         boxShadow: [
@@ -135,11 +135,13 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
           selectedClass = className;
         });
       },
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
         // margin: const EdgeInsets.only(bottom: 8), // Optional: Move spacing here if preferred
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), // Increased vertical padding slightly
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF3AB389) : const Color(0xFF277D5F),
+          color: isSelected ? const Color(0xFF3AB389) : const Color(0xFF277D5F).withOpacity(0.8),
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
@@ -149,6 +151,8 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
             ),
           ],
         ),
+        transform: isSelected ? (Matrix4.identity()..scale(1.03)) : Matrix4.identity(),
+        transformAlignment: FractionalOffset.center,
         child: Row(
           // REMOVED: mainAxisSize: MainAxisSize.min (This was preventing full width)
           children: [
@@ -244,7 +248,7 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
           color: const Color(0xFF0C3343),
           borderRadius: BorderRadius.circular(13),
           border: Border.all(
-            color: const Color(0xFFC8C8C8).withOpacity(1),
+            color: const Color(0xFFB4B4B4).withOpacity(1),
             width: 0.7,
           ),
           boxShadow: [
@@ -293,18 +297,30 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
   }
 
   Widget _buildTodaysAttendanceSection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0C3343),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: const Color(0xFFB4B4B4).withOpacity(1),
+          width: 0.7,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 5,
+            offset: const Offset(0, 0),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.person,
-                color: Color(0xFF424242),
-                size: 24,
-              ),
+              const Icon(Icons.person, color: Colors.white, size: 46.6),
               const SizedBox(width: 8),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -312,23 +328,23 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
                   const Text(
                     "Today's Attendance",
                     style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF424242),
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
                     ),
                   ),
                   Text(
                     selectedClass,
                     style: const TextStyle(
                       fontSize: 14,
-                      color: Color(0xFF424242),
+                      color: Color.fromARGB(255, 255, 255, 255),
                     ),
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _buildStudentList(),
         ],
       ),
@@ -363,13 +379,13 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
     Color statusColor;
     switch (status) {
       case 'Present':
-        statusColor = const Color(0xFF4CAF50);
+        statusColor = const Color(0xFF7FE26B);
         break;
       case 'Absent':
-        statusColor = Colors.red;
+        statusColor = const Color(0xFFFA8989);
         break;
       case 'Late':
-        statusColor = Colors.orange;
+        statusColor = const Color(0xFFFF9155);
         break;
       default:
         statusColor = Colors.grey;
@@ -381,8 +397,19 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color(0xFFD0D0D0),
+          color: const Color(0xFF32657D),
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+          color: const Color(0xFFC8C8C8).withOpacity(1),
+          width: 0.7,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 3,
+            offset: const Offset(0, 0),
+          ),
+        ],
         ),
         child: Row(
           children: [
@@ -404,16 +431,17 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
                     name,
                     style: const TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF424242),
+                      fontWeight: FontWeight.w400,
+                      color: Color.fromARGB(255, 255, 255, 255),
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     time,
                     style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF757575),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFFBABABA),
                     ),
                   ),
                 ],
@@ -426,13 +454,17 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
                 decoration: BoxDecoration(
                   color: statusColor,
                   borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                  color: const Color(0xFFB4B4B4).withOpacity(1),
+                  width: 0.7,
+                  ),
                 ),
                 child: Text(
                   status,
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: Color(0xFF253F4C),
                     fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
@@ -474,12 +506,16 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
         });
         EducatorService.handleNavigationTap(context, index);
       },
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF93C0D3) : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
         ),
+        transform: isSelected ? (Matrix4.identity()..scale(1.1)) : Matrix4.identity(),
+        transformAlignment: FractionalOffset.center,
         child: Icon(
           icon,
           color: Colors.black87,
