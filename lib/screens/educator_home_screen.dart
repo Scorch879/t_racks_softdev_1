@@ -74,23 +74,35 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF194B61),
-        borderRadius: BorderRadius.circular(16),
+        color: const Color(0xFF0C3343),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: const Color(0xFFC8C8C8).withOpacity(1),
+          width: 0.7,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 5,
+            offset: const Offset(0, 0),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween, // Align header and menu icon
             children: [
               const Text(
                 'Select Class',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
+                  fontFamily: 'Rubik',
                   color: Colors.white,
                 ),
               ),
-              const SizedBox(width: 8),
               IconButton(
                 icon: const Icon(Icons.menu, color: Colors.white),
                 onPressed: () {},
@@ -98,13 +110,16 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          // CHANGED: Wrap -> Column to allow full-width stretching
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch, // This stretches buttons to fill width
             children: [
               _buildClassButton('All Classes', 72, selectedClass == 'All Classes'),
+              const SizedBox(height: 8), // Add spacing between buttons
               _buildClassButton('Calculus 137', 28, selectedClass == 'Calculus 137'),
+              const SizedBox(height: 8),
               _buildClassButton('Physics 138', 38, selectedClass == 'Physics 138'),
+              const SizedBox(height: 8),
               _buildClassButton('Calculus 237', 18, selectedClass == 'Calculus 237'),
             ],
           ),
@@ -121,27 +136,39 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
         });
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        // margin: const EdgeInsets.only(bottom: 8), // Optional: Move spacing here if preferred
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), // Increased vertical padding slightly
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF66BB6A) : const Color(0xFF388E3C),
+          color: isSelected ? const Color(0xFF3AB389) : const Color(0xFF277D5F),
           borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.25),
+              blurRadius: 4,
+              offset: isSelected ? const Offset(0, 0) : const Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          // REMOVED: mainAxisSize: MainAxisSize.min (This was preventing full width)
           children: [
             Text(
               className,
               style: const TextStyle(
                 color: Colors.white,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500, // Slightly bolder for readability
+                fontSize: 15,
               ),
             ),
-            const SizedBox(width: 8),
+            
+            // ADDED: Spacer pushes the next child to the far right
+            const Spacer(), 
+            
             Text(
               '$studentCount students',
               style: const TextStyle(
                 color: Colors.white70,
-                fontSize: 12,
+                fontSize: 15,
               ),
             ),
           ],
@@ -160,7 +187,7 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
               Expanded(
                 child: _buildSummaryCard(
                   icon: Icons.verified_user,
-                  iconColor: const Color(0xFF4CAF50),
+                  iconColor: const Color(0xFF68D080),
                   value: '68',
                   label: 'Present Today',
                 ),
@@ -169,7 +196,7 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
               Expanded(
                 child: _buildSummaryCard(
                   icon: Icons.person_off,
-                  iconColor: Colors.red,
+                  iconColor: const Color(0xFFE54E4E),
                   value: '4',
                   label: 'Absent Today',
                 ),
@@ -182,7 +209,7 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
               Expanded(
                 child: _buildSummaryCard(
                   icon: Icons.check_circle,
-                  iconColor: const Color(0xFF4CAF50),
+                  iconColor: const Color(0xFF4994B5),
                   value: '94%',
                   label: 'Attendance Rate',
                 ),
@@ -191,7 +218,7 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
               Expanded(
                 child: _buildSummaryCard(
                   icon: Icons.access_time,
-                  iconColor: Colors.amber,
+                  iconColor: const Color(0xFFCED04F),
                   value: '3',
                   label: 'Late Arrival',
                 ),
@@ -210,34 +237,54 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
     required String label,
   }) {
     return AspectRatio(
-      aspectRatio: 1.0,
+      aspectRatio: 1.0, // Keeps the card square
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF194B61),
-          borderRadius: BorderRadius.circular(16),
+          color: const Color(0xFF0C3343),
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(
+            color: const Color(0xFFC8C8C8).withOpacity(1),
+            width: 0.7,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.25),
+              blurRadius: 5,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: iconColor, size: 32),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+            Padding(
+              padding: const EdgeInsets.only(left: 0.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(icon, color: iconColor, size: 32),
+                  const SizedBox(height: 15),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      height: 1.0,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.white70,
-              ),
-              textAlign: TextAlign.center,
             ),
           ],
         ),
