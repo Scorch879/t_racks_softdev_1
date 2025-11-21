@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/student/student_settings_screen.dart';
+import 'package:t_racks_softdev_1/screens/student/student_class_screen.dart';
 
 const _bgTeal = Color(0xFF167C94);
 const _cardSurface = Color(0xFF173C45);
@@ -48,7 +49,32 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     } catch (e) {}
   }
   
-  void onNavSchedule() {}
+  void onNavSchedule() {
+    if (_isNavigating()) return;
+
+    try {
+      // Debug: indicate handler was triggered
+      // This helps confirm whether the tap is reaching this callback
+      // Visible briefly as a SnackBar and logged in debug console
+      // ignore: avoid_print
+      print('onNavSchedule called');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Navigating to Classes...'), duration: Duration(milliseconds: 600)),
+      );
+      final navigator = Navigator.of(context);
+      final currentRoute = ModalRoute.of(context);
+      final routeName = currentRoute?.settings.name;
+
+      if (routeName == '/schedule') return;
+
+      navigator.push(
+        MaterialPageRoute(
+          builder: (context) => const StudentClassScreen(),
+          settings: const RouteSettings(name: '/schedule'),
+        ),
+      );
+    } catch (e) {}
+  }
   
   void onNavSettings() {
     if (_isNavigating()) return;

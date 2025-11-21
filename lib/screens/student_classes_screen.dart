@@ -1,40 +1,157 @@
 import 'package:flutter/material.dart';
-import 'package:t_racks_softdev_1/screens/student/student_home_content.dart';
-import 'package:t_racks_softdev_1/screens/student/student_settings_content.dart';
-import 'package:t_racks_softdev_1/screens/student/student_class_content.dart';
+import 'package:t_racks_softdev_1/screens/student_settings_screen.dart';
+import 'package:t_racks_softdev_1/screens/student/student_class_screen.dart';
 
-const _bgTeal = Color(0xFF167C94);
-const _accentCyan = Color(0xFF93C0D3);
+// Holds the currently registered page context
+BuildContext? _ctx;
 
-enum StudentNavTab { home, schedule, settings }
+class StudentService {
+  static DateTime? _lastNavTime;
+  static const _navDebounceMs = 300;
 
-class StudentShellScreen extends StatefulWidget {
-  const StudentShellScreen({super.key});
-
-  @override
-  State<StudentShellScreen> createState() => _StudentShellScreenState();
-}
-
-class _StudentShellScreenState extends State<StudentShellScreen> {
-  StudentNavTab _currentTab = StudentNavTab.home;
-
-  void _onTabChanged(StudentNavTab tab) {
-    if (_currentTab != tab) {
-      setState(() {
-        _currentTab = tab;
-      });
-    }
+  // Register MAIN student pages (home, schedule, etc.)
+  static void registerStudentPageContext(BuildContext context) {
+    _ctx = context;
   }
 
-  void _onNotificationsPressed() => _showNotifications(full: false);
+  // Register JUST the classes/schedule page
+  static void registerClassesPageContext(BuildContext context) {
+    _ctx = context;
+  }
 
-  void _showNotifications({required bool full}) {
+  // -----------------------------------------
+  // NOTIFICATIONS BUTTON
+  // -----------------------------------------
+  static void onNotificationsPressed() => _showNotifications(full: false);
+
+  // -----------------------------------------
+  // BUTTON ACTIONS
+  // -----------------------------------------
+  static void onOngoingClassStatusPressed() {
+    if (_ctx == null) return;
+    if (_isNavigating()) return;
+
+    try {
+      Navigator.of(_ctx!).push(
+        MaterialPageRoute(
+          builder: (_) => const Placeholder(),
+          settings: const RouteSettings(name: '/ongoing-class'),
+        ),
+      );
+    } catch (e) {}
+  }
+
+  static void onFilterAllClasses() {
+    debugPrint("Filter All Classes tapped!");
+  }
+
+  static void onClassPressed() {
+    if (_ctx == null) return;
+    if (_isNavigating()) return;
+
+    try {
+      Navigator.of(_ctx!).push(
+        MaterialPageRoute(
+          builder: (_) => const Placeholder(),
+          settings: const RouteSettings(name: '/class-details'),
+        ),
+      );
+    } catch (e) {}
+  }
+
+  // -----------------------------------------
+  // BOTTOM NAVIGATION
+  // -----------------------------------------
+
+  static void onNavHome() {
+    if (_ctx == null) return;
+    if (_isNavigating()) return;
+
+    try {
+      final navigator = Navigator.of(_ctx!);
+      final currentRoute = ModalRoute.of(_ctx!);
+      final routeName = currentRoute?.settings.name;
+
+      // Already at home
+      if (routeName == '/home' || (routeName == null && !navigator.canPop())) {
+        return;
+      }
+
+      // Pop to home
+      if (navigator.canPop()) {
+        navigator.popUntil((route) {
+          return route.isFirst || route.settings.name == '/home';
+        });
+      }
+    } catch (e) {}
+  }
+
+  static void onNavSchedule() {
+    if (_ctx == null) return;
+    if (_isNavigating()) return;
+
+    try {
+      final currentRoute = ModalRoute.of(_ctx!);
+      if (currentRoute?.settings.name == '/schedule') return;
+
+      Navigator.of(_ctx!).push(
+        MaterialPageRoute(
+          builder: (_) => const StudentClassScreen(),
+          settings: const RouteSettings(name: '/schedule'),
+        ),
+      );
+    } catch (e) {}
+  }
+
+  static void onNavSettings() {
+    if (_ctx == null) return;
+    if (_isNavigating()) return;
+
+    try {
+      final currentRoute = ModalRoute.of(_ctx!);
+      if (currentRoute?.settings.name == '/settings') {
+        return;
+      }
+
+      Navigator.of(_ctx!).push(
+        MaterialPageRoute(
+          builder: (context) {
+            return const StudentSettingsScreen();
+          },
+          settings: const RouteSettings(name: '/settings'),
+        ),
+      );
+    } catch (e) {}
+  }
+
+  static bool _isNavigating() {
+    final now = DateTime.now();
+    if (_lastNavTime != null) {
+      final diff = now.difference(_lastNavTime!);
+      if (diff.inMilliseconds < _navDebounceMs) return true;
+    }
+    _lastNavTime = now;
+    return false;
+  }
+
+  // -----------------------------------------
+  // SETTINGS PAGE BUTTONS
+  // -----------------------------------------
+  static void onProfileSettingsPressed() {}
+  static void onAccountSettingsPressed() {}
+  static void onDeleteAccountPressed() {}
+
+  // -----------------------------------------
+  // NOTIFICATIONS DIALOG
+  // -----------------------------------------
+  static void _showNotifications({required bool full}) {
+    if (_ctx == null) return;
     final notifications = full
         ? _notifications
         : _notifications.take(3).toList(growable: false);
 
     showDialog<void>(
-      context: context,
+      context: _ctx!,
       barrierDismissible: true,
       barrierColor: Colors.black45,
       builder: (dialogContext) {
@@ -50,222 +167,11 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
       },
     );
   }
-
-  Widget _buildContent() {
-    switch (_currentTab) {
-      case StudentNavTab.home:
-        return StudentHomeContent(
-          onNotificationsPressed: _onNotificationsPressed,
-        );
-      case StudentNavTab.schedule:
-        return const StudentClassScheduleContent();
-      case StudentNavTab.settings:
-        return StudentSettingsContent(
-          onNotificationsPressed: _onNotificationsPressed,
-        );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final scale = (width / 430).clamp(0.8, 1.6);
-
-        return Scaffold(
-          backgroundColor: _bgTeal,
-          appBar: PreferredSize(
-            preferredSize: Size.fromHeight(64 * scale),
-            child: _TopBar(
-              scale: scale,
-              onNotificationsPressed: _onNotificationsPressed,
-            ),
-          ),
-          body: _buildContent(),
-          bottomNavigationBar: _BottomNav(
-            scale: scale,
-            currentTab: _currentTab,
-            onTabChanged: _onTabChanged,
-          ),
-        );
-      },
-    );
-  }
 }
 
-class _TopBar extends StatelessWidget {
-  const _TopBar({
-    required this.scale,
-    required this.onNotificationsPressed,
-  });
-  final double scale;
-  final VoidCallback onNotificationsPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0,
-      centerTitle: false,
-      titleSpacing: 0,
-      title: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16 * scale),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 20 * scale,
-              backgroundColor: const Color(0xFFB7C5C9),
-            ),
-            SizedBox(width: 12 * scale),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Student',
-                    style: TextStyle(
-                      color: Colors.black87,
-                      fontSize: 16 * scale,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    'Student',
-                    style: TextStyle(
-                      color: Colors.black54,
-                      fontSize: 12 * scale,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                IconButton(
-                  iconSize: 22 * scale + 1,
-                  onPressed: onNotificationsPressed,
-                  icon: const Icon(Icons.notifications_none_rounded),
-                  color: Colors.black87,
-                ),
-                Positioned(
-                  right: 8 * scale,
-                  top: 8 * scale,
-                  child: Container(
-                    padding: EdgeInsets.all(2.5 * scale),
-                    decoration: BoxDecoration(
-                      color: _bgTeal,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 1.5),
-                    ),
-                    child: Text(
-                      '1',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10 * scale,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _BottomNav extends StatelessWidget {
-  const _BottomNav({
-    required this.scale,
-    required this.currentTab,
-    required this.onTabChanged,
-  });
-  final double scale;
-  final StudentNavTab currentTab;
-  final ValueChanged<StudentNavTab> onTabChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.only(
-        left: 24 * scale,
-        right: 24 * scale,
-        top: 10 * scale,
-        bottom: 20 * scale,
-      ),
-      decoration: const BoxDecoration(color: Colors.white),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _BottomItem(
-            icon: Icons.home_rounded,
-            label: 'Home',
-            scale: scale,
-            isActive: currentTab == StudentNavTab.home,
-            onTap: () => onTabChanged(StudentNavTab.home),
-          ),
-          _BottomItem(
-            icon: Icons.calendar_month_rounded,
-            label: 'Schedule',
-            scale: scale,
-            isActive: currentTab == StudentNavTab.schedule,
-            onTap: () => onTabChanged(StudentNavTab.schedule),
-          ),
-          _BottomItem(
-            icon: Icons.settings_rounded,
-            label: 'Settings',
-            scale: scale,
-            isActive: currentTab == StudentNavTab.settings,
-            onTap: () => onTabChanged(StudentNavTab.settings),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BottomItem extends StatelessWidget {
-  const _BottomItem({
-    required this.icon,
-    required this.label,
-    required this.scale,
-    required this.onTap,
-    this.isActive = false,
-  });
-
-  final IconData icon;
-  final String label;
-  final double scale;
-  final VoidCallback onTap;
-  final bool isActive;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color iconAndTextColor = Colors.black87;
-    final Color activeBg = _accentCyan;
-    return Semantics(
-      label: label,
-      button: true,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16 * scale),
-        onTap: onTap,
-        child: Container(
-          padding: EdgeInsets.all(12 * scale),
-          decoration: BoxDecoration(
-            color: isActive ? activeBg : Colors.transparent,
-            borderRadius: BorderRadius.circular(16 * scale),
-          ),
-          child: Icon(icon, color: iconAndTextColor, size: 24 * scale),
-        ),
-      ),
-    );
-  }
-}
+// --------------------------------------------------
+// NOTIFICATIONS DATA
+// --------------------------------------------------
 
 enum _NotificationType { success, warning, info }
 
@@ -304,23 +210,27 @@ const List<_StudentNotification> _notifications = [
   ),
   _StudentNotification(
     title: 'Lab Report Submitted',
-    subtitle: 'Physics 138 - 18 students have submitted their report',
+    subtitle: 'Physics 138 - 18 students submitted their report',
     timestamp: '5 hours ago',
     type: _NotificationType.success,
   ),
   _StudentNotification(
     title: 'Parent Meeting Scheduled',
-    subtitle: "Meeting with Mama Merto's parents tomorrow at 3 PM",
+    subtitle: "Mama Merto's parents tomorrow 3 PM",
     timestamp: '5 hours ago',
     type: _NotificationType.info,
   ),
   _StudentNotification(
     title: 'Parent Meeting Scheduled',
-    subtitle: "Meeting with Papa Merto's parents tomorrow at 3 PM",
+    subtitle: "Papa Merto's parents tomorrow 3 PM",
     timestamp: '5 hours ago',
     type: _NotificationType.warning,
   ),
 ];
+
+// --------------------------------------------------
+// NOTIFICATION DIALOG UI
+// --------------------------------------------------
 
 class _NotificationDialog extends StatelessWidget {
   const _NotificationDialog({
@@ -532,4 +442,3 @@ class _Indicator {
   final Color backgroundColor;
   final Color borderColor;
 }
-
