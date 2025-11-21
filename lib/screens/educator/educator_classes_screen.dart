@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_classroom_screen.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_background.dart';
+import 'package:t_racks_softdev_1/screens/educator/educator_view_model.dart';
 
 // Content-only widget for use in EducatorShell
 class EducatorClassesContent extends StatefulWidget {
@@ -12,6 +13,24 @@ class EducatorClassesContent extends StatefulWidget {
 
 class _EducatorClassesContentState extends State<EducatorClassesContent> {
   final TextEditingController _searchController = TextEditingController();
+  List<Map<String, dynamic>> _classes = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    final classes = await EducatorViewModel.getClasses();
+    if (mounted) {
+      setState(() {
+        _classes = classes;
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -21,6 +40,9 @@ class _EducatorClassesContentState extends State<EducatorClassesContent> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
     return EducatorBackground(
       child: SafeArea(
         child: SingleChildScrollView(
@@ -185,50 +207,7 @@ class _EducatorClassesContentState extends State<EducatorClassesContent> {
   }
 
   Widget _buildClassList() {
-    final classes = [
-      {
-        'name': 'Calculus 137',
-        'students': 28,
-        'attendance': 91,
-        'next': 'Tomorrow 9:00 AM',
-        'status': 'Active',
-        'studentsList': [
-          {'name': 'Carla Jay O. Rimera', 'time': '8:00 AM', 'status': 'Late'},
-          {'name': 'Mama Merto Rodigo', 'time': '8:00 AM', 'status': 'Absent'},
-          {'name': 'One Pablo Reinstal..', 'time': '8:00 AM', 'status': 'Present'},
-          {'name': 'Joaquin De Coco', 'time': '8:00 AM', 'status': 'Present'},
-          {'name': 'Zonrox D. Color', 'time': '8:00 AM', 'status': 'Present'},
-        ],
-      },
-      {
-        'name': 'Physics 138',
-        'students': 38,
-        'attendance': 80,
-        'next': 'Tomorrow 9:00 AM',
-        'status': 'Active',
-        'studentsList': [
-          {'name': 'Carla Jay O. Rimera', 'time': '8:00 AM', 'status': 'Late'},
-          {'name': 'Mama Merto Rodigo', 'time': '8:00 AM', 'status': 'Absent'},
-          {'name': 'One Pablo Reinstal..', 'time': '8:00 AM', 'status': 'Present'},
-          {'name': 'Joaquin De Coco', 'time': '8:00 AM', 'status': 'Present'},
-          {'name': 'Zonrox D. Color', 'time': '8:00 AM', 'status': 'Present'},
-        ],
-      },
-      {
-        'name': 'Calculus 237',
-        'students': 18,
-        'attendance': 100,
-        'next': 'Tomorrow 9:00 AM',
-        'status': 'Active',
-        'studentsList': [
-          {'name': 'Carla Jay O. Rimera', 'time': '8:00 AM', 'status': 'Late'},
-          {'name': 'Mama Merto Rodigo', 'time': '8:00 AM', 'status': 'Absent'},
-          {'name': 'One Pablo Reinstal..', 'time': '8:00 AM', 'status': 'Present'},
-          {'name': 'Joaquin De Coco', 'time': '8:00 AM', 'status': 'Present'},
-          {'name': 'Zonrox D. Color', 'time': '8:00 AM', 'status': 'Present'},
-        ],
-      },
-    ];
+    final classes = _classes;
 
     return Column(
       children: classes.map((classData) {

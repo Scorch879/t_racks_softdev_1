@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:t_racks_softdev_1/services/educator_service.dart';
+import 'package:t_racks_softdev_1/screens/educator/educator_view_model.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_add_student_screen.dart';
-import 'package:t_racks_softdev_1/services/educator_notification_service.dart';
 
 class EducatorClassroomScreen extends StatefulWidget {
   const EducatorClassroomScreen({
@@ -31,7 +30,7 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
 
   @override
   Widget build(BuildContext context) {
-    EducatorNotificationService.register(context);
+    // EducatorNotificationService.register(context); // Removed
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(64),
@@ -316,7 +315,7 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
         setState(() {
           currentNavIndex = index;
         });
-        EducatorService.handleNavigationTap(context, index);
+        EducatorViewModel.handleNavigationTap(context, index);
       },
       child: Container(
         padding: const EdgeInsets.all(12),
@@ -386,7 +385,7 @@ class _TopBar extends StatelessWidget {
               children: [
                 IconButton(
                   iconSize: 23,
-                  onPressed: EducatorNotificationService.onNotificationsPressed,
+                  onPressed: () => EducatorViewModel.onNotificationsPressed(context),
                   icon: const Icon(Icons.notifications_none_rounded),
                   color: Colors.black87,
                 ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_background.dart';
+import 'package:t_racks_softdev_1/screens/educator/educator_view_model.dart';
 
 // Content-only widget for use in EducatorShell
 class EducatorHomeContent extends StatefulWidget {
@@ -11,9 +12,39 @@ class EducatorHomeContent extends StatefulWidget {
 
 class _EducatorHomeContentState extends State<EducatorHomeContent> {
   String selectedClass = 'All Classes';
+  List<Map<String, dynamic>> _classes = [];
+  Map<String, String> _attendanceSummary = {
+    'present': '-',
+    'absent': '-',
+    'rate': '-',
+    'late': '-',
+  };
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    final classes = await EducatorViewModel.getClasses();
+    final summary = await EducatorViewModel.getAttendanceSummary();
+    if (mounted) {
+      setState(() {
+        _classes = classes;
+        _attendanceSummary = summary;
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return EducatorBackground(
       child: SafeArea(
         child: SingleChildScrollView(
@@ -68,10 +99,8 @@ class _EducatorHomeContentState extends State<EducatorHomeContent> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _buildClassButton('All Classes', 72, selectedClass == 'All Classes'),
-              _buildClassButton('Calculus 137', 28, selectedClass == 'Calculus 137'),
-              _buildClassButton('Physics 138', 38, selectedClass == 'Physics 138'),
-              _buildClassButton('Calculus 237', 18, selectedClass == 'Calculus 237'),
+              _buildClassButton('All Classes', _classes.fold(0, (sum, item) => sum + (item['students'] as int)), selectedClass == 'All Classes'),
+              ..._classes.map((c) => _buildClassButton(c['name'], c['students'], selectedClass == c['name'])),
             ],
           ),
         ],
@@ -127,7 +156,7 @@ class _EducatorHomeContentState extends State<EducatorHomeContent> {
                 child: _buildSummaryCard(
                   icon: Icons.verified_user,
                   iconColor: const Color(0xFF4CAF50),
-                  value: '68',
+                  value: _attendanceSummary['present']!,
                   label: 'Present Today',
                 ),
               ),
@@ -136,7 +165,7 @@ class _EducatorHomeContentState extends State<EducatorHomeContent> {
                 child: _buildSummaryCard(
                   icon: Icons.person_off,
                   iconColor: Colors.red,
-                  value: '4',
+                  value: _attendanceSummary['absent']!,
                   label: 'Absent Today',
                 ),
               ),
@@ -149,7 +178,7 @@ class _EducatorHomeContentState extends State<EducatorHomeContent> {
                 child: _buildSummaryCard(
                   icon: Icons.check_circle,
                   iconColor: const Color(0xFF4CAF50),
-                  value: '94%',
+                  value: _attendanceSummary['rate']!,
                   label: 'Attendance Rate',
                 ),
               ),
@@ -158,7 +187,7 @@ class _EducatorHomeContentState extends State<EducatorHomeContent> {
                 child: _buildSummaryCard(
                   icon: Icons.access_time,
                   iconColor: Colors.amber,
-                  value: '3',
+                  value: _attendanceSummary['late']!,
                   label: 'Late Arrival',
                 ),
               ),
@@ -255,13 +284,17 @@ class _EducatorHomeContentState extends State<EducatorHomeContent> {
   }
 
   Widget _buildStudentList() {
-    final students = [
-      {'name': 'Carla Jay D. Rimera', 'time': '8:00 AM', 'status': 'Late'},
-      {'name': 'Mama Merto Rodigo', 'time': '8:00 AM', 'status': 'Absent'},
-      {'name': 'One Pablo Reinstal..', 'time': '8:00 AM', 'status': 'Present'},
-      {'name': 'Joaquin De Coco', 'time': '8:00 AM', 'status': 'Present'},
-      {'name': 'Zonrox D. Color', 'time': '8:00 AM', 'status': 'Present'},
-    ];
+    // Find the selected class
+    final classData = _classes.firstWhere(
+      (c) => c['name'] == selectedClass,
+      orElse: () => {},
+    );
+
+    if (classData.isEmpty || classData['studentsList'] == null) {
+      return const Text('No students found.');
+    }
+
+    final students = (classData['studentsList'] as List).cast<Map<String, String>>();
 
     return Column(
       children: students.map((student) {

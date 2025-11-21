@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:t_racks_softdev_1/services/educator_notification_service.dart';
+import 'package:t_racks_softdev_1/screens/educator/educator_view_model.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_home_screen.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_classes_screen.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_report_screen.dart';
@@ -22,7 +22,7 @@ class _EducatorShellState extends State<EducatorShell> {
     super.initState();
     _currentIndex = widget.initialIndex;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      EducatorNotificationService.register(context);
+      // Initial setup if needed
     });
   }
 
@@ -110,7 +110,7 @@ class _TopBar extends StatelessWidget {
               children: [
                 IconButton(
                   iconSize: 23,
-                  onPressed: EducatorNotificationService.onNotificationsPressed,
+                  onPressed: () => EducatorViewModel.onNotificationsPressed(context),
                   icon: const Icon(Icons.notifications_none_rounded),
                   color: Colors.black87,
                 ),
