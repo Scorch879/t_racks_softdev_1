@@ -101,7 +101,7 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F3951).withOpacity(0.85),
+        color: const Color(0xFF0C3343).withOpacity(0.85),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: Colors.white.withOpacity(0.15),
