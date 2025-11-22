@@ -4,8 +4,6 @@ import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:t_racks_softdev_1/screens/onBoarding_screen/boarding_screens.dart';
 import 'package:t_racks_softdev_1/services/onboarding_service.dart';
-import 'package:t_racks_softdev_1/screens/student/student_shell_screen.dart';
-import 'package:t_racks_softdev_1/screens/educator/educator_home_screen.dart';
 
 class OnBoardingScreen extends StatefulWidget {
   final String role;
@@ -220,13 +218,9 @@ bool _isLoading = false;
           ///
           
           /// For now, redirect to educator or student
-          Navigator.pushReplacement(
+          Navigator.pushReplacementNamed(
             context,
-            MaterialPageRoute(
-              builder: (context) => (widget.role == 'student')
-                  ? const StudentShellScreen()
-                  : const EducatorHomeScreen(),
-            ),
+            (widget.role == 'student') ? '/studentHome' : '/educatorHome',
           );
         }
       } on AuthException catch (e) {
