@@ -4,6 +4,7 @@ import 'package:t_racks_softdev_1/screens/onBoarding_screen/onBoarding_screen.da
 import 'package:t_racks_softdev_1/screens/register_screen.dart';
 import 'package:t_racks_softdev_1/services/auth_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:t_racks_softdev_1/screens/educator/educator_home_screen.dart';
 //import 'package:t_racks_softdev_1/screens/student_home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -56,12 +57,12 @@ class _LoginScreenState extends State<LoginScreen> {
             );
             break;
           case 'educator':
-            // Navigator.pushReplacement(
-            //   context,
-            //   MaterialPageRoute(
-            //     builder: (context) => const EducatorHomeScreen(),
-            //   ), // TODO: Create EducatorHomeScreen
-            // );
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const EducatorHomeScreen(),
+              ), // TODO: Create EducatorHomeScreen
+            );
             break;
           default:
             // Handle unknown roles
