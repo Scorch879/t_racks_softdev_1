@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
+import 'package:t_racks_softdev_1/screens/onBoarding_screen/onBoarding_screen.dart';
 import 'package:t_racks_softdev_1/screens/register_screen.dart';
+import 'package:t_racks_softdev_1/screens/student_home_screen.dart';
 import 'package:t_racks_softdev_1/services/auth_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:t_racks_softdev_1/screens/student/student_shell_screen.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_home_screen.dart';
+import 'package:t_racks_softdev_1/services/database_service.dart';
+import 'package:t_racks_softdev_1/screens/forgetPassword/forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -19,18 +22,21 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _rememberMe = false;
   bool _isLoading = false; // For the login button
   bool _passwordVisible = false;
-
+  bool hasProfile = false;
   final _authService = AuthService();
+  final _databaseService = DatabaseService();
 
-  Future<void> _handleLogin() async{
+  Future<void> _handleLogin() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
-      showCustomSnackBar(context,"Please fill all fields.");
+      showCustomSnackBar(context, "Please fill all fields.");
       return;
     }
-    setState(() { _isLoading = true; });
+    setState(() {
+      _isLoading = true;
+    });
     try {
       // 1. Call the service, which now returns the role
       final String userRole = await _authService.logIn(
@@ -43,24 +49,37 @@ class _LoginScreenState extends State<LoginScreen> {
         _emailController.clear();
         _passwordController.clear();
 
-        // 3. Use a switch to decide where to go
-        switch (userRole) {
-          case 'student':
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const StudentShellScreen()),
-            );
-            break;
-          case 'educator':
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const EducatorHomeScreen()), // TODO: Create EducatorHomeScreen
-            );
-            break;
-          default:
-            // Handle unknown roles
-            showCustomSnackBar(context, "Unknown user role: $userRole");
+        hasProfile = await _databaseService.checkProfileExists();
+
+        if (hasProfile == false) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OnBoardingScreen(role: userRole),
+            ),
+          );
+        } else {
+          switch (userRole) {
+            case 'student':
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => StudentHomeScreen()),
+              );
+              break;
+            case 'educator':
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const EducatorHomeScreen(),
+                ),
+              );
+              break;
+            default:
+              // Handle unknown roles
+              showCustomSnackBar(context, "Unknown user role: $userRole");
+          }
         }
+        // 3. Use a switch to decide where to go
       }
     } on AuthException catch (e) {
       // 4. Handle errors using your global snackbar
@@ -71,7 +90,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
     // 5. Stop loading
     if (mounted) {
-      setState(() { _isLoading = false; });
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -127,8 +148,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 30.0),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // "Sign in" Title
                       Align(
@@ -156,122 +175,149 @@ class _LoginScreenState extends State<LoginScreen> {
                           ],
                         ),
                       ),
-
-                      const SizedBox(height: 24), // Space after the title/line
-                      // Email Label
-                      const Text(
-                        'Email',
-                        style: TextStyle(
-                          color: Colors.black54,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-
-                      // Email Field
-                      TextField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(
-                          hintText: 'Email address',
-                          prefixIcon: Icon(
-                            Icons.email_outlined,
-                            color: Colors.grey,
-                          ),
-                          enabledBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(color: Colors.grey),
-                          ),
-                          focusedBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(color: Color(0xFF21446D)),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24), // Space between fields
-                      // Password Label
-                      const Text(
-                        'Password',
-                        style: TextStyle(
-                          color: Colors.black54,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-
-                      // Password Field
-                      TextField(
-                        controller: _passwordController,
-                        obscureText: _passwordVisible,
-                        decoration: InputDecoration(
-                          // Removed const
-                          hintText: 'Password',
-                          // --- ADD THIS ICON ---
-                          prefixIcon: const Icon(
-                            Icons.lock_outline,
-                            color: Colors.grey,
-                          ),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _passwordVisible
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
-                              color: Colors.grey,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _passwordVisible = !_passwordVisible;
-                              });
-                            },
-                          ),
-                          enabledBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: Colors.grey),
-                          ),
-                          focusedBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: Color(0xFF21446D)),
-                          ),
-                        ),
-                      ),
-                      // --- START: NEW "REMEMBER ME" / "FORGOT PASSWORD" ROW ---
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          // "Remember Me" Row
-                          Row(
+                      const SizedBox(height: 24),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          physics: const ClampingScrollPhysics(),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              SizedBox(
-                                width: 24,
+                              const SizedBox(
                                 height: 24,
-                                child: Checkbox(
-                                  value: _rememberMe,
-                                  onChanged: (bool? newValue) {
-                                    setState(() {
-                                      _rememberMe = newValue ?? false;
-                                    });
-                                  },
-                                  activeColor: const Color(
-                                    0xFF26A69A,
-                                  ), // Green/teal
+                              ), // Space after the title/line
+                              // Email Label
+                              const Text(
+                                'Email',
+                                style: TextStyle(
+                                  color: Colors.black54,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              const SizedBox(width: 4),
-                              const Text('Remember Me'),
+
+                              // Email Field
+                              TextField(
+                                controller: _emailController,
+                                textAlignVertical: TextAlignVertical.center,
+                                keyboardType: TextInputType.emailAddress,
+                                decoration: const InputDecoration(
+                                  isDense: true, // Aligns icon and hint text
+                                  hintText: 'Email address',
+                                  prefixIcon: Icon(
+                                    Icons.email_outlined,
+                                    color: Colors.grey,
+                                  ),
+                                  enabledBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(color: Colors.grey),
+                                  ),
+                                  focusedBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: Color(0xFF21446D),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(
+                                height: 24,
+                              ), // Space between fields
+                              // Password Label
+                              const Text(
+                                'Password',
+                                style: TextStyle(
+                                  color: Colors.black54,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+
+                              // Password Field
+                              TextField(
+                                controller: _passwordController,
+                                textAlignVertical: TextAlignVertical.center,
+                                obscureText: _passwordVisible,
+                                decoration: InputDecoration(
+                                  isDense: true, // Aligns icon and hint text
+                                  // Removed const
+                                  hintText: 'Password',
+                                  // --- ADD THIS ICON ---
+                                  prefixIcon: const Icon(
+                                    Icons.lock_outline,
+                                    color: Colors.grey,
+                                  ),
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _passwordVisible
+                                          ? Icons.visibility_off
+                                          : Icons.visibility,
+                                      color: Colors.grey,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _passwordVisible = !_passwordVisible;
+                                      });
+                                    },
+                                  ),
+                                  enabledBorder: const UnderlineInputBorder(
+                                    borderSide: BorderSide(color: Colors.grey),
+                                  ),
+                                  focusedBorder: const UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: Color(0xFF21446D),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              // --- START: NEW "REMEMBER ME" / "FORGOT PASSWORD" ROW ---
+                              const SizedBox(height: 16),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  // "Remember Me" Row
+                                  Row(
+                                    children: [
+                                      SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: Checkbox(
+                                          value: _rememberMe,
+                                          onChanged: (bool? newValue) {
+                                            setState(() {
+                                              _rememberMe = newValue ?? false;
+                                            });
+                                          },
+                                          activeColor: const Color(
+                                            0xFF26A69A,
+                                          ), // Green/teal
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      const Text('Remember Me'),
+                                    ],
+                                  ),
+                                  // "Forgot Password?" Button
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,MaterialPageRoute(
+                                          builder: (context) =>const ForgotPasswordScreen(),
+                                        ),
+                                      );
+                                    },
+                                    child: const Text(
+                                      'Forgot Password?',
+                                      style: TextStyle(
+                                        color: Color(0xFF26A69A),
+                                      ), // Green/teal
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              // --- END: NEW ROW ---
+                              // --- START: NEW LOGIN BUTTON ---
                             ],
                           ),
-                          // "Forgot Password?" Button
-                          TextButton(
-                            onPressed: () {
-                              // TODO: Handle forgot password
-                            },
-                            child: const Text(
-                              'Forgot Password?',
-                              style: TextStyle(
-                                color: Color(0xFF26A69A),
-                              ), // Green/teal
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                      // --- END: NEW ROW ---
-                      // --- START: NEW LOGIN BUTTON ---
-                      const Spacer(),
+
                       SizedBox(
                         width: double.infinity, // Makes button full-width
                         height: 50,
@@ -312,7 +358,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           TextButton(
                             onPressed: () {
-                              // TODO: Navigate to Register screen
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -320,7 +365,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               );
                             },
-                            // You might need this style to remove default padding
+                            // You might need this style to rFmove default padding
                             style: TextButton.styleFrom(
                               padding: EdgeInsets.zero,
                               minimumSize: Size.zero,

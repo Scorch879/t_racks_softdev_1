@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:t_racks_softdev_1/services/student_service.dart';
 
 const _bgTeal = Color(0xFF167C94);
 const _cardSurface = Color(0xFF173C45);
@@ -8,102 +9,79 @@ const _chipGreen = Color(0xFF4DBD88);
 const _statusRed = Color(0xFFDA6A6A);
 const _titleRed = Color(0xFFE57373);
 
-class StudentHomeContent extends StatefulWidget {
-  const StudentHomeContent({
-    super.key,
-    required this.onNotificationsPressed,
-  });
+class StudentHomeScreen extends StatelessWidget {
 
-  final VoidCallback onNotificationsPressed;
 
-  @override
-  State<StudentHomeContent> createState() => _StudentHomeContentState();
-}
+  const StudentHomeScreen({super.key});
 
-class _StudentHomeContentState extends State<StudentHomeContent> {
-  void onOngoingClassStatusPressed() {}
 
-  void onFilterAllClasses() {}
-
-  void onClassPressed() {}
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        registerStudentPageContext(context);
         final width = constraints.maxWidth;
         final scale = (width / 430).clamp(0.8, 1.6);
         final horizontalPadding = 16.0 * scale;
         final cardRadius = 16.0 * scale;
 
-        return Stack(
-          children: [
-            Positioned.fill(
-              child: Opacity(
-                opacity: 0.12,
-                child: Image.asset(
-                  'assets/images/squigglytexture.png',
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-            SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                horizontalPadding,
-                12 * scale,
-                horizontalPadding,
-                100 * scale,
-              ),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 980),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _WelcomeAndOngoingCard(
-                        scale: scale,
-                        radius: cardRadius,
-                        onOngoingClassStatusPressed: onOngoingClassStatusPressed,
-                      ),
-                      SizedBox(height: 16 * scale),
-                      _MyClassesCard(
-                        scale: scale,
-                        radius: cardRadius,
-                        onFilterAllClasses: onFilterAllClasses,
-                        onClassPressed: onClassPressed,
-                      ),
-                    ],
+    return Scaffold(
+          backgroundColor: _bgTeal,
+          appBar: PreferredSize(
+            preferredSize: Size.fromHeight(64 * scale),
+            child: _TopBar(scale: scale),
+          ),
+          body: Stack(
+            children: [
+              Positioned.fill(
+                child: Opacity(
+                  opacity: 0.12,
+                  child: Image.asset(
+                    'assets/images/squigglytexture.png',
+                    fit: BoxFit.cover,
                   ),
                 ),
               ),
-            ),
-          ],
+              SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(
+                  horizontalPadding,
+                  12 * scale,
+                  horizontalPadding,
+                  100 * scale,
+                ),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 980),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _WelcomeAndOngoingCard(scale: scale, radius: cardRadius),
+                        SizedBox(height: 16 * scale),
+                        _MyClassesCard(scale: scale, radius: cardRadius),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          bottomNavigationBar: _BottomNav(scale: scale),
         );
       },
     );
   }
 }
 
-class _WelcomeAndOngoingCard extends StatefulWidget {
-  const _WelcomeAndOngoingCard({
-    required this.scale,
-    required this.radius,
-    required this.onOngoingClassStatusPressed,
-  });
+class _WelcomeAndOngoingCard extends StatelessWidget {
+  const _WelcomeAndOngoingCard({required this.scale, required this.radius});
   final double scale;
   final double radius;
-  final VoidCallback onOngoingClassStatusPressed;
 
-  @override
-  State<_WelcomeAndOngoingCard> createState() => _WelcomeAndOngoingCardState();
-}
-
-class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
   @override
   Widget build(BuildContext context) {
-    final scale = widget.scale;
     return _CardContainer(
-      radius: widget.radius,
+      radius: radius,
       scale: scale,
       borderColor: const Color(0xFF6AAFBF).withOpacity(0.35),
       background: const _CardBackground(),
@@ -221,7 +199,7 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                   ),
                 ),
                 GestureDetector(
-                  onTap: widget.onOngoingClassStatusPressed,
+                  onTap: StudentService.onOngoingClassStatusPressed,
                   child: Container(
                     padding: EdgeInsets.symmetric(
                       vertical: 8 * scale,
@@ -250,28 +228,96 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
   }
 }
 
-class _MyClassesCard extends StatefulWidget {
-  const _MyClassesCard({
-    required this.scale,
-    required this.radius,
-    required this.onFilterAllClasses,
-    required this.onClassPressed,
-  });
+class _TopBar extends StatelessWidget {
+  const _TopBar({required this.scale});
   final double scale;
-  final double radius;
-  final VoidCallback onFilterAllClasses;
-  final VoidCallback onClassPressed;
 
-  @override
-  State<_MyClassesCard> createState() => _MyClassesCardState();
-}
-
-class _MyClassesCardState extends State<_MyClassesCard> {
   @override
   Widget build(BuildContext context) {
-    final scale = widget.scale;
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      centerTitle: false,
+      titleSpacing: 0,
+      title: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16 * scale),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 20 * scale,
+              backgroundColor: const Color(0xFFB7C5C9),
+            ),
+            SizedBox(width: 12 * scale),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Student',
+                    style: TextStyle(
+                      color: Colors.black87,
+                      fontSize: 16 * scale,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    'Student',
+                    style: TextStyle(
+                      color: Colors.black54,
+                      fontSize: 12 * scale,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                IconButton(
+                  iconSize: 22 * scale + 1,
+                  onPressed: StudentService.onNotificationsPressed,
+                  icon: const Icon(Icons.notifications_none_rounded),
+                  color: Colors.black87,
+                ),
+                Positioned(
+                  right: 8 * scale,
+                  top: 8 * scale,
+                  child: Container(
+                    padding: EdgeInsets.all(2.5 * scale),
+                    decoration: BoxDecoration(
+                      color: _bgTeal,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    child: Text(
+                      '1',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10 * scale,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MyClassesCard extends StatelessWidget {
+  const _MyClassesCard({required this.scale, required this.radius});
+  final double scale;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
     return _CardContainer(
-      radius: widget.radius,
+      radius: radius,
       scale: scale,
       borderColor: const Color(0xFF6AAFBF).withOpacity(0.55),
       background: const _CardBackground(),
@@ -302,7 +348,7 @@ class _MyClassesCardState extends State<_MyClassesCard> {
             SizedBox(height: 16 * scale),
             _FilterChipRow(
               scale: scale,
-              onTap: widget.onFilterAllClasses,
+              onTap: StudentService.onFilterAllClasses,
               title: 'All Classes',
               trailingText: 'Total: 3',
               backgroundColor: _chipGreen,
@@ -313,7 +359,7 @@ class _MyClassesCardState extends State<_MyClassesCard> {
               title: 'Calculus 137',
               statusText: 'Absent',
               statusColor: _statusRed,
-              onTap: widget.onClassPressed,
+              onTap: StudentService.onClassPressed,
             ),
             SizedBox(height: 16 * scale),
             _ClassRow(
@@ -321,7 +367,7 @@ class _MyClassesCardState extends State<_MyClassesCard> {
               title: 'Physics 138',
               statusText: 'Ongoing',
               statusColor: _chipGreen,
-              onTap: widget.onClassPressed,
+              onTap: StudentService.onClassPressed,
             ),
             SizedBox(height: 16 * scale),
             _ClassRow(
@@ -329,7 +375,7 @@ class _MyClassesCardState extends State<_MyClassesCard> {
               title: 'Calculus 237',
               statusText: 'Upcoming',
               statusColor: _chipGreen,
-              onTap: widget.onClassPressed,
+              onTap: StudentService.onClassPressed,
             ),
           ],
         ),
@@ -338,7 +384,7 @@ class _MyClassesCardState extends State<_MyClassesCard> {
   }
 }
 
-class _FilterChipRow extends StatefulWidget {
+class _FilterChipRow extends StatelessWidget {
   const _FilterChipRow({
     required this.scale,
     required this.onTap,
@@ -354,22 +400,16 @@ class _FilterChipRow extends StatefulWidget {
   final Color backgroundColor;
 
   @override
-  State<_FilterChipRow> createState() => _FilterChipRowState();
-}
-
-class _FilterChipRowState extends State<_FilterChipRow> {
-  @override
   Widget build(BuildContext context) {
-    final scale = widget.scale;
     return GestureDetector(
-      onTap: widget.onTap,
+      onTap: onTap,
       child: Container(
         padding: EdgeInsets.symmetric(
           horizontal: 14 * scale,
           vertical: 12 * scale,
         ),
         decoration: BoxDecoration(
-          color: widget.backgroundColor,
+          color: backgroundColor,
           borderRadius: BorderRadius.circular(22 * scale),
           boxShadow: [
             BoxShadow(
@@ -383,7 +423,7 @@ class _FilterChipRowState extends State<_FilterChipRow> {
           children: [
             Expanded(
               child: Text(
-                widget.title,
+                title,
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18 * scale,
@@ -392,7 +432,7 @@ class _FilterChipRowState extends State<_FilterChipRow> {
               ),
             ),
             Text(
-              widget.trailingText,
+              trailingText,
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 18 * scale,
@@ -406,7 +446,7 @@ class _FilterChipRowState extends State<_FilterChipRow> {
   }
 }
 
-class _ClassRow extends StatefulWidget {
+class _ClassRow extends StatelessWidget {
   const _ClassRow({
     required this.scale,
     required this.title,
@@ -422,19 +462,13 @@ class _ClassRow extends StatefulWidget {
   final VoidCallback onTap;
 
   @override
-  State<_ClassRow> createState() => _ClassRowState();
-}
-
-class _ClassRowState extends State<_ClassRow> {
-  @override
   Widget build(BuildContext context) {
-    final scale = widget.scale;
     return GestureDetector(
-      onTap: widget.onTap,
+      onTap: onTap,
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 16 * scale, vertical: 16 * scale),
         decoration: BoxDecoration(
-          color: widget.statusColor,
+          color: statusColor,
           borderRadius: BorderRadius.circular(22 * scale),
           boxShadow: [
             BoxShadow(
@@ -448,7 +482,7 @@ class _ClassRowState extends State<_ClassRow> {
           children: [
             Expanded(
               child: Text(
-                widget.title,
+                title,
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
@@ -457,7 +491,7 @@ class _ClassRowState extends State<_ClassRow> {
               ),
             ),
             Text(
-              widget.statusText,
+              statusText,
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w800,
@@ -471,7 +505,7 @@ class _ClassRowState extends State<_ClassRow> {
   }
 }
 
-class _CardContainer extends StatefulWidget {
+class _CardContainer extends StatelessWidget {
   const _CardContainer({
     required this.child,
     required this.radius,
@@ -487,44 +521,33 @@ class _CardContainer extends StatefulWidget {
   final Color? borderColor;
 
   @override
-  State<_CardContainer> createState() => _CardContainerState();
-}
-
-class _CardContainerState extends State<_CardContainer> {
-  @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         color: _cardSurface,
-        borderRadius: BorderRadius.circular(widget.radius),
-        border: widget.borderColor != null ? Border.all(color: widget.borderColor!) : null,
+        borderRadius: BorderRadius.circular(radius),
+        border: borderColor != null ? Border.all(color: borderColor!) : null,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.25),
-            blurRadius: 10 * widget.scale,
-            offset: Offset(0, 6 * widget.scale),
+            blurRadius: 10 * scale,
+            offset: Offset(0, 6 * scale),
           ),
         ],
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
-          if (widget.background != null) widget.background!,
-          widget.child,
+          if (background != null) background!,
+          child,
         ],
       ),
     );
   }
 }
 
-class _CardBackground extends StatefulWidget {
+class _CardBackground extends StatelessWidget {
   const _CardBackground();
-
-  @override
-  State<_CardBackground> createState() => _CardBackgroundState();
-}
-
-class _CardBackgroundState extends State<_CardBackground> {
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
@@ -539,3 +562,82 @@ class _CardBackgroundState extends State<_CardBackground> {
   }
 }
 
+class _BottomNav extends StatelessWidget {
+  const _BottomNav({required this.scale});
+  final double scale;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.only(
+        left: 24 * scale,
+        right: 24 * scale,
+        top: 10 * scale,
+        bottom: 20 * scale,
+      ),
+      decoration: const BoxDecoration(color: Colors.white),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _BottomItem(
+            icon: Icons.home_rounded,
+            label: 'Home',
+            scale: scale,
+            isActive: true,
+            onTap: StudentService.onNavHome,
+          ),
+          _BottomItem(
+            icon: Icons.calendar_month_rounded,
+            label: 'Schedule',
+            scale: scale,
+            onTap: StudentService.onNavSchedule,
+          ),
+          _BottomItem(
+            icon: Icons.settings_rounded,
+            label: 'Settings',
+            scale: scale,
+            onTap: StudentService.onNavSettings,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BottomItem extends StatelessWidget {
+  const _BottomItem({
+    required this.icon,
+    required this.label,
+    required this.scale,
+    required this.onTap,
+    this.isActive = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final double scale;
+  final VoidCallback onTap;
+  final bool isActive;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color iconAndTextColor = Colors.black87;
+    final Color activeBg = _accentCyan;
+    return Semantics(
+      label: label,
+      button: true,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16 * scale),
+        onTap: onTap,
+        child: Container(
+          padding: EdgeInsets.all(12 * scale),
+          decoration: BoxDecoration(
+            color: isActive ? activeBg : Colors.transparent,
+            borderRadius: BorderRadius.circular(16 * scale),
+          ),
+          child: Icon(icon, color: iconAndTextColor, size: 24 * scale),
+        ),
+      ),
+    );
+  }
+}
