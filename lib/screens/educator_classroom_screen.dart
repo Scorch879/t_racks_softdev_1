@@ -86,7 +86,7 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F3951).withOpacity(0.85),
+        color: const Color(0xFF0C3343).withOpacity(0.85),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: Colors.white.withOpacity(0.15),
