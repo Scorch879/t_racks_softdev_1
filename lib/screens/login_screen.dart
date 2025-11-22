@@ -3,6 +3,9 @@ import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
 import 'package:t_racks_softdev_1/screens/register_screen.dart';
 import 'package:t_racks_softdev_1/services/auth_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:t_racks_softdev_1/screens/educator/educator_shell.dart';
+import 'package:t_racks_softdev_1/services/database_service.dart';
+import 'package:t_racks_softdev_1/screens/forgetPassword/forgot_password_screen.dart';
 import 'package:t_racks_softdev_1/screens/student/student_shell_screen.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_home_screen.dart';
 
@@ -43,23 +46,35 @@ class _LoginScreenState extends State<LoginScreen> {
         _emailController.clear();
         _passwordController.clear();
 
-        // 3. Use a switch to decide where to go
-        switch (userRole) {
-          case 'student':
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const StudentShellScreen()),
-            );
-            break;
-          case 'educator':
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const EducatorHomeScreen()), // TODO: Create EducatorHomeScreen
-            );
-            break;
-          default:
-            // Handle unknown roles
-            showCustomSnackBar(context, "Unknown user role: $userRole");
+        hasProfile = await _databaseService.checkProfileExists();
+
+        if (hasProfile == false) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OnBoardingScreen(role: userRole),
+            ),
+          );
+        } else {
+          switch (userRole) {
+            case 'student':
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => StudentShellScreen()),
+              );
+              break;
+            case 'educator':
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const EducatorShell(initialIndex: 0),
+                ),
+              );
+              break;
+            default:
+              // Handle unknown roles
+              showCustomSnackBar(context, "Unknown user role: $userRole");
+          }
         }
       }
     } on AuthException catch (e) {
