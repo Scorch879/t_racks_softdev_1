@@ -29,3 +29,4 @@ doc/api/
 .flutter-plugins-dependencies
 *.xml
 .idea/workspace.xml
+android/.kotlin/errors/errors-1763022982345.log

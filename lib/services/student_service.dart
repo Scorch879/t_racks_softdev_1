@@ -1,39 +1,80 @@
 import 'package:flutter/material.dart';
+import 'package:t_racks_softdev_1/screens/student_home_screen.dart';
+import 'package:t_racks_softdev_1/screens/student_settings_screen.dart';
 
-// Simple tap handlers for the Student Home screen.
-// Replace SnackBars/dialogs with real logic when the backend is ready.
 class StudentService {
-  static void _snack(String message) {
-    if (_ctx == null) return;
-    ScaffoldMessenger.of(_ctx!).showSnackBar(SnackBar(content: Text(message)));
-  }
+  static DateTime? _lastNavTime;
+  static const _navDebounceMs = 300;
 
-  // Top bar
   static void onNotificationsPressed() => _showNotifications(full: false);
 
-  // Ongoing class
-  static void onOngoingClassStatusPressed() {
-    // Intentionally left blank (clickable only)
-  }
+  static void onOngoingClassStatusPressed() {}
 
-  // My Classes
-  static void onFilterAllClasses() {
-    // Intentionally left blank (clickable only)
-  }
-  static void onClassPressed() {
-    // Intentionally left blank (clickable only)
-  }
+  static void onFilterAllClasses() {}
+  static void onClassPressed() {}
 
-  // Bottom navigation
   static void onNavHome() {
-    // Intentionally left blank (clickable only)
+    if (_ctx == null) return;
+    if (_isNavigating()) return;
+    
+    try {
+      final navigator = Navigator.of(_ctx!);
+      final currentRoute = ModalRoute.of(_ctx!);
+      final routeName = currentRoute?.settings.name;
+      
+      if (routeName == '/home' || (routeName == null && !navigator.canPop())) {
+        return;
+      }
+      
+      if (navigator.canPop()) {
+        navigator.popUntil((route) {
+          return route.isFirst || route.settings.name == '/home';
+        });
+      }
+    } catch (e) {}
   }
-  static void onNavSchedule() {
-    // Intentionally left blank (clickable only)
-  }
+  
+  static void onNavSchedule() {}
+  
   static void onNavSettings() {
-    // Intentionally left blank (clickable only)
+    if (_ctx == null) return;
+    if (_isNavigating()) return;
+    
+    try {
+      final navigator = Navigator.of(_ctx!);
+      final currentRoute = ModalRoute.of(_ctx!);
+      final routeName = currentRoute?.settings.name;
+      
+      if (routeName == '/settings') {
+        return;
+      }
+      
+      navigator.push(
+        MaterialPageRoute(
+          builder: (context) {
+            return const StudentSettingsScreen();
+          },
+          settings: const RouteSettings(name: '/settings'),
+        ),
+      );
+    } catch (e) {}
   }
+  
+  static bool _isNavigating() {
+    final now = DateTime.now();
+    if (_lastNavTime != null) {
+      final diff = now.difference(_lastNavTime!);
+      if (diff.inMilliseconds < _navDebounceMs) {
+        return true;
+      }
+    }
+    _lastNavTime = now;
+    return false;
+  }
+
+  static void onProfileSettingsPressed() {}
+  static void onAccountSettingsPressed() {}
+  static void onDeleteAccountPressed() {}
 
   static void _showNotifications({required bool full}) {
     if (_ctx == null) return;
@@ -60,7 +101,6 @@ class StudentService {
   }
 }
 
-// Allows showing SnackBars without passing BuildContext through every callback.
 BuildContext? _ctx;
 void registerStudentPageContext(BuildContext context) {
   _ctx = context;

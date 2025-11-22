@@ -1,7 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthService {
-  // Get a shorthand for the Supabase client
+
   final _supabase = Supabase.instance.client;
 
   // This is the deep link you set up in AndroidManifest.xml
@@ -71,6 +71,53 @@ class AuthService {
       );
     } catch (e) {
       // Handle or rethrow the error
+      rethrow;
+    }
+  }
+
+  //Sign Out Service
+  Future<void> signOut() async {
+    await _supabase.auth.signOut();
+  }
+
+  Future<void> forgotPassword({
+    required String email,
+  }) async {
+    try {
+      await _supabase.auth.resetPasswordForEmail(
+        email,
+        redirectTo: _deepLink,
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Verifies the password reset OTP code sent to the user's email.
+  Future<void> verifyPasswordResetOtp({
+    required String email,
+    required String token,
+  }) async {
+    try {
+      final response = await _supabase.auth.verifyOTP(
+        type: OtpType.recovery,
+        token: token,
+        email: email,
+      );
+      // If there's no error, the user is temporarily authenticated
+      // and can now update their password.
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Updates the user's password after a successful OTP verification.
+  Future<void> updateUserPassword({required String newPassword}) async {
+    try {
+      await _supabase.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+    } catch (e) {
       rethrow;
     }
   }

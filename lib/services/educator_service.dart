@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:t_racks_softdev_1/screens/educator_classes_screen.dart';
-import 'package:t_racks_softdev_1/screens/educator_home_screen.dart';
-import 'package:t_racks_softdev_1/screens/educator_settings_screen.dart';
-import 'package:t_racks_softdev_1/screens/educator_report_screen.dart';
+import 'package:t_racks_softdev_1/screens/educator/educator_classes_screen.dart';
+import 'package:t_racks_softdev_1/screens/educator/educator_home_screen.dart';
+import 'package:t_racks_softdev_1/screens/educator/educator_settings_screen.dart';
+import 'package:t_racks_softdev_1/screens/educator/educator_report_screen.dart';
 
 class EducatorService {
   static void navigateToHomeScreen(BuildContext context) {
