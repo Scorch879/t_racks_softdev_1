@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:t_racks_softdev_1/screens/logIn_screen.dart';
 import 'package:t_racks_softdev_1/services/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -218,8 +219,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                               TextField(
                                 controller: _emailController,
+                                textAlignVertical: TextAlignVertical.center,
                                 keyboardType: TextInputType.emailAddress,
                                 decoration: const InputDecoration(
+                                  isDense: true,
                                   hintText: 'Email address',
                                   hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
                                   // --- ADD THIS ICON ---
@@ -249,9 +252,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                               TextField(
                                 controller: _phoneController,
+                                textAlignVertical: TextAlignVertical.center,
                                 keyboardType: TextInputType.phone,
                                 decoration: const InputDecoration(
+                                  isDense: true,
                                   hintText: 'Phone number',
+                                  hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
                                   // --- ADD THIS ICON ---
                                   prefixIcon: Icon(
                                     Icons.phone_android_outlined,
@@ -279,10 +285,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                               TextField(
                                 controller: _passwordController,
+                                textAlignVertical: TextAlignVertical.center,
                                 obscureText: _passwordVisible,
                                 decoration: InputDecoration(
                                   // Removed const
+                                  isDense: true,
                                   hintText: 'Password',
+                                  hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
                                   // --- ADD THIS ICON ---
                                   prefixIcon: const Icon(
                                     Icons.lock_outline,
@@ -323,10 +332,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                               TextField(
                                 controller: _confirmPasswordController,
+                                textAlignVertical: TextAlignVertical.center,
                                 obscureText: _confirmPasswordVisible,
                                 decoration: InputDecoration(
                                   // Removed const
+                                  isDense: true,
                                   hintText: 'Confirm Password',
+                                  hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
                                   // --- ADD THIS ICON ---
                                   prefixIcon: const Icon(
                                     Icons.lock_outline,
@@ -434,16 +446,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text("Already have an Account? "),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.pop(context);
+                          const Text(
+                            "Don't have an account? ",
+                            style: TextStyle(color: Colors.black54),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const LoginScreen(),
+                                ),
+                              );
                             },
+                            // You might need this style to rFmove default padding
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
                             child: const Text(
-                              'Login',
+                              'Log In',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF26A69A),
+                                color: Color(0xFF26A69A), // Green/teal
                               ),
                             ),
                           ),

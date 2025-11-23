@@ -11,7 +11,11 @@ const _statusRed = Color(0xFFDA6A6A);
 const _titleRed = Color(0xFFE57373);
 
 class StudentHomeScreen extends StatelessWidget {
+
+
   const StudentHomeScreen({super.key});
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -331,6 +335,7 @@ class _MyClassesCard extends StatelessWidget {
       radius: radius,
       scale: scale,
       borderColor: const Color(0xFF6AAFBF).withOpacity(0.55),
+      background: const _CardBackground(),
       child: Padding(
         padding: EdgeInsets.all(16 * scale),
         child: Column(
@@ -390,7 +395,6 @@ class _MyClassesCard extends StatelessWidget {
           ],
         ),
       ),
-      background: const _CardBackground(),
     );
   }
 }

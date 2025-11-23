@@ -1,0 +1,23 @@
+name: Enforce Branch Flow
+
+on:
+  pull_request:
+    branches:
+      - main  # Trigger this only when target is main
+
+jobs:
+  check-source-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify Branch Source
+        run: |
+          # Capture the source branch name
+          SOURCE_BRANCH="${{ github.head_ref }}"
+          
+          # Logic: If source is NOT 'dev', fail the workflow
+          if [[ "$SOURCE_BRANCH" != "dev" ]]; then
+            echo "::error::Violation: Pull Requests to 'main' must come from 'dev'. You are trying to merge from '$SOURCE_BRANCH'."
+            exit 1
+          fi
+          
+          echo "Success: Source branch is 'dev'."

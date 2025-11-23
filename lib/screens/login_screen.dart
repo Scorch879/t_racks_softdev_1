@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
 import 'package:t_racks_softdev_1/screens/onBoarding_screen/onBoarding_screen.dart';
 import 'package:t_racks_softdev_1/screens/register_screen.dart';
+import 'package:t_racks_softdev_1/screens/student_home_screen.dart';
 import 'package:t_racks_softdev_1/services/auth_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:t_racks_softdev_1/screens/student_home_screen.dart';
-import 'package:t_racks_softdev_1/screens/educator_home_screen.dart';
+import 'package:t_racks_softdev_1/screens/educator/educator_home_screen.dart';
+import 'package:t_racks_softdev_1/services/database_service.dart';
+import 'package:t_racks_softdev_1/screens/forgetPassword/forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -20,8 +22,9 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _rememberMe = false;
   bool _isLoading = false; // For the login button
   bool _passwordVisible = false;
-
+  bool hasProfile = false;
   final _authService = AuthService();
+  final _databaseService = DatabaseService();
 
   Future<void> _handleLogin() async {
     final email = _emailController.text.trim();
@@ -45,29 +48,37 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         _emailController.clear();
         _passwordController.clear();
+        hasProfile = await _databaseService.checkProfileExists();
 
-        // 3. Use a switch to decide where to go
-        switch (userRole) {
-          case 'student':
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const StudentHomeScreen(),
-              ), // TODO: Create StudentHomeScreen
-            );
-            break;
-          case 'educator':
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const EducatorHomeScreen(),
-              ), // TODO: Create EducatorHomeScreen
-            );
-            break;
-          default:
-            // Handle unknown roles
-            showCustomSnackBar(context, "Unknown user role: $userRole");
+        if (hasProfile == false) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OnBoardingScreen(role: userRole),
+            ),
+          );
+        } else {
+          switch (userRole) {
+            case 'student':
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => StudentHomeScreen()),
+              );
+              break;
+            case 'educator':
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const EducatorHomeScreen(),
+                ),
+              );
+              break;
+            default:
+              // Handle unknown roles
+              showCustomSnackBar(context, "Unknown user role: $userRole");
+          }
         }
+        // 3. Use a switch to decide where to go
       }
     } on AuthException catch (e) {
       // 4. Handle errors using your global snackbar
@@ -185,10 +196,11 @@ class _LoginScreenState extends State<LoginScreen> {
                               // Email Field
                               TextField(
                                 controller: _emailController,
+                                textAlignVertical: TextAlignVertical.center,
                                 keyboardType: TextInputType.emailAddress,
                                 decoration: const InputDecoration(
+                                  isDense: true, // Aligns icon and hint text
                                   hintText: 'Email address',
-                                  hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
                                   prefixIcon: Icon(
                                     Icons.email_outlined,
                                     color: Colors.grey,
@@ -218,11 +230,12 @@ class _LoginScreenState extends State<LoginScreen> {
                               // Password Field
                               TextField(
                                 controller: _passwordController,
+                                textAlignVertical: TextAlignVertical.center,
                                 obscureText: _passwordVisible,
                                 decoration: InputDecoration(
+                                  isDense: true, // Aligns icon and hint text
                                   // Removed const
                                   hintText: 'Password',
-                                  hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
                                   // --- ADD THIS ICON ---
                                   prefixIcon: const Icon(
                                     Icons.lock_outline,
@@ -276,16 +289,19 @@ class _LoginScreenState extends State<LoginScreen> {
                                         ),
                                       ),
                                       const SizedBox(width: 4),
-                                      const Text('Remember Me',
-                                          style: TextStyle(
-                                              color: Color.fromARGB(
-                                                  255, 100, 100, 100))),
+                                      const Text('Remember Me'),
                                     ],
                                   ),
                                   // "Forgot Password?" Button
                                   TextButton(
                                     onPressed: () {
-                                      // TODO: Handle forgot password
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              const ForgotPasswordScreen(),
+                                        ),
+                                      );
                                     },
                                     child: const Text(
                                       'Forgot Password?',
@@ -343,7 +359,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           TextButton(
                             onPressed: () {
-                              // TODO: Navigate to Register screen
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -351,7 +366,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               );
                             },
-                            // You might need this style to remove default padding
+                            // You might need this style to rFmove default padding
                             style: TextButton.styleFrom(
                               padding: EdgeInsets.zero,
                               minimumSize: Size.zero,

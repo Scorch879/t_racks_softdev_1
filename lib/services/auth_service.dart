@@ -1,7 +1,17 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:t_racks_softdev_1/services/database_service.dart';
+
+enum AuthNavigationState {
+  login,
+  onboarding,
+  studentHome,
+  educatorHome,
+}
 
 class AuthService {
-  // Get a shorthand for the Supabase client
+
+
   final _supabase = Supabase.instance.client;
 
   // This is the deep link you set up in AndroidManifest.xml
@@ -73,5 +83,100 @@ class AuthService {
       // Handle or rethrow the error
       rethrow;
     }
+  }
+
+  //Sign Out Service
+  Future<void> signOut() async {
+    await _supabase.auth.signOut();
+  }
+
+  Future<void> forgotPassword({
+    required String email,
+  }) async {
+    try {
+      await _supabase.auth.resetPasswordForEmail(
+        email,
+        redirectTo: _deepLink,
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Verifies the password reset OTP code sent to the user's email.
+  Future<void> verifyPasswordResetOtp({
+    required String email,
+    required String token,
+  }) async {
+    try {
+      final response = await _supabase.auth.verifyOTP(
+        type: OtpType.recovery,
+        token: token,
+        email: email,
+      );
+      // If there's no error, the user is temporarily authenticated
+      // and can now update their password.
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Updates the user's password after a successful OTP verification.
+  Future<void> updateUserPassword({required String newPassword}) async {
+    try {
+      await _supabase.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<AuthNavigationState> determineInitialPath() async {
+    try {
+      // Check "Remember Me"
+      final prefs = await SharedPreferences.getInstance();
+      final bool rememberMe = prefs.getBool('remember_me') ?? false;
+
+      final session = _supabase.auth.currentSession;
+
+      // Logic: If session exists but user didn't want to be remembered
+      if (session != null && !rememberMe) {
+        await _supabase.auth.signOut();
+        return AuthNavigationState.login;
+      }
+
+      // Logic: No session at all
+      if (session == null) {
+        return AuthNavigationState.login;
+      }
+
+      // Logic: User is logged in. Check Profile & Role.
+      final bool didOnboarding = await DatabaseService().checkProfileExists();
+      
+      if (!didOnboarding) {
+        return AuthNavigationState.onboarding;
+      }
+
+      // Check Role for Routing
+      final user = session.user;
+      final role = user.userMetadata?['role'] as String?;
+
+      if (role == 'student') return AuthNavigationState.studentHome;
+      if (role == 'educator') return AuthNavigationState.educatorHome;
+
+      // Fallback for unknown roles
+      await _supabase.auth.signOut();
+      return AuthNavigationState.login;
+
+    } catch (e) {
+      // Safety net: if anything crashes, go to login
+      return AuthNavigationState.login;
+    }
+  }
+  
+  // Helper to get current role (useful for passing to Onboarding screen)
+  String? getCurrentUserRole() {
+    return _supabase.auth.currentUser?.userMetadata?['role'];
   }
 }

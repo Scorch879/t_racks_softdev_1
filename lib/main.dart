@@ -1,18 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:t_racks_softdev_1/screens/onBoarding_screen/onBoarding_screen.dart';
-import 'package:t_racks_softdev_1/screens/splash_screen.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:t_racks_softdev_1/screens/student_home_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:t_racks_softdev_1/screens/splash_screen.dart';
 
 Future<void> main() async {
-  await dotenv.load(fileName: ".env");
+  // Ensure Flutter bindings are initialized before any async operations.
   WidgetsFlutterBinding.ensureInitialized();
+
+  await dotenv.load(fileName: ".env");
+
+  final supabaseUrl = dotenv.env['SUPABASE_URL'];
+  final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'];
+
+  if (supabaseUrl == null || supabaseAnonKey == null) {
+    throw Exception('Supabase URL or Anon Key not found in .env file');
+  }
+
   await Supabase.initialize(
-    url: dotenv.env['SUPABASE_URL']!,
-    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
+    url: supabaseUrl,
+    anonKey: supabaseAnonKey,
   );
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -20,11 +28,10 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'T-racks',
-      
-      home: const SplashScreen(),
+      home: SplashScreen(), // Set SplashScreen as the initial screen
     );
   }
 }

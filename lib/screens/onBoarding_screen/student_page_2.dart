@@ -86,7 +86,9 @@ class StudentPage2 extends StatelessWidget {
           Text('Institution (School)', style: _headerStyle),
           TextField(
             controller: institutionController,
+            textAlignVertical: TextAlignVertical.center,
             decoration: const InputDecoration(
+              isDense: true,
               hintText: 'Cebu Institute of Technology - University',
               hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
               prefixIcon: Icon(Icons.school_outlined, color: Colors.grey),
