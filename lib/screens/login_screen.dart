@@ -48,7 +48,6 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         _emailController.clear();
         _passwordController.clear();
-
         hasProfile = await _databaseService.checkProfileExists();
 
         if (hasProfile == false) {

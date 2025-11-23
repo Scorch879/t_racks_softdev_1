@@ -1,12 +1,19 @@
 import 'dart:async'; // Import this for the Timer
 import 'package:flutter/material.dart';
-// We'll create this file next
 import 'package:t_racks_softdev_1/screens/welcome_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:t_racks_softdev_1/services/auth_service.dart';
+import 'package:t_racks_softdev_1/screens/onBoarding_screen/onBoarding_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:t_racks_softdev_1/screens/login_screen.dart';
+import 'package:t_racks_softdev_1/services/database_service.dart';
+import 'package:t_racks_softdev_1/screens/student_home_screen.dart';
+import 'package:t_racks_softdev_1/screens/educator/educator_home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
-  @override
+  @override 
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
@@ -15,7 +22,59 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
     // Start the timer when the screen is built
-    startTimer();
+    _redirect();
+  }
+
+Future<void> _redirect() async {
+    await Future.delayed(Duration.zero);
+    
+    // 1. Check the "Remember Me" preference first
+    final prefs = await SharedPreferences.getInstance();
+    final bool rememberMe = prefs.getBool('remember_me') ?? true; // Default to true if unknown
+
+    final supabase = Supabase.instance.client;
+    final session = supabase.auth.currentSession;
+
+    if (!mounted) return;
+
+    // 2. Logic: If they exist BUT didn't want to be remembered, log them out now.
+    if (session != null && !rememberMe) {
+      await supabase.auth.signOut();
+      if (!mounted) return;
+      Navigator.pushReplacement(context,MaterialPageRoute(builder: (context) => const LoginScreen()), );
+      return; // Stop here
+    }
+
+    // 3. Standard Session Check (Your existing logic)
+    if (session == null) {
+      Navigator.pushReplacement(context,MaterialPageRoute(builder: (context) => const LoginScreen()),);
+    } else {
+      // ... Your existing role/onboarding check ...
+      final user = session.user;
+      final role = user.userMetadata?['role'] as String;
+      final bool didOnboarding = await DatabaseService().checkProfileExists();
+
+      if (!didOnboarding) {
+         // Go to Onboarding
+         Navigator.pushReplacement(context,MaterialPageRoute(builder: (context) => OnBoardingScreen(role: role)),);
+      } else {
+        // Go to Home
+        switch (role) {
+          case 'student':
+            Navigator.pushReplacement(context,MaterialPageRoute(builder: (context) => const StudentHomeScreen()),);
+            break;
+          case 'educator':
+            Navigator.pushReplacement(context,MaterialPageRoute(builder: (context) => const EducatorHomeScreen()),);
+            break;
+          default:
+            await supabase.auth.signOut();
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginScreen()),
+            );
+        }
+      }
+    }
   }
 
   startTimer() {
