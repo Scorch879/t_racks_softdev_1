@@ -23,6 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _rememberMe = false;
   bool _isLoading = false; // For the login button
   bool _passwordVisible = false;
+  bool hasProfile  = false;
 
   final _authService = AuthService();
   final _databaseService = DatabaseService();
@@ -48,7 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
         _emailController.clear();
         _passwordController.clear();
 
-        final hasProfile = await _databaseService.checkProfileExists();
+        hasProfile = await _databaseService.checkProfileExists();
 
         if (hasProfile == false) {
           Navigator.pushReplacement(
