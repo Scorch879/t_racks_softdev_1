@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:t_racks_softdev_1/screens/student_settings_screen.dart';
+import 'package:t_racks_softdev_1/screens/student/student_settings_screen.dart';
 import 'package:t_racks_softdev_1/screens/student/student_class_screen.dart';
 
 // Holds the currently registered page context
@@ -115,9 +115,7 @@ class StudentService {
 
       Navigator.of(_ctx!).push(
         MaterialPageRoute(
-          builder: (context) {
-            return const StudentSettingsScreen();
-          },
+          builder: (context) => const StudentSettingsScreen(),
           settings: const RouteSettings(name: '/settings'),
         ),
       );

@@ -8,6 +8,7 @@ import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/screens/forgetPassword/forgot_password_screen.dart';
 import 'package:t_racks_softdev_1/screens/student/student_shell_screen.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_home_screen.dart';
+import 'package:t_racks_softdev_1/screens/onBoarding_screen/onBoarding_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -24,6 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _passwordVisible = false;
 
   final _authService = AuthService();
+  final _databaseService = DatabaseService();
 
   Future<void> _handleLogin() async{
     final email = _emailController.text.trim();
@@ -46,7 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
         _emailController.clear();
         _passwordController.clear();
 
-        hasProfile = await _databaseService.checkProfileExists();
+        final hasProfile = await _databaseService.checkProfileExists();
 
         if (hasProfile == false) {
           Navigator.pushReplacement(
