@@ -1,6 +1,16 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:t_racks_softdev_1/services/database_service.dart';
+
+enum AuthNavigationState {
+  login,
+  onboarding,
+  studentHome,
+  educatorHome,
+}
 
 class AuthService {
+
 
   final _supabase = Supabase.instance.client;
 
@@ -120,5 +130,53 @@ class AuthService {
     } catch (e) {
       rethrow;
     }
+  }
+
+  Future<AuthNavigationState> determineInitialPath() async {
+    try {
+      // Check "Remember Me"
+      final prefs = await SharedPreferences.getInstance();
+      final bool rememberMe = prefs.getBool('remember_me') ?? false;
+
+      final session = _supabase.auth.currentSession;
+
+      // Logic: If session exists but user didn't want to be remembered
+      if (session != null && !rememberMe) {
+        await _supabase.auth.signOut();
+        return AuthNavigationState.login;
+      }
+
+      // Logic: No session at all
+      if (session == null) {
+        return AuthNavigationState.login;
+      }
+
+      // Logic: User is logged in. Check Profile & Role.
+      final bool didOnboarding = await DatabaseService().checkProfileExists();
+      
+      if (!didOnboarding) {
+        return AuthNavigationState.onboarding;
+      }
+
+      // Check Role for Routing
+      final user = session.user;
+      final role = user.userMetadata?['role'] as String?;
+
+      if (role == 'student') return AuthNavigationState.studentHome;
+      if (role == 'educator') return AuthNavigationState.educatorHome;
+
+      // Fallback for unknown roles
+      await _supabase.auth.signOut();
+      return AuthNavigationState.login;
+
+    } catch (e) {
+      // Safety net: if anything crashes, go to login
+      return AuthNavigationState.login;
+    }
+  }
+  
+  // Helper to get current role (useful for passing to Onboarding screen)
+  String? getCurrentUserRole() {
+    return _supabase.auth.currentUser?.userMetadata?['role'];
   }
 }
