@@ -5,7 +5,7 @@ import 'package:t_racks_softdev_1/screens/register_screen.dart';
 import 'package:t_racks_softdev_1/screens/student_home_screen.dart';
 import 'package:t_racks_softdev_1/services/auth_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:t_racks_softdev_1/screens/educator/educator_home_screen.dart';
+import 'package:t_racks_softdev_1/screens/educator/educator_shell.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/screens/forgetPassword/forgot_password_screen.dart';
 
@@ -69,7 +69,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const EducatorHomeScreen(),
+                  builder: (context) => const EducatorShell(),
                 ),
               );
               break;
