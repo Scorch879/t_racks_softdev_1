@@ -38,10 +38,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   supabase_flutter: ^2.10.3
   flutter_dotenv: ^5.1.0
-  tflite_flutter: ^0.11.0
-  flutter_tflite: ^1.0.1
-  get: ^4.6.5
-  image: ^3.3.0
+  tflite_flutter: ^0.12.1
   camera: ^0.11.3
   permission_handler: ^11.3.1
 
