@@ -180,4 +180,3 @@ class AuthService {
     return _supabase.auth.currentUser?.userMetadata?['role'];
   }
 }
-}
