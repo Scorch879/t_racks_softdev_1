@@ -34,7 +34,11 @@ class DatabaseService {
       if (userId == null) {
         throw 'User is not logged in';
       }
-      final data = await _supabase.from('profiles').select().eq('id', userId).single();
+      final data = await _supabase
+          .from('profiles')
+          .select()
+          .eq('id', userId)
+          .single();
 
       return Profile.fromJson(data);
     } catch (e) {
@@ -87,4 +91,20 @@ class DatabaseService {
     }
   }
   
+}
+
+class AccountServices {
+  Future<void> deleteProfile() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+
+      if (userId == null) {
+        throw 'User is not logged in';
+      }
+
+      await _supabase.from('profiles').delete().eq('id', userId);
+    } catch (e) {
+      throw 'Error deleting profile: $e';
+    }
+  }
 }
