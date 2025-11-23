@@ -30,7 +30,7 @@ Future<void> _redirect() async {
     
     // 1. Check the "Remember Me" preference first
     final prefs = await SharedPreferences.getInstance();
-    final bool rememberMe = prefs.getBool('remember_me') ?? true; // Default to true if unknown
+    final bool rememberMe = prefs.getBool('remember_me') ?? false; // Default to true if unknown
 
     final supabase = Supabase.instance.client;
     final session = supabase.auth.currentSession;
@@ -61,17 +61,16 @@ Future<void> _redirect() async {
         // Go to Home
         switch (role) {
           case 'student':
-            Navigator.pushReplacement(context,MaterialPageRoute(builder: (context) => const StudentHomeScreen()),);
+            Navigator.pushReplacement(context,MaterialPageRoute(builder: (context) => const StudentHomeScreen()),);// replace this one with the new one
             break;
           case 'educator':
-            Navigator.pushReplacement(context,MaterialPageRoute(builder: (context) => const EducatorHomeScreen()),);
+            Navigator.pushReplacement(context,MaterialPageRoute(builder: (context) => const EducatorHomeScreen()),);//replace this with the new one as well
+             
             break;
           default:
             await supabase.auth.signOut();
             Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const LoginScreen()),
-            );
+              context,MaterialPageRoute(builder: (context) => const LoginScreen()),);
         }
       }
     }
