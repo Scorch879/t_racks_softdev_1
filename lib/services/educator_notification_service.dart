@@ -1,28 +1,30 @@
 import 'package:flutter/material.dart';
 
 class EducatorNotificationService {
-  static void show(BuildContext context, List<Map<String, dynamic>> notifications) {
-    _showNotifications(context, notifications, full: false);
+  static void register(BuildContext context) {
+    _ctx = context;
   }
 
-  static void _showNotifications(BuildContext context, List<Map<String, dynamic>> notifications, {required bool full}) {
-    final displayNotifications = full
-        ? notifications
-        : notifications.take(3).toList(growable: false);
+  static void onNotificationsPressed() => _showNotifications(full: false);
+
+  static void _showNotifications({required bool full}) {
+    if (_ctx == null) return;
+    final notifications = full
+        ? _notifications
+        : _notifications.take(3).toList(growable: false);
 
     showDialog<void>(
-      context: context,
+      context: _ctx!,
       barrierDismissible: true,
       barrierColor: Colors.black45,
       builder: (dialogContext) {
         return _NotificationDialog(
-          notifications: displayNotifications,
-          allNotifications: notifications,
+          notifications: notifications,
           isFull: full,
           onClose: () => Navigator.of(dialogContext).pop(),
           onToggle: () {
             Navigator.of(dialogContext).pop();
-            _showNotifications(context, notifications, full: !full);
+            _showNotifications(full: !full);
           },
         );
       },
@@ -30,8 +32,7 @@ class EducatorNotificationService {
   }
 }
 
-// Removed _ctx and register method as we will pass context directly.
-// Removed _notifications list.
+BuildContext? _ctx;
 
 enum _NotificationType { success, warning, info }
 
@@ -47,42 +48,44 @@ class _EducatorNotification {
   final String subtitle;
   final String timestamp;
   final _NotificationType type;
-
-  factory _EducatorNotification.fromMap(Map<String, dynamic> map) {
-    _NotificationType type;
-    switch (map['type']) {
-      case 'success':
-        type = _NotificationType.success;
-        break;
-      case 'warning':
-        type = _NotificationType.warning;
-        break;
-      case 'info':
-      default:
-        type = _NotificationType.info;
-        break;
-    }
-    return _EducatorNotification(
-      title: map['title'] ?? '',
-      subtitle: map['subtitle'] ?? '',
-      timestamp: map['timestamp'] ?? '',
-      type: type,
-    );
-  }
 }
 
+const List<_EducatorNotification> _notifications = [
+  _EducatorNotification(
+    title: 'Attendance Summary Ready',
+    subtitle: 'Calculus 137 daily report is generated.',
+    timestamp: 'Just now',
+    type: _NotificationType.success,
+  ),
+  _EducatorNotification(
+    title: 'Low Attendance Warning',
+    subtitle: 'Physics 138 attendance fell below 80%.',
+    timestamp: '1 hour ago',
+    type: _NotificationType.warning,
+  ),
+  _EducatorNotification(
+    title: 'New Submission',
+    subtitle: 'Lab Report for Calculus 237 received.',
+    timestamp: '2 hours ago',
+    type: _NotificationType.info,
+  ),
+  _EducatorNotification(
+    title: 'Parent Meeting Scheduled',
+    subtitle: 'Carla Jay O. Rimera - Tomorrow at 3:00 PM.',
+    timestamp: 'Yesterday',
+    type: _NotificationType.info,
+  ),
+];
 
 class _NotificationDialog extends StatelessWidget {
   const _NotificationDialog({
     required this.notifications,
-    required this.allNotifications,
     required this.isFull,
     required this.onClose,
     required this.onToggle,
   });
 
-  final List<Map<String, dynamic>> notifications;
-  final List<Map<String, dynamic>> allNotifications;
+  final List<_EducatorNotification> notifications;
   final bool isFull;
   final VoidCallback onClose;
   final VoidCallback onToggle;
@@ -131,7 +134,7 @@ class _NotificationDialog extends StatelessWidget {
                 itemCount: notifications.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
-                  final item = _EducatorNotification.fromMap(notifications[index]);
+                  final item = notifications[index];
                   return _NotificationTile(item: item);
                 },
               ),

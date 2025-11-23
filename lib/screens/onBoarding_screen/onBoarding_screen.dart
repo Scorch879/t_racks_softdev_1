@@ -213,14 +213,14 @@ bool _isLoading = false;
 
         if (mounted) {
           //If the onboarding is successfull
-          showCustomSnackBar(context, "Profile saved successfully!");
+          showCustomSnackBar(context, "Profile saved successfully!", isError: false);
 
           ///If student, register face and voice here later
           ///
           ///
           
           /// For now, redirect to educator or student
-          Navigator.pushReplacement(
+          Navigator.pushReplacementNamed(
             context,
             MaterialPageRoute(
               builder: (context) => (widget.role == 'student')

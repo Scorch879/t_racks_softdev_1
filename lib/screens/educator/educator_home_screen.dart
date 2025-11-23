@@ -1,68 +1,71 @@
 import 'package:flutter/material.dart';
-import 'package:t_racks_softdev_1/screens/educator/educator_background.dart';
-import 'package:t_racks_softdev_1/screens/educator/educator_view_model.dart';
+import 'package:t_racks_softdev_1/services/educator_service.dart';
+import 'package:t_racks_softdev_1/services/educator_notification_service.dart';
 
-// Content-only widget for use in EducatorShell
-class EducatorHomeContent extends StatefulWidget {
-  const EducatorHomeContent({super.key});
+class EducatorHomeScreen extends StatefulWidget {
+  const EducatorHomeScreen({super.key});
 
   @override
-  State<EducatorHomeContent> createState() => _EducatorHomeContentState();
+  State<EducatorHomeScreen> createState() => _EducatorHomeScreenState();
 }
 
-class _EducatorHomeContentState extends State<EducatorHomeContent> {
+class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
   String selectedClass = 'All Classes';
-  List<Map<String, dynamic>> _classes = [];
-  Map<String, String> _attendanceSummary = {
-    'present': '-',
-    'absent': '-',
-    'rate': '-',
-    'late': '-',
-  };
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadData();
-  }
-
-  Future<void> _loadData() async {
-    final classes = await EducatorViewModel.getClasses();
-    final summary = await EducatorViewModel.getAttendanceSummary();
-    if (mounted) {
-      setState(() {
-        _classes = classes;
-        _attendanceSummary = summary;
-        _isLoading = false;
-      });
-    }
-  }
+  int currentNavIndex = 0;
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    return EducatorBackground(
-      child: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              const SizedBox(height: 16),
-              _buildSelectClassSection(),
-              const SizedBox(height: 16),
-              _buildSummaryCards(),
-              if (selectedClass != 'All Classes') ...[
-                const SizedBox(height: 16),
-                _buildTodaysAttendanceSection(),
-              ],
-              const SizedBox(height: 16),
-            ],
-          ),
-        ),
+    EducatorNotificationService.register(context);
+    return Scaffold(
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(64),
+        child: _TopBar(),
       ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Color(0xFF194B61),
+                    Color(0xFF2A7FA3),
+                    Color(0xFF267394),
+                    Color(0xFF349BC7),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+              child: Opacity(
+                opacity: 0.3,
+                child: Image.asset(
+                  'assets/images/squigglytexture.png',
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  const SizedBox(height: 16),
+                  _buildSelectClassSection(),
+                  const SizedBox(height: 16),
+                  _buildSummaryCards(),
+                  if (selectedClass != 'All Classes') ...[
+                    const SizedBox(height: 16),
+                    _buildTodaysAttendanceSection(),
+                  ],
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+      bottomNavigationBar: _buildBottomNavBar(      ),
     );
   }
 
@@ -71,23 +74,35 @@ class _EducatorHomeContentState extends State<EducatorHomeContent> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF194B61),
-        borderRadius: BorderRadius.circular(16),
+        color: const Color(0xFF0C3343),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: const Color(0xFFB4B4B4).withOpacity(1),
+          width: 0.7,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 5,
+            offset: const Offset(0, 0),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween, // Align header and menu icon
             children: [
               const Text(
                 'Select Class',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
+                  fontFamily: 'Rubik',
                   color: Colors.white,
                 ),
               ),
-              const SizedBox(width: 8),
               IconButton(
                 icon: const Icon(Icons.menu, color: Colors.white),
                 onPressed: () {},
@@ -95,12 +110,17 @@ class _EducatorHomeContentState extends State<EducatorHomeContent> {
             ],
           ),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          // CHANGED: Wrap -> Column to allow full-width stretching
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch, // This stretches buttons to fill width
             children: [
-              _buildClassButton('All Classes', _classes.fold(0, (sum, item) => sum + (item['students'] as int)), selectedClass == 'All Classes'),
-              ..._classes.map((c) => _buildClassButton(c['name'], c['students'], selectedClass == c['name'])),
+              _buildClassButton('All Classes', 72, selectedClass == 'All Classes'),
+              const SizedBox(height: 8), // Add spacing between buttons
+              _buildClassButton('Calculus 137', 28, selectedClass == 'Calculus 137'),
+              const SizedBox(height: 8),
+              _buildClassButton('Physics 138', 38, selectedClass == 'Physics 138'),
+              const SizedBox(height: 8),
+              _buildClassButton('Calculus 237', 18, selectedClass == 'Calculus 237'),
             ],
           ),
         ],
@@ -115,28 +135,44 @@ class _EducatorHomeContentState extends State<EducatorHomeContent> {
           selectedClass = className;
         });
       },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        // margin: const EdgeInsets.only(bottom: 8), // Optional: Move spacing here if preferred
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), // Increased vertical padding slightly
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF66BB6A) : const Color(0xFF388E3C),
+          color: isSelected ? const Color(0xFF3AB389) : const Color(0xFF277D5F).withOpacity(0.8),
           borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.25),
+              blurRadius: 4,
+              offset: isSelected ? const Offset(0, 0) : const Offset(0, 4),
+            ),
+          ],
         ),
+        transform: isSelected ? (Matrix4.identity()..scale(1.03)) : Matrix4.identity(),
+        transformAlignment: FractionalOffset.center,
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          // REMOVED: mainAxisSize: MainAxisSize.min (This was preventing full width)
           children: [
             Text(
               className,
               style: const TextStyle(
                 color: Colors.white,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500, // Slightly bolder for readability
+                fontSize: 15,
               ),
             ),
-            const SizedBox(width: 8),
+            
+            // ADDED: Spacer pushes the next child to the far right
+            const Spacer(), 
+            
             Text(
               '$studentCount students',
               style: const TextStyle(
                 color: Colors.white70,
-                fontSize: 12,
+                fontSize: 15,
               ),
             ),
           ],
@@ -155,8 +191,8 @@ class _EducatorHomeContentState extends State<EducatorHomeContent> {
               Expanded(
                 child: _buildSummaryCard(
                   icon: Icons.verified_user,
-                  iconColor: const Color(0xFF4CAF50),
-                  value: _attendanceSummary['present']!,
+                  iconColor: const Color(0xFF68D080),
+                  value: '68',
                   label: 'Present Today',
                 ),
               ),
@@ -164,8 +200,8 @@ class _EducatorHomeContentState extends State<EducatorHomeContent> {
               Expanded(
                 child: _buildSummaryCard(
                   icon: Icons.person_off,
-                  iconColor: Colors.red,
-                  value: _attendanceSummary['absent']!,
+                  iconColor: const Color(0xFFE54E4E),
+                  value: '4',
                   label: 'Absent Today',
                 ),
               ),
@@ -177,8 +213,8 @@ class _EducatorHomeContentState extends State<EducatorHomeContent> {
               Expanded(
                 child: _buildSummaryCard(
                   icon: Icons.check_circle,
-                  iconColor: const Color(0xFF4CAF50),
-                  value: _attendanceSummary['rate']!,
+                  iconColor: const Color(0xFF4994B5),
+                  value: '94%',
                   label: 'Attendance Rate',
                 ),
               ),
@@ -186,8 +222,8 @@ class _EducatorHomeContentState extends State<EducatorHomeContent> {
               Expanded(
                 child: _buildSummaryCard(
                   icon: Icons.access_time,
-                  iconColor: Colors.amber,
-                  value: _attendanceSummary['late']!,
+                  iconColor: const Color(0xFFCED04F),
+                  value: '3',
                   label: 'Late Arrival',
                 ),
               ),
@@ -205,34 +241,54 @@ class _EducatorHomeContentState extends State<EducatorHomeContent> {
     required String label,
   }) {
     return AspectRatio(
-      aspectRatio: 1.0,
+      aspectRatio: 1.0, // Keeps the card square
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF194B61),
-          borderRadius: BorderRadius.circular(16),
+          color: const Color(0xFF0C3343),
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(
+            color: const Color(0xFFB4B4B4).withOpacity(1),
+            width: 0.7,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.25),
+              blurRadius: 5,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: iconColor, size: 32),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+            Padding(
+              padding: const EdgeInsets.only(left: 0.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(icon, color: iconColor, size: 32),
+                  const SizedBox(height: 15),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      height: 1.0,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.white70,
-              ),
-              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -241,18 +297,30 @@ class _EducatorHomeContentState extends State<EducatorHomeContent> {
   }
 
   Widget _buildTodaysAttendanceSection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0C3343),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: const Color(0xFFB4B4B4).withOpacity(1),
+          width: 0.7,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 5,
+            offset: const Offset(0, 0),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.person,
-                color: Color(0xFF424242),
-                size: 24,
-              ),
+              const Icon(Icons.person, color: Colors.white, size: 46.6),
               const SizedBox(width: 8),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -260,23 +328,23 @@ class _EducatorHomeContentState extends State<EducatorHomeContent> {
                   const Text(
                     "Today's Attendance",
                     style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF424242),
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
                     ),
                   ),
                   Text(
                     selectedClass,
                     style: const TextStyle(
                       fontSize: 14,
-                      color: Color(0xFF424242),
+                      color: Color.fromARGB(255, 255, 255, 255),
                     ),
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _buildStudentList(),
         ],
       ),
@@ -284,17 +352,13 @@ class _EducatorHomeContentState extends State<EducatorHomeContent> {
   }
 
   Widget _buildStudentList() {
-    // Find the selected class
-    final classData = _classes.firstWhere(
-      (c) => c['name'] == selectedClass,
-      orElse: () => {},
-    );
-
-    if (classData.isEmpty || classData['studentsList'] == null) {
-      return const Text('No students found.');
-    }
-
-    final students = (classData['studentsList'] as List).cast<Map<String, String>>();
+    final students = [
+      {'name': 'Carla Jay D. Rimera', 'time': '8:00 AM', 'status': 'Late'},
+      {'name': 'Mama Merto Rodigo', 'time': '8:00 AM', 'status': 'Absent'},
+      {'name': 'One Pablo Reinstal..', 'time': '8:00 AM', 'status': 'Present'},
+      {'name': 'Joaquin De Coco', 'time': '8:00 AM', 'status': 'Present'},
+      {'name': 'Zonrox D. Color', 'time': '8:00 AM', 'status': 'Present'},
+    ];
 
     return Column(
       children: students.map((student) {
@@ -315,13 +379,13 @@ class _EducatorHomeContentState extends State<EducatorHomeContent> {
     Color statusColor;
     switch (status) {
       case 'Present':
-        statusColor = const Color(0xFF4CAF50);
+        statusColor = const Color(0xFF7FE26B);
         break;
       case 'Absent':
-        statusColor = Colors.red;
+        statusColor = const Color(0xFFFA8989);
         break;
       case 'Late':
-        statusColor = Colors.orange;
+        statusColor = const Color(0xFFFF9155);
         break;
       default:
         statusColor = Colors.grey;
@@ -333,8 +397,19 @@ class _EducatorHomeContentState extends State<EducatorHomeContent> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color(0xFFD0D0D0),
+          color: const Color(0xFF32657D),
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+          color: const Color(0xFFC8C8C8).withOpacity(1),
+          width: 0.7,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 3,
+            offset: const Offset(0, 0),
+          ),
+        ],
         ),
         child: Row(
           children: [
@@ -356,16 +431,17 @@ class _EducatorHomeContentState extends State<EducatorHomeContent> {
                     name,
                     style: const TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF424242),
+                      fontWeight: FontWeight.w400,
+                      color: Color.fromARGB(255, 255, 255, 255),
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     time,
                     style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF757575),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFFBABABA),
                     ),
                   ),
                 ],
@@ -378,13 +454,17 @@ class _EducatorHomeContentState extends State<EducatorHomeContent> {
                 decoration: BoxDecoration(
                   color: statusColor,
                   borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                  color: const Color(0xFFB4B4B4).withOpacity(1),
+                  width: 0.7,
+                  ),
                 ),
                 child: Text(
                   status,
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: Color(0xFF253F4C),
                     fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
@@ -395,4 +475,133 @@ class _EducatorHomeContentState extends State<EducatorHomeContent> {
     );
   }
 
+  Widget _buildBottomNavBar() {
+    return Container(
+      padding: const EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 10,
+        bottom: 20,
+      ),
+      decoration: const BoxDecoration(color: Colors.white),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildNavItem(Icons.home, 0),
+          _buildNavItem(Icons.calendar_today, 1),
+          _buildNavItem(Icons.upload_file, 2),
+          _buildNavItem(Icons.settings, 3),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavItem(IconData icon, int index) {
+    final isSelected = currentNavIndex == index;
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () {
+        setState(() {
+          currentNavIndex = index;
+        });
+        EducatorService.handleNavigationTap(context, index);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF93C0D3) : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        transform: isSelected ? (Matrix4.identity()..scale(1.1)) : Matrix4.identity(),
+        transformAlignment: FractionalOffset.center,
+        child: Icon(
+          icon,
+          color: Colors.black87,
+          size: 24,
+        ),
+      ),
+    );
+  }
+}
+
+class _TopBar extends StatelessWidget {
+  const _TopBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      centerTitle: false,
+      titleSpacing: 0,
+      title: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: const Color(0xFFB7C5C9),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Teacher',
+                    style: TextStyle(
+                      color: Colors.black87,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    'Teacher',
+                    style: TextStyle(
+                      color: Colors.black54,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                IconButton(
+                  iconSize: 23,
+                  onPressed: EducatorNotificationService.onNotificationsPressed,
+                  icon: const Icon(Icons.notifications_none_rounded),
+                  color: Colors.black87,
+                ),
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(2.5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF167C94),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    child: const Text(
+                      '1',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
