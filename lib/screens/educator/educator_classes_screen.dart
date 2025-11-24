@@ -25,7 +25,7 @@ class _EducatorClassesContentState extends State<EducatorClassesContent> {
         children: [
           const SizedBox(height: 16),
           _buildSummaryCards(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24), // Increased spacing to separate sections
           _buildMyClassesSection(),
           const SizedBox(height: 16),
         ],
@@ -40,8 +40,8 @@ class _EducatorClassesContentState extends State<EducatorClassesContent> {
         children: [
           Expanded(
             child: _buildSummaryCard(
-              icon: Icons.bookmark,
-              iconColor: const Color(0xFF4CAF50),
+              icon: Icons.book, // Changed to Book icon to match image
+              iconColor: const Color(0xFF68D080),
               value: '3',
               label: 'Total Classes',
             ),
@@ -50,7 +50,7 @@ class _EducatorClassesContentState extends State<EducatorClassesContent> {
           Expanded(
             child: _buildSummaryCard(
               icon: Icons.bar_chart,
-              iconColor: const Color(0xFF4CAF50),
+              iconColor: const Color(0xFF68D080),
               value: '92%',
               label: 'Avg. Attendance',
             ),
@@ -67,32 +67,48 @@ class _EducatorClassesContentState extends State<EducatorClassesContent> {
     required String label,
   }) {
     return Container(
+      height: 140, // Fixed height to match aspect ratio
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF194B61),
-        borderRadius: BorderRadius.circular(16),
+        color: const Color(0xFF0C3343),
+        borderRadius: BorderRadius.circular(20), // More rounded corners
+        border: Border.all(
+          color: const Color(0xFFBDBBBB),
+          width: 0.75,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(icon, color: iconColor, size: 32),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.white70,
-            ),
-            textAlign: TextAlign.center,
-          ),
+          Icon(icon, color: iconColor, size: 28),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 32, // Larger font for the number
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Colors.white70,
+                ),
+              ),
+            ],
+          )
         ],
       ),
     );
@@ -101,10 +117,21 @@ class _EducatorClassesContentState extends State<EducatorClassesContent> {
   Widget _buildMyClassesSection() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF194B61),
-        borderRadius: BorderRadius.circular(16),
+        color: const Color(0xFF0C3343),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: const Color(0xFFBDBBBB),
+          width: 0.75,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 5,
+            offset: const Offset(0, 0),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -116,14 +143,14 @@ class _EducatorClassesContentState extends State<EducatorClassesContent> {
                 children: [
                   const Icon(
                     Icons.star,
-                    color: Colors.white,
-                    size: 20,
+                    color: Color(0xFF64B5F6), // Light blue star
+                    size: 24,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   const Text(
                     'My Classes',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
@@ -133,15 +160,16 @@ class _EducatorClassesContentState extends State<EducatorClassesContent> {
               IconButton(
                 icon: const Icon(
                   Icons.add,
-                  color: Color(0xFF4CAF50),
+                  color: Color(0xFF7FE26B), // Matching green color
+                  size: 36,
                 ),
                 onPressed: () {},
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           _buildSearchBar(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 15),
           _buildClassList(),
         ],
       ),
@@ -150,27 +178,30 @@ class _EducatorClassesContentState extends State<EducatorClassesContent> {
 
   Widget _buildSearchBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
       decoration: BoxDecoration(
-        color: Colors.grey[300],
-        borderRadius: BorderRadius.circular(12),
+        color: const Color(0xFF538DAB), // Adjusted to match Figma blue-grey
+        borderRadius: BorderRadius.circular(24), // Pill shape
       ),
       child: Row(
         children: [
           Icon(
             Icons.search,
-            color: Colors.grey[600],
+            color: const Color(0xFF0C3343).withValues(alpha: 0.75),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Expanded(
             child: TextField(
               controller: _searchController,
+              style: const TextStyle(color: Colors.white),
               decoration: const InputDecoration(
                 hintText: 'Search Class',
                 hintStyle: TextStyle(
-                  color: Color(0xFF757575),
+                  color: Colors.white60,
+                  fontSize: 14,
                 ),
                 border: InputBorder.none,
+                isDense: true,
               ),
             ),
           ),
@@ -219,103 +250,101 @@ class _EducatorClassesContentState extends State<EducatorClassesContent> {
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 20),
+        padding: const EdgeInsets.only(left: 40, top: 20, right: 20, bottom: 20),
         decoration: BoxDecoration(
-          color: const Color(0xFF194B61),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.1),
-            width: 1,
-          ),
+          color: const Color(0xFF376375), // Lighter slate blue for cards
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFBDBBBB), width: 0.75),
+          boxShadow: [
+             BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Title
             Text(
               name,
               style: const TextStyle(
-                fontSize: 20,
+                fontSize: 22,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 5),
+            
+            // Stats Row
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Students',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white70,
-                      ),
-                    ),
-                    Text(
-                      '${students}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    const Text(
-                      'Attendance',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white70,
-                      ),
-                    ),
-                    Text(
-                      '${attendance}%',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
+                _buildStatColumn('Students', '$students'),
+                const SizedBox(width: 75), // Gap between stats
+                _buildStatColumn('Attendance', '$attendance%'),
               ],
             ),
-            const SizedBox(height: 12),
+            
+            const SizedBox(height: 5),
+            
+            // Next Schedule
             Text(
               'Next: $next',
               style: const TextStyle(
-                fontSize: 12,
-                color: Colors.white70,
+                fontSize: 15,
+                color: Color(0xFFD5D5D5),
+                fontWeight: FontWeight.w400,
               ),
             ),
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF66BB6A),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  status,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+            
+            const SizedBox(height: 5),
+            
+            // Active Button (Left Aligned now)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF7FE26B), // Lime green from Figma
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                status,
+                style: const TextStyle(
+                  color: Color(0xFF0C3343), // Dark text for contrast
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildStatColumn(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 15,
+            color: Colors.white60,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ],
     );
   }
 }
