@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:t_racks_softdev_1/screens/educator/educator_shell.dart';
 import 'package:t_racks_softdev_1/screens/onBoarding_screen/boarding_screens.dart';
+import 'package:t_racks_softdev_1/screens/student/student_shell_screen.dart';
 import 'package:t_racks_softdev_1/services/onboarding_service.dart';
 
 class OnBoardingScreen extends StatefulWidget {
@@ -218,9 +220,17 @@ bool _isLoading = false;
           ///
           
           /// For now, redirect to educator or student
-          Navigator.pushReplacementNamed(
+          Navigator.pushReplacement(
             context,
-            (widget.role == 'student') ? '/studentHome' : '/educatorHome',
+            MaterialPageRoute(
+              builder: (context) {
+                if (widget.role == 'student') {
+                  return const StudentShellScreen(); // Navigate to StudentShell (temporary educator)
+                } else {
+                  return const EducatorShell(); // Navigate to EducatorShell
+                }
+              },
+            ),
           );
         }
       } on AuthException catch (e) {
