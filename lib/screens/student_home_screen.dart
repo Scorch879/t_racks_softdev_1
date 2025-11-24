@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/student_service.dart';
+import 'package:t_racks_softdev_1/services/camera_service.dart';
+import 'package:t_racks_softdev_1/screens/camera_screen.dart';
 
 const _bgTeal = Color(0xFF167C94);
 const _cardSurface = Color(0xFF173C45);
@@ -11,6 +13,22 @@ const _titleRed = Color(0xFFE57373);
 
 class StudentHomeScreen extends StatelessWidget {
   const StudentHomeScreen({super.key});
+
+  void _navigateToCamera(BuildContext context) {
+    final cameraList = CameraService.instance.cameras;
+
+    if (cameraList.isNotEmpty) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => AttendanceCameraScreen(cameras: cameraList),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error: No camera available.')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,6 +83,21 @@ class StudentHomeScreen extends StatelessWidget {
               ),
             ],
           ),
+          //floating button for camera testing
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () => _navigateToCamera(context),
+            label: Text(
+              "Test Cmaera",
+              style: TextStyle(
+                fontSize: 14 * scale,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            icon: Icon(Icons.camera_alt_rounded, size: 24 * scale),
+            backgroundColor: _accentCyan,
+            foregroundColor: _bgTeal,
+          ),
+
           bottomNavigationBar: _BottomNav(scale: scale),
         );
       },
