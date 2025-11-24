@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/auth_service.dart';
 import 'package:t_racks_softdev_1/screens/login_screen.dart';
+import 'package:t_racks_softdev_1/screens/student/student_profile_screen.dart';
 
 const _bgTeal = Color(0xFF167C94);
 const _cardSurface = Color(0xFF173C45);
@@ -21,7 +22,13 @@ class StudentSettingsContent extends StatefulWidget {
 }
 
 class _StudentSettingsContentState extends State<StudentSettingsContent> {
-  void onProfileSettingsPressed() {}
+  void onProfileSettingsPressed() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const StudentProfileScreen(),
+      ),
+    );
+  }
 
   void onAccountSettingsPressed() {}
 
