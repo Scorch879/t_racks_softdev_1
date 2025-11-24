@@ -3,7 +3,7 @@ import 'package:t_racks_softdev_1/services/auth_service.dart';
 import 'package:t_racks_softdev_1/screens/login_screen.dart';
 import 'package:t_racks_softdev_1/screens/onBoarding_screen/onBoarding_screen.dart';
 import 'package:t_racks_softdev_1/screens/student_home_screen.dart';
-import 'package:t_racks_softdev_1/screens/educator/educator_home_screen.dart';
+import 'package:t_racks_softdev_1/screens/educator/educator_shell.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -62,7 +62,7 @@ class _SplashScreenState extends State<SplashScreen> {
       case AuthNavigationState.educatorHome:
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const EducatorHomeScreen()),
+          MaterialPageRoute(builder: (context) => const EducatorShell()),
         );
         break;
     }
