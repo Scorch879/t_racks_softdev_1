@@ -109,7 +109,7 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
+        color: Colors.white.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -140,12 +140,12 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       decoration: BoxDecoration(
-        color: const Color(0xFF10324A).withOpacity(0.85),
+        color: const Color(0xFF10324A).withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -155,7 +155,7 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
         children: [
           CircleAvatar(
             radius: 24,
-            backgroundColor: Colors.white.withOpacity(0.2),
+            backgroundColor: Colors.white.withValues(alpha: 0.2),
             child: const Icon(Icons.person_outline, color: Colors.white),
           ),
           const SizedBox(width: 14),
@@ -191,4 +191,3 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
     );
   }
 }
-
