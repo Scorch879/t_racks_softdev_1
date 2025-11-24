@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class ForgotPage2 extends StatelessWidget {
   // We receive the list of  controllers from the parent
@@ -40,6 +41,9 @@ class ForgotPage2 extends StatelessWidget {
                   autofocus: index == 0, // Auto-focus the first box on load
                   textAlign: TextAlign.center,
                   keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                  ],
                   maxLength: 1, // Only allow 1 digit
                   style: const TextStyle(
                     fontSize: 24,

@@ -1,7 +1,9 @@
-import 'dart:async'; // Import this for the Timer
 import 'package:flutter/material.dart';
-// We'll create this file next
-import 'package:t_racks_softdev_1/screens/welcome_screen.dart';
+import 'package:t_racks_softdev_1/services/auth_service.dart';
+import 'package:t_racks_softdev_1/screens/login_screen.dart';
+import 'package:t_racks_softdev_1/screens/onBoarding_screen/onBoarding_screen.dart';
+import 'package:t_racks_softdev_1/screens/student_home_screen.dart';
+import 'package:t_racks_softdev_1/screens/educator/educator_shell.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -11,28 +13,63 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  final AuthService _authService = AuthService();
+
   @override
   void initState() {
     super.initState();
-    // Start the timer when the screen is built
-    startTimer();
+    _handleNavigation();
   }
 
-  startTimer() {
-    // Wait for 3 seconds, then run the code inside
-    Timer(const Duration(seconds: 3), () {
-      // Navigate to the Welcome Screen
-      // You'll need to create 'welcome_screen.dart' just like you did this file.
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const WelcomeScreen()),
-      );
-    });
+  Future<void> _handleNavigation() async {
+    // Optional: Add a minimum delay (e.g., 2 seconds) so the logo doesn't flash too fast
+    // We run the delay AND the logic at the same time and wait for both.
+    final results = await Future.wait([
+      _authService.determineInitialPath(),
+      Future.delayed(const Duration(seconds: 2)), 
+    ]);
+
+    if (!mounted) return;
+
+    // The first result from the list is our Navigation State
+    final AuthNavigationState state = results[0] as AuthNavigationState;
+
+    switch (state) {
+      case AuthNavigationState.login:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+        );
+        break;
+
+      case AuthNavigationState.onboarding:
+        // We can fetch the role safely here because we know they are logged in
+        final role = _authService.getCurrentUserRole() ?? 'student'; 
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+              builder: (context) => OnBoardingScreen(role: role)),
+        );
+        break;
+
+      case AuthNavigationState.studentHome:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const StudentHomeScreen()),
+        );
+        break;
+
+      case AuthNavigationState.educatorHome:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const EducatorShell()),
+        );
+        break;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // This is the same UI code from before
     return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
@@ -49,6 +86,9 @@ class _SplashScreenState extends State<SplashScreen> {
                 fontWeight: FontWeight.w600,
               ),
             ),
+            const SizedBox(height: 20),
+            // It is good practice to show a loader while checking the database
+            const CircularProgressIndicator(), 
           ],
         ),
       ),

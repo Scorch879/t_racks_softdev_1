@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:t_racks_softdev_1/services/educator_service.dart';
+import 'package:t_racks_softdev_1/screens/educator/educator_view_model.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_add_student_screen.dart';
 import 'package:t_racks_softdev_1/services/educator_notification_service.dart';
 
@@ -86,10 +86,10 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFF0C3343).withOpacity(0.85),
+        color: const Color(0xFF0C3343).withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: Colors.white.withOpacity(0.15),
+          color: Colors.white.withValues(alpha: 0.15),
           width: 2,
         ),
       ),
@@ -183,7 +183,7 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -232,13 +232,13 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF133A53),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Row(
         children: [
           CircleAvatar(
             radius: 22,
-            backgroundColor: Colors.white.withOpacity(0.1),
+            backgroundColor: Colors.white.withValues(alpha: 0.1),
             child: const Icon(Icons.person_outline, color: Colors.white),
           ),
           const SizedBox(width: 12),
@@ -316,7 +316,7 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
         setState(() {
           currentNavIndex = index;
         });
-        EducatorService.handleNavigationTap(context, index);
+        EducatorViewModel.handleNavigationTap(context, index);
       },
       child: Container(
         padding: const EdgeInsets.all(12),
@@ -418,4 +418,3 @@ class _TopBar extends StatelessWidget {
     );
   }
 }
-

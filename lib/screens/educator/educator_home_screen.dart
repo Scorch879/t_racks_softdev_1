@@ -1,71 +1,31 @@
 import 'package:flutter/material.dart';
-import 'package:t_racks_softdev_1/services/educator_service.dart';
-import 'package:t_racks_softdev_1/services/educator_notification_service.dart';
 
-class EducatorHomeScreen extends StatefulWidget {
-  const EducatorHomeScreen({super.key});
+class EducatorHomeContent extends StatefulWidget {
+  const EducatorHomeContent({super.key});
 
   @override
-  State<EducatorHomeScreen> createState() => _EducatorHomeScreenState();
+  State<EducatorHomeContent> createState() => _EducatorHomeContentState();
 }
 
-class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
+class _EducatorHomeContentState extends State<EducatorHomeContent> {
   String selectedClass = 'All Classes';
-  int currentNavIndex = 0;
 
   @override
   Widget build(BuildContext context) {
-    EducatorNotificationService.register(context);
-    return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(64),
-        child: _TopBar(),
-      ),
-      body: Stack(
+    return SingleChildScrollView(
+      child: Column(
         children: [
-          Positioned.fill(
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Color(0xFF194B61),
-                    Color(0xFF2A7FA3),
-                    Color(0xFF267394),
-                    Color(0xFF349BC7),
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-              ),
-              child: Opacity(
-                opacity: 0.3,
-                child: Image.asset(
-                  'assets/images/squigglytexture.png',
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-          ),
-          SafeArea(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  const SizedBox(height: 16),
-                  _buildSelectClassSection(),
-                  const SizedBox(height: 16),
-                  _buildSummaryCards(),
-                  if (selectedClass != 'All Classes') ...[
-                    const SizedBox(height: 16),
-                    _buildTodaysAttendanceSection(),
-                  ],
-                  const SizedBox(height: 16),
-                ],
-              ),
-            ),
-          ),
+          const SizedBox(height: 16),
+          _buildSelectClassSection(),
+          const SizedBox(height: 16),
+          _buildSummaryCards(),
+          if (selectedClass != 'All Classes') ...[
+            const SizedBox(height: 16),
+            _buildTodaysAttendanceSection(),
+          ],
+          const SizedBox(height: 16),
         ],
       ),
-      bottomNavigationBar: _buildBottomNavBar(      ),
     );
   }
 
@@ -77,12 +37,12 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
         color: const Color(0xFF0C3343),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: const Color(0xFFB4B4B4).withOpacity(1),
+          color: const Color(0xFFB4B4B4).withValues(alpha: 1),
           width: 0.7,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.25),
+            color: Colors.black.withValues(alpha: 0.25),
             blurRadius: 5,
             offset: const Offset(0, 0),
           ),
@@ -92,7 +52,7 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween, // Align header and menu icon
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
                 'Select Class',
@@ -110,12 +70,11 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          // CHANGED: Wrap -> Column to allow full-width stretching
           Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch, // This stretches buttons to fill width
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildClassButton('All Classes', 72, selectedClass == 'All Classes'),
-              const SizedBox(height: 8), // Add spacing between buttons
+              const SizedBox(height: 8),
               _buildClassButton('Calculus 137', 28, selectedClass == 'Calculus 137'),
               const SizedBox(height: 8),
               _buildClassButton('Physics 138', 38, selectedClass == 'Physics 138'),
@@ -138,14 +97,13 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeInOut,
-        // margin: const EdgeInsets.only(bottom: 8), // Optional: Move spacing here if preferred
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), // Increased vertical padding slightly
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF3AB389) : const Color(0xFF277D5F).withOpacity(0.8),
+          color: isSelected ? const Color(0xFF3AB389) : const Color(0xFF277D5F).withValues(alpha: 0.8),
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.25),
+              color: Colors.black.withValues(alpha: 0.25),
               blurRadius: 4,
               offset: isSelected ? const Offset(0, 0) : const Offset(0, 4),
             ),
@@ -154,20 +112,16 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
         transform: isSelected ? (Matrix4.identity()..scale(1.03)) : Matrix4.identity(),
         transformAlignment: FractionalOffset.center,
         child: Row(
-          // REMOVED: mainAxisSize: MainAxisSize.min (This was preventing full width)
           children: [
             Text(
               className,
               style: const TextStyle(
                 color: Colors.white,
-                fontWeight: FontWeight.w500, // Slightly bolder for readability
+                fontWeight: FontWeight.w500,
                 fontSize: 15,
               ),
             ),
-            
-            // ADDED: Spacer pushes the next child to the far right
-            const Spacer(), 
-            
+            const Spacer(),
             Text(
               '$studentCount students',
               style: const TextStyle(
@@ -241,19 +195,19 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
     required String label,
   }) {
     return AspectRatio(
-      aspectRatio: 1.0, // Keeps the card square
+      aspectRatio: 1.0,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: const Color(0xFF0C3343),
           borderRadius: BorderRadius.circular(13),
           border: Border.all(
-            color: const Color(0xFFB4B4B4).withOpacity(1),
+            color: const Color(0xFFB4B4B4).withValues(alpha: 1),
             width: 0.7,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.25),
+              color: Colors.black.withValues(alpha: 0.25),
               blurRadius: 5,
               offset: const Offset(0, 3),
             ),
@@ -304,12 +258,12 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
         color: const Color(0xFF0C3343),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: const Color(0xFFB4B4B4).withOpacity(1),
+          color: const Color(0xFFB4B4B4).withValues(alpha: 1),
           width: 0.7,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.25),
+            color: Colors.black.withValues(alpha: 0.25),
             blurRadius: 5,
             offset: const Offset(0, 0),
           ),
@@ -400,16 +354,16 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
           color: const Color(0xFF32657D),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-          color: const Color(0xFFC8C8C8).withOpacity(1),
-          width: 0.7,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.25),
-            blurRadius: 3,
-            offset: const Offset(0, 0),
+            color: const Color(0xFFC8C8C8).withValues(alpha: 1),
+            width: 0.7,
           ),
-        ],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 3,
+              offset: const Offset(0, 0),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -455,8 +409,8 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
                   color: statusColor,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                  color: const Color(0xFFB4B4B4).withOpacity(1),
-                  width: 0.7,
+                    color: const Color(0xFFB4B4B4).withValues(alpha: 1),
+                    width: 0.7,
                   ),
                 ),
                 child: Text(
@@ -468,136 +422,6 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBottomNavBar() {
-    return Container(
-      padding: const EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 10,
-        bottom: 20,
-      ),
-      decoration: const BoxDecoration(color: Colors.white),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildNavItem(Icons.home, 0),
-          _buildNavItem(Icons.calendar_today, 1),
-          _buildNavItem(Icons.upload_file, 2),
-          _buildNavItem(Icons.settings, 3),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, int index) {
-    final isSelected = currentNavIndex == index;
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: () {
-        setState(() {
-          currentNavIndex = index;
-        });
-        EducatorService.handleNavigationTap(context, index);
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF93C0D3) : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        transform: isSelected ? (Matrix4.identity()..scale(1.1)) : Matrix4.identity(),
-        transformAlignment: FractionalOffset.center,
-        child: Icon(
-          icon,
-          color: Colors.black87,
-          size: 24,
-        ),
-      ),
-    );
-  }
-}
-
-class _TopBar extends StatelessWidget {
-  const _TopBar();
-
-  @override
-  Widget build(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0,
-      centerTitle: false,
-      titleSpacing: 0,
-      title: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: const Color(0xFFB7C5C9),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Teacher',
-                    style: TextStyle(
-                      color: Colors.black87,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    'Teacher',
-                    style: TextStyle(
-                      color: Colors.black54,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                IconButton(
-                  iconSize: 23,
-                  onPressed: EducatorNotificationService.onNotificationsPressed,
-                  icon: const Icon(Icons.notifications_none_rounded),
-                  color: Colors.black87,
-                ),
-                Positioned(
-                  right: 8,
-                  top: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(2.5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF167C94),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 1.5),
-                    ),
-                    child: const Text(
-                      '1',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
             ),
           ],
         ),
