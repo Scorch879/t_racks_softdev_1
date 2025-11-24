@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:t_racks_softdev_1/services/auth_service.dart';
+import 'package:t_racks_softdev_1/screens/login_screen.dart';
 
 const _bgTeal = Color(0xFF167C94);
 const _cardSurface = Color(0xFF173C45);
@@ -24,6 +26,33 @@ class _StudentSettingsContentState extends State<StudentSettingsContent> {
   void onAccountSettingsPressed() {}
 
   void onDeleteAccountPressed() {}
+
+  void onLogoutPressed() {
+    showDialog(
+      context: context,
+      builder: (context) => _LogoutDialog(
+        onConfirm: _handleLogout,
+      ),
+    );
+  }
+
+  Future<void> _handleLogout() async {
+    try {
+      await AuthService().signOut();
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error logging out: $e')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,7 +96,7 @@ class _StudentSettingsContentState extends State<StudentSettingsContent> {
                           radius: cardRadius,
                           onProfileSettingsPressed: onProfileSettingsPressed,
                           onAccountSettingsPressed: onAccountSettingsPressed,
-                          onDeleteAccountPressed: onDeleteAccountPressed,
+                          onLogoutPressed: onLogoutPressed,
                         ),
                       ],
                     ),
@@ -88,13 +117,13 @@ class _SettingsCard extends StatefulWidget {
     required this.radius,
     required this.onProfileSettingsPressed,
     required this.onAccountSettingsPressed,
-    required this.onDeleteAccountPressed,
+    required this.onLogoutPressed,
   });
   final double scale;
   final double radius;
   final VoidCallback onProfileSettingsPressed;
   final VoidCallback onAccountSettingsPressed;
-  final VoidCallback onDeleteAccountPressed;
+  final VoidCallback onLogoutPressed;
 
   @override
   State<_SettingsCard> createState() => _SettingsCardState();
@@ -146,11 +175,11 @@ class _SettingsCardState extends State<_SettingsCard> {
             ),
             SizedBox(height: 14 * scale),
             _SettingsPill(
-              label: 'Delete Account',
-              icon: Icons.person_off,
+              label: 'Log Out',
+              icon: Icons.logout_rounded,
               color: _statusRed,
               scale: scale,
-              onTap: widget.onDeleteAccountPressed,
+              onTap: widget.onLogoutPressed,
             ),
           ],
         ),
@@ -293,3 +322,96 @@ class _CardBackgroundState extends State<_CardBackground> {
   }
 }
 
+
+class _LogoutDialog extends StatelessWidget {
+  const _LogoutDialog({required this.onConfirm});
+
+  final VoidCallback onConfirm;
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      backgroundColor: Colors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Logging Out',
+              style: TextStyle(
+                color: _statusRed,
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'You’re about to be logged out.\nAre you sure to continue?',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Color(0xFF1A2B3C),
+                fontSize: 16,
+                height: 1.5,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 32),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 52,
+                    child: OutlinedButton(
+                      onPressed: onConfirm,
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFFBFD5E3)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        foregroundColor: const Color(0xFF1A2B3C),
+                      ),
+                      child: const Text(
+                        'Yes',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: SizedBox(
+                    height: 52,
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFFBFD5E3)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        foregroundColor: const Color(0xFF1A2B3C),
+                      ),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
