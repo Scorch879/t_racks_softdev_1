@@ -18,6 +18,10 @@ class _StudentClassScreenState extends State<StudentClassScreen> {
   ClassNavTab _currentTab = ClassNavTab.classes;
 
   void _onTabChanged(ClassNavTab tab) {
+    if (tab == ClassNavTab.classes) {
+      Navigator.of(context).pop();
+      return;
+    }
     if (_currentTab != tab) {
       setState(() {
         _currentTab = tab;
