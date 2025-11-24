@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/student_service.dart';
-import 'package:t_racks_softdev_1/screens/face_detection_test_screen.dart';
 
 const _bgTeal = Color(0xFF167C94);
 const _cardSurface = Color(0xFF173C45);
@@ -11,11 +10,7 @@ const _statusRed = Color(0xFFDA6A6A);
 const _titleRed = Color(0xFFE57373);
 
 class StudentHomeScreen extends StatelessWidget {
-
-
   const StudentHomeScreen({super.key});
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +22,7 @@ class StudentHomeScreen extends StatelessWidget {
         final horizontalPadding = 16.0 * scale;
         final cardRadius = 16.0 * scale;
 
-    return Scaffold(
+        return Scaffold(
           backgroundColor: _bgTeal,
           appBar: PreferredSize(
             preferredSize: Size.fromHeight(64 * scale),
@@ -57,7 +52,10 @@ class StudentHomeScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _WelcomeAndOngoingCard(scale: scale, radius: cardRadius),
+                        _WelcomeAndOngoingCard(
+                          scale: scale,
+                          radius: cardRadius,
+                        ),
                         SizedBox(height: 16 * scale),
                         _MyClassesCard(scale: scale, radius: cardRadius),
                       ],
@@ -68,20 +66,6 @@ class StudentHomeScreen extends StatelessWidget {
             ],
           ),
           bottomNavigationBar: _BottomNav(scale: scale),
-          // Temporary floating action button for face detection test
-          floatingActionButton: FloatingActionButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const FaceDetectionTestScreen(),
-                ),
-              );
-            },
-            backgroundColor: Colors.orange,
-            child: const Icon(Icons.face_retouching_natural, color: Colors.white),
-            tooltip: 'Test Face Detection',
-          ),
         );
       },
     );
@@ -119,16 +103,16 @@ class _WelcomeAndOngoingCard extends StatelessWidget {
                 SizedBox(height: 4 * scale),
                 Text(
                   "Today's Status",
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12 * scale,
-                  ),
+                  style: TextStyle(color: Colors.white70, fontSize: 12 * scale),
                 ),
                 SizedBox(height: 12 * scale),
                 Row(
                   children: [
-                    Icon(Icons.person_off_outlined,
-                        color: _titleRed, size: 28 * scale),
+                    Icon(
+                      Icons.person_off_outlined,
+                      color: _titleRed,
+                      size: 28 * scale,
+                    ),
                     SizedBox(width: 8 * scale),
                     Text(
                       'Absent',
@@ -157,7 +141,10 @@ class _WelcomeAndOngoingCard extends StatelessWidget {
           ),
           Container(
             width: double.infinity,
-            padding: EdgeInsets.symmetric(horizontal: 16 * scale, vertical: 10 * scale),
+            padding: EdgeInsets.symmetric(
+              horizontal: 16 * scale,
+              vertical: 10 * scale,
+            ),
             decoration: const BoxDecoration(color: _cardHeader),
             child: Text(
               'Ongoing Class',
@@ -342,11 +329,7 @@ class _MyClassesCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.menu_rounded,
-                  color: _accentCyan,
-                  size: 24 * scale,
-                ),
+                Icon(Icons.menu_rounded, color: _accentCyan, size: 24 * scale),
                 SizedBox(width: 10 * scale),
                 Expanded(
                   child: Text(
@@ -481,7 +464,10 @@ class _ClassRow extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 16 * scale, vertical: 16 * scale),
+        padding: EdgeInsets.symmetric(
+          horizontal: 16 * scale,
+          vertical: 16 * scale,
+        ),
         decoration: BoxDecoration(
           color: statusColor,
           borderRadius: BorderRadius.circular(22 * scale),
@@ -551,12 +537,7 @@ class _CardContainer extends StatelessWidget {
         ],
       ),
       clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          if (background != null) background!,
-          child,
-        ],
-      ),
+      child: Stack(children: [if (background != null) background!, child]),
     );
   }
 }
