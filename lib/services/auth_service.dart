@@ -1,17 +1,13 @@
+import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:t_racks_softdev_1/commonWidgets/show_snackbar.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
+import 'package:t_racks_softdev_1/screens/login_screen.dart';
 
-enum AuthNavigationState {
-  login,
-  onboarding,
-  studentHome,
-  educatorHome,
-}
+enum AuthNavigationState { login, onboarding, studentHome, educatorHome }
 
 class AuthService {
-
-
   final _supabase = Supabase.instance.client;
 
   // This is the deep link you set up in AndroidManifest.xml
@@ -85,19 +81,38 @@ class AuthService {
     }
   }
 
-  //Sign Out Service
+  //Sign Out Services
   Future<void> signOut() async {
-    await _supabase.auth.signOut();
+    try {
+      await _supabase.auth.signOut();
+    } catch (e) {
+      rethrow;
+    }
   }
 
-  Future<void> forgotPassword({
-    required String email,
-  }) async {
+  /// Handles the complete logout flow including navigation.
+  Future<void> logoutAndNavigateToLogin(BuildContext context) async {
     try {
-      await _supabase.auth.resetPasswordForEmail(
-        email,
-        redirectTo: _deepLink,
-      );
+      await signOut();
+      // Check if the widget is still in the tree before navigating
+      if (context.mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      // Check if the widget is still in the tree before showing a snackbar
+      if (context.mounted) {
+        showCustomSnackBar(context, 'Error logging out: $e');
+      }
+    }
+  }
+
+  ///
+  Future<void> forgotPassword({required String email}) async {
+    try {
+      await _supabase.auth.resetPasswordForEmail(email, redirectTo: _deepLink);
     } catch (e) {
       rethrow;
     }
@@ -124,9 +139,7 @@ class AuthService {
   /// Updates the user's password after a successful OTP verification.
   Future<void> updateUserPassword({required String newPassword}) async {
     try {
-      await _supabase.auth.updateUser(
-        UserAttributes(password: newPassword),
-      );
+      await _supabase.auth.updateUser(UserAttributes(password: newPassword));
     } catch (e) {
       rethrow;
     }
@@ -153,7 +166,7 @@ class AuthService {
 
       // Logic: User is logged in. Check Profile & Role.
       final bool didOnboarding = await DatabaseService().checkProfileExists();
-      
+
       if (!didOnboarding) {
         return AuthNavigationState.onboarding;
       }
@@ -168,13 +181,12 @@ class AuthService {
       // Fallback for unknown roles
       await _supabase.auth.signOut();
       return AuthNavigationState.login;
-
     } catch (e) {
       // Safety net: if anything crashes, go to login
       return AuthNavigationState.login;
     }
   }
-  
+
   // Helper to get current role (useful for passing to Onboarding screen)
   String? getCurrentUserRole() {
     return _supabase.auth.currentUser?.userMetadata?['role'];
