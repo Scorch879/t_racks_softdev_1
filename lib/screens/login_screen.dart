@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
 import 'package:t_racks_softdev_1/screens/onBoarding_screen/onBoarding_screen.dart';
 import 'package:t_racks_softdev_1/screens/register_screen.dart';
-import 'package:t_racks_softdev_1/screens/student_home_screen.dart';
+import 'package:t_racks_softdev_1/screens/student/student_home_screen.dart';
+import 'package:t_racks_softdev_1/screens/student/student_shell_screen.dart';
 import 'package:t_racks_softdev_1/services/auth_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_shell.dart';
@@ -62,7 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
             case 'student':
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) => StudentHomeScreen()),
+                MaterialPageRoute(builder: (context) => StudentShellScreen()),
               );
               break;
             case 'educator':

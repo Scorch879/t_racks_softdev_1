@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:t_racks_softdev_1/services/auth_service.dart';
-import 'package:t_racks_softdev_1/screens/login_screen.dart';
-import 'package:t_racks_softdev_1/screens/onBoarding_screen/onBoarding_screen.dart';
-import 'package:t_racks_softdev_1/screens/student_home_screen.dart';
+import 'package:t_racks_softdev_1/screens/student/student_shell_screen.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_shell.dart';
+import 'package:t_racks_softdev_1/screens/welcome_screen.dart';
+import 'package:t_racks_softdev_1/services/auth_service.dart';
+import 'package:t_racks_softdev_1/screens/onBoarding_screen/onBoarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -38,7 +38,7 @@ class _SplashScreenState extends State<SplashScreen> {
       case AuthNavigationState.login:
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          MaterialPageRoute(builder: (context) => const WelcomeScreen()),
         );
         break;
 
@@ -55,7 +55,7 @@ class _SplashScreenState extends State<SplashScreen> {
       case AuthNavigationState.studentHome:
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const StudentHomeScreen()),
+          MaterialPageRoute(builder: (context) => const StudentShellScreen()),
         );
         break;
 
