@@ -10,16 +10,23 @@ class EducatorSettingsContent extends StatefulWidget {
 class _EducatorSettingsContentState extends State<EducatorSettingsContent> {
   @override
   Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    // Approximate top bar (64) and bottom nav (80) to ensure content
+    // fills the available viewport when content is short.
+    final availableHeight = media.size.height - media.padding.top - 64 - 80;
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(height: 16),
-          _buildSettingsCard(),
-          const SizedBox(height: 24),
-        ],
-      ),
+      child: ConstrainedBox( // y tf was this not in dev?
+      constraints: BoxConstraints(minHeight: availableHeight),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 16),
+            _buildSettingsCard(),
+            const SizedBox(height: 24),
+          ],
+        ),
+      )
     );
   }
 
