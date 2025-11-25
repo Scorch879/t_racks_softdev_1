@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:t_racks_softdev_1/screens/splash_screen.dart';
-import 'package:t_racks_softdev_1/screens/student_home_screen.dart';
+import 'package:t_racks_softdev_1/screens/student/student_home_screen.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_shell.dart';
 
 Future<void> main() async {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/auth_service.dart';
 import 'package:t_racks_softdev_1/screens/login_screen.dart';
+import 'package:t_racks_softdev_1/screens/educator/educator_profile_screen.dart';
 
 // Educator Colors
 const _educatorCardSurface = Color(0xFF0F3951);
@@ -118,7 +119,14 @@ class _EducatorSettingsScreenState extends State<EducatorSettingsScreen> {
                   _SettingsCard(
                     scale: scale,
                     radius: cardRadius,
-                    onProfileSettingsPressed: () {},
+                    onProfileSettingsPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const EducatorProfileScreen(),
+                        ),
+                      );
+                    },
                     onAccountSettingsPressed: () {},
                     onLogoutPressed: _handleLogout,
                   ),
