@@ -18,7 +18,7 @@ class _EducatorHomeContentState extends State<EducatorHomeContent> {
     final availableHeight = media.size.height - media.padding.top - 64 - 80;
 
     return SingleChildScrollView(
-      child: ConstrainedBox(
+      child: ConstrainedBox( // y tf was this not in dev?
         constraints: BoxConstraints(minHeight: availableHeight),
         child: Column(
           children: [
