@@ -12,22 +12,59 @@ const double NORM_FACTOR = 255.0;
 class ModelManager {
   Interpreter? _interpreter; //no clue what this is but it holds the model
   bool _isModelLoaded = false;
+  List<String> _labels = [];
 
   bool get isModelLoaded => _isModelLoaded;
+  List<String> get labels => List.unmodifiable(_labels);
 
   Future<void> loadModel() async {
     try {
       _interpreter = await Interpreter.fromAsset('assets/models/model.tflite');
-      print('Model loaded successfully');
+      
+      // Print input/output tensor shapes and types for debugging
+      if (_interpreter != null) {
+        final inputTensors = _interpreter!.getInputTensors();
+        final outputTensors = _interpreter!.getOutputTensors();
+        print('Input tensor shape: ${inputTensors[0].shape}, type: ${inputTensors[0].type}');
+        print('Output tensor shape: ${outputTensors[0].shape}, type: ${outputTensors[0].type}');
+      }
+      
+      await _loadLabels();
+      _isModelLoaded = true;
+      print('Model loaded successfully with ${_labels.length} labels');
     } catch (e) {
       print('Error loading model: $e');
       _isModelLoaded = false;
+      _labels = [];
+    }
+  }
+
+  Future<void> _loadLabels() async {
+    try {
+      final String labelsString =
+          await rootBundle.loadString('assets/models/labels.txt');
+      _labels = labelsString
+          .split('\n')
+          .where((line) => line.trim().isNotEmpty)
+          .map((line) {
+        // Extract label name from format "0 Face (Real Face)" or "0 Label"
+        final parts = line.trim().split(' ');
+        if (parts.length > 1) {
+          return parts.sublist(1).join(' ').trim();
+        }
+        return line.trim();
+      }).toList();
+      print('Labels loaded: $_labels');
+    } catch (e) {
+      print('Error loading labels: $e');
+      _labels = [];
     }
   }
 
   void close() {
     _interpreter?.close();
     _isModelLoaded = false;
+    _labels = [];
   }
 
   Future<List<double>> runInferenceOnCameraImage(
@@ -44,43 +81,63 @@ class ModelManager {
 
     final inputTensor = _preprocessImage(rgbImage);
 
-    var output = List.filled(1 * 2, 0).reshape([1, 2]);
+    // Model outputs 3 classes based on labels.txt:
+    // 0 = Face (Real Face)
+    // 1 = Background (No face)
+    // 2 = Face (Fake)
+    // Use float32 for output (most common for classification models)
+    var output = List.filled(1 * 3, 0.0).reshape([1, 3]);
 
     _interpreter!.run(inputTensor, output);
 
-    return output[0].cast<double>();
+    // Safely convert output to List<double>
+    // Handle both int and double types from the model output
+    final outputList = output[0] as List;
+    return outputList.map((e) {
+      if (e is int) {
+        return e.toDouble();
+      } else if (e is double) {
+        return e;
+      } else {
+        // Fallback: try to parse as double
+        return (e as num).toDouble();
+      }
+    }).toList();
   }
 
-  List<List<List<double>>> _preprocessImage(img.Image image) {
-    // huh
+  List _preprocessImage(img.Image image) {
     final img.Image resizedImage = img.copyResize(
       image,
       width: INPUT_SIZE,
       height: INPUT_SIZE,
     );
 
-    List<List<List<double>>> inputTensor = [[]];
-    List<List<double>> imageMatrix = [];
-    final pixelBytes = resizedImage.getBytes();
-    int pixelIndex = 0;
+    // Create flattened array: [batch*height*width*channels]
+    // Format: RGBRGBRGB... for all pixels
+    // Shape will be [1, 224, 224, 3] when reshaped
+    // Model expects uint8 (0-255), not normalized doubles
+    final int totalSize = 1 * INPUT_SIZE * INPUT_SIZE * 3;
+    final Uint8List flattened = Uint8List(totalSize);
 
+    int index = 0;
     for (int y = 0; y < INPUT_SIZE; y++) {
-      List<double> row = [];
       for (int x = 0; x < INPUT_SIZE; x++) {
-        double r = pixelBytes[pixelIndex] / NORM_FACTOR;
-        double g = pixelBytes[pixelIndex + 1] / NORM_FACTOR;
-        double b = pixelBytes[pixelIndex + 2] / NORM_FACTOR;
+        // Get pixel and extract RGB components from Pixel object
+        final pixel = resizedImage.getPixel(x, y);
+        // Use raw uint8 values (0-255), not normalized doubles
+        final r = pixel.r.toInt();
+        final g = pixel.g.toInt();
+        final b = pixel.b.toInt();
 
-        row.add(r);
-        row.add(g);
-        row.add(b);
-        pixelIndex += 4;
+        // Flatten in order: R, G, B for each pixel
+        flattened[index++] = r;
+        flattened[index++] = g;
+        flattened[index++] = b;
       }
-      imageMatrix.add(row);
     }
 
-    inputTensor[0] = imageMatrix;
-    return inputTensor;
+    // Reshape to [1, 224, 224, 3] - 4D tensor
+    return flattened.reshape([1, INPUT_SIZE, INPUT_SIZE, 3]);
   }
 
   Uint8List _convertBGRAtoRGB(Uint8List bgraBytes) {
@@ -106,15 +163,14 @@ class ModelManager {
         //andoird
         return _convertYUV420ToImage(image);
       } else if (image.format.group == ImageFormatGroup.bgra8888) {
-        //ipone
-
+        // iPhone
         final Uint8List bgraBytes = image.planes[0].bytes;
         final Uint8List rgbBytes = _convertBGRAtoRGB(bgraBytes);
 
         return img.Image.fromBytes(
           width: image.width,
           height: image.height,
-          bytes: image.planes[0].bytes.buffer,
+          bytes: rgbBytes.buffer,
           format: img.Format.uint8,
         );
       }

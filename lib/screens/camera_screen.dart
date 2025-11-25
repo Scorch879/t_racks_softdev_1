@@ -1,6 +1,5 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-// Note: Assuming your ModelManager file is correctly imported here
 import 'package:t_racks_softdev_1/services/tflite_service.dart';
 import 'package:t_racks_softdev_1/services/camera_service.dart';
 
@@ -21,19 +20,15 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
   // Flag to prevent processing frames before the previous one is done
   bool _isDetecting = false;
 
-  // Instance of your ML Model Manager
   final ModelManager _modelManager = ModelManager();
 
-  // State for displaying results
   String _detectionStatus = 'Initializing...';
-  // State to hold the final prediction score
   double _realFaceConfidence = 0.0;
 
   @override
   void initState() {
     super.initState();
 
-    // 1. Load the TFLite model first
     _modelManager
         .loadModel()
         .then((_) {
@@ -41,7 +36,6 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
             setState(() {
               _detectionStatus = 'Model Loaded. Initializing Camera...';
             });
-            // 3. Start the camera stream ONLY if the model loaded successfully
             _initializeCamera();
           }
         })
@@ -76,13 +70,16 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
       frontCamera,
       ResolutionPreset.low, // Lower resolution is faster for ML inference
       enableAudio: false,
+      imageFormatGroup: ImageFormatGroup.yuv420,
     );
 
     _initializeControllerFuture = _controller!
         .initialize()
         .then((_) {
           if (mounted) {
-            setState(() {});
+            setState(() {
+              _detectionStatus = 'Camera Ready. Waiting for face...';
+            });
             if (_modelManager.isModelLoaded) {
               _startImageStream();
             }
@@ -111,20 +108,39 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
           // ACTUAL ML INFERENCE CALL
           final results = await _modelManager.runInferenceOnCameraImage(image);
 
-          // Interpretation (Assuming results[0] is Real Face, results[1] is Fake)
+          // Interpretation based on labels.txt:
+          // results[0] = Face (Real Face)
+          // results[1] = Background (No face)
+          // results[2] = Face (Fake)
           double realFaceScore = results[0];
-          double fakeImageScore = results[1];
+          double backgroundScore = results[1];
+          double fakeImageScore = results[2];
 
           String newStatus = 'Analyzing...';
 
-          if (realFaceScore > 0.8 && realFaceScore > fakeImageScore) {
+          // Find the highest confidence class
+          final maxScore = [
+            realFaceScore,
+            backgroundScore,
+            fakeImageScore,
+          ].reduce((a, b) => a > b ? a : b);
+          final predictedClass = maxScore == realFaceScore
+              ? 0
+              : (maxScore == backgroundScore ? 1 : 2);
+
+          if (predictedClass == 0 && realFaceScore > 0.95) {
             newStatus = 'Status: REAL FACE detected';
             // Stop the stream and potentially navigate/save attendance
-            _controller!.stopImageStream();
+            //_controller!.stopImageStream();
 
             // TODO: Add Firestore/Supabase logic to mark attendance here
-          } else if (fakeImageScore > 0.8 && fakeImageScore > realFaceScore) {
+          } else if (predictedClass == 2 && fakeImageScore > 0.8) {
             newStatus = 'Status: FAKE IMAGE detected!';
+          } else if (predictedClass == 1) {
+            newStatus = 'Status: No face detected (Background)';
+          } else {
+            newStatus =
+                'Status: Analyzing... (Real: ${realFaceScore.toStringAsFixed(2)}, Fake: ${fakeImageScore.toStringAsFixed(2)})';
           }
 
           // Update UI with status and confidence
@@ -135,7 +151,13 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
             });
           }
         } catch (e) {
-          print('Inference Error: $e');
+          // Only log error, don't update UI to avoid spam
+          if (mounted) {
+            // Optionally show error status, but don't spam
+            setState(() {
+              _detectionStatus = 'Error: Inference failed';
+            });
+          }
         } finally {
           // Once processing is complete, reset the flag
           _isDetecting = false;
