@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
 import 'package:t_racks_softdev_1/screens/onBoarding_screen/onBoarding_screen.dart';
 import 'package:t_racks_softdev_1/screens/register_screen.dart';
-import 'package:t_racks_softdev_1/screens/student_home_screen.dart';
+import 'package:t_racks_softdev_1/screens/student/student_shell_screen.dart';
 import 'package:t_racks_softdev_1/services/auth_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_home_screen.dart';
@@ -49,6 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
         _emailController.clear();
         _passwordController.clear();
         hasProfile = await _databaseService.checkProfileExists();
+        if (!mounted) return;
 
         if (hasProfile == false) {
           Navigator.pushReplacement(
@@ -62,7 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
             case 'student':
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) => StudentHomeScreen()),
+                MaterialPageRoute(builder: (context) => const StudentShellScreen()),
               );
               break;
             case 'educator':
@@ -82,9 +83,9 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } on AuthException catch (e) {
       // 4. Handle errors using your global snackbar
-      showCustomSnackBar(context, e.message);
+      if (mounted) showCustomSnackBar(context, e.message);
     } catch (e) {
-      showCustomSnackBar(context, "An unexpected error occurred.");
+      if (mounted) showCustomSnackBar(context, "An unexpected error occurred.");
     }
 
     // 5. Stop loading
@@ -155,8 +156,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           mainAxisAlignment: MainAxisAlignment.start,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                              child: const Text(
+                            const Text(
                                 "Sign in",
                                 style: TextStyle(
                                   fontSize: 40.0,
@@ -164,7 +164,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                   color: Color(0xFF21446D),
                                 ),
                               ),
-                            ),
                             const SizedBox(height: 5),
                             Container(
                               height: 5,
