@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-class EducatorHomeContent extends StatefulWidget {
-  const EducatorHomeContent({super.key});
+class EducatorHomeScreen extends StatefulWidget {
+  const EducatorHomeScreen({super.key});
 
   @override
-  State<EducatorHomeContent> createState() => _EducatorHomeContentState();
+  State<EducatorHomeScreen> createState() => _EducatorHomeScreenState();
 }
 
-class _EducatorHomeContentState extends State<EducatorHomeContent> {
+class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
   String selectedClass = 'All Classes';
 
   @override
@@ -109,7 +109,7 @@ class _EducatorHomeContentState extends State<EducatorHomeContent> {
             ),
           ],
         ),
-        transform: isSelected ? (Matrix4.identity()..scale(1.03)) : Matrix4.identity(),
+        transform: isSelected ? Matrix4.diagonal3Values(1.03, 1.03, 1.03) : Matrix4.identity(),
         transformAlignment: FractionalOffset.center,
         child: Row(
           children: [
