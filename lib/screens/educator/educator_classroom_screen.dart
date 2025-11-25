@@ -32,6 +32,10 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
   @override
   Widget build(BuildContext context) {
     EducatorNotificationService.register(context);
+    final media = MediaQuery.of(context);
+    // Approximate top bar (64) and bottom nav (80) to ensure content
+    // fills the available viewport when content is short.
+    final availableHeight = media.size.height - media.padding.top - 64 - 80;
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(64),
@@ -65,13 +69,16 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 16),
-                  _buildClassroomCard(),
-                  const SizedBox(height: 24),
-                ],
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: availableHeight),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 16),
+                    _buildClassroomCard(),
+                    const SizedBox(height: 24),
+                  ],
+                ),
               ),
             ),
           ),
@@ -85,14 +92,6 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
     final students = widget.students;
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0C3343).withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.15),
-          width: 2,
-        ),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -230,9 +229,19 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF133A53),
+        color: const Color(0xFF0C3343),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(
+          color: const Color(0xFFB4B4B4).withValues(alpha: 1),
+          width: 0.7,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.25),
+            blurRadius: 5,
+            offset: const Offset(0, 0),
+          ),
+        ],
       ),
       child: Row(
         children: [
