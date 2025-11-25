@@ -12,19 +12,27 @@ class _EducatorHomeContentState extends State<EducatorHomeContent> {
 
   @override
   Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    // Approximate top bar (64) and bottom nav (80) to ensure content
+    // fills the available viewport when content is short.
+    final availableHeight = media.size.height - media.padding.top - 64 - 80;
+
     return SingleChildScrollView(
-      child: Column(
-        children: [
-          const SizedBox(height: 16),
-          _buildSelectClassSection(),
-          const SizedBox(height: 16),
-          _buildSummaryCards(),
-          if (selectedClass != 'All Classes') ...[
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: availableHeight),
+        child: Column(
+          children: [
             const SizedBox(height: 16),
-            _buildTodaysAttendanceSection(),
+            _buildSelectClassSection(),
+            const SizedBox(height: 16),
+            _buildSummaryCards(),
+            if (selectedClass != 'All Classes') ...[
+              const SizedBox(height: 16),
+              _buildTodaysAttendanceSection(),
+            ],
+            const SizedBox(height: 16),
           ],
-          const SizedBox(height: 16),
-        ],
+        ),
       ),
     );
   }
