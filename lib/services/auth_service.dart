@@ -149,7 +149,7 @@ class AuthService {
     try {
       // Check "Remember Me"
       final prefs = await SharedPreferences.getInstance();
-      final bool rememberMe = prefs.getBool('remember_me') ?? false;
+      final bool rememberMe = prefs.getBool('remember_me') ?? true;
 
       final session = _supabase.auth.currentSession;
 
