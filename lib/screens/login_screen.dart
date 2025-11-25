@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
 import 'package:t_racks_softdev_1/screens/onBoarding_screen/onBoarding_screen.dart';
 import 'package:t_racks_softdev_1/screens/register_screen.dart';
-import 'package:t_racks_softdev_1/screens/student/student_home_screen.dart';
 import 'package:t_racks_softdev_1/screens/student/student_shell_screen.dart';
 import 'package:t_racks_softdev_1/services/auth_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_shell.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/screens/forgetPassword/forgot_password_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -44,34 +44,41 @@ class _LoginScreenState extends State<LoginScreen> {
         email: email,
         password: password,
       );
+      
 
       // 2. Handle success and navigate based on the role
       if (mounted) {
         _emailController.clear();
         _passwordController.clear();
+        
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('remember_me', _rememberMe);
+
         hasProfile = await _databaseService.checkProfileExists();
+        
 
         if (hasProfile == false) {
-          Navigator.pushReplacement(
-            context,
+          Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(
               builder: (context) => OnBoardingScreen(role: userRole),
             ),
+            (route) => false, // This removes all previous routes
           );
         } else {
           switch (userRole) {
             case 'student':
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => StudentShellScreen()),
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(
+                    builder: (context) => const StudentShellScreen()),
+                (route) => false, // This removes all previous routes
               );
               break;
             case 'educator':
-              Navigator.pushReplacement(
-                context,
+              Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(
                   builder: (context) => const EducatorShell(),
                 ),
+                (route) => false, // This removes all previous routes
               );
               break;
             default:
