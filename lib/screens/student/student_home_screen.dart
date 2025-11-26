@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/shared/global_settings_screen.dart';
 import 'package:t_racks_softdev_1/screens/student/student_class_screen.dart';
+import 'package:t_racks_softdev_1/screens/student/student_camera_screen.dart';
 
 const _bgTeal = Color(0xFF167C94);
 const _cardSurface = Color(0xFF173C45);
@@ -21,11 +22,17 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   DateTime? _lastNavTime;
   static const _navDebounceMs = 300;
 
-  void onOngoingClassStatusPressed() {}
+  void onOngoingClassStatusPressed() {
+    print('onOngoingClassStatusPressed');
+  }
 
-  void onFilterAllClasses() {}
+  void onFilterAllClasses() {
+    print('onFilterAllClasses');
+  }
 
-  void onClassPressed() {}
+  void onClassPressed() {
+    print('onClassPressed');
+  }
 
   void onNotificationsPressed() => _showNotifications(full: false);
 
@@ -53,10 +60,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     if (_isNavigating()) return;
 
     try {
-      // Debug: indicate handler was triggered
-      // This helps confirm whether the tap is reaching this callback
-      // Visible briefly as a SnackBar and logged in debug console
-      // ignore: avoid_print
       print('onNavSchedule called');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Navigating to Classes...'), duration: Duration(milliseconds: 600)),
@@ -233,7 +236,7 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
     return _CardContainer(
       radius: radius,
       scale: scale,
-      borderColor: const Color(0xFF6AAFBF).withOpacity(0.35),
+      borderColor: Color(0xFF6AAFBF).withValues(alpha: 0.35),
       background: const _CardBackground(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -283,7 +286,7 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
             decoration: BoxDecoration(
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.35),
+                  color: Colors.black.withValues(alpha: 0.35),
                   blurRadius: 12 * scale,
                   offset: Offset(0, 6 * scale),
                 ),
@@ -488,6 +491,12 @@ class _MyClassesCard extends StatefulWidget {
 }
 
 class _MyClassesCardState extends State<_MyClassesCard> {
+  final List<Map<String, dynamic>> _classes = [
+    {'id': '1', 'title': 'Calculus 137', 'status': 'Absent', 'teacher': 'Prof. Smith', 'room': 'Room 101', 'time': '9:00 AM'},
+    {'id': '2', 'title': 'Physics 138', 'status': 'Ongoing', 'teacher': 'Dr. Jones', 'room': 'Lab 3', 'time': '10:00 AM'},
+    {'id': '3', 'title': 'Calculus 237', 'status': 'Upcoming', 'teacher': 'Prof. Smith', 'room': 'Room 202', 'time': '1:00 PM'},
+  ];
+
   @override
   Widget build(BuildContext context) {
     final scale = widget.scale;
@@ -495,7 +504,7 @@ class _MyClassesCardState extends State<_MyClassesCard> {
     return _CardContainer(
       radius: radius,
       scale: scale,
-      borderColor: const Color(0xFF6AAFBF).withOpacity(0.55),
+      borderColor: Color(0xFF6AAFBF).withValues(alpha: 0.55),
       background: const _CardBackground(),
       child: Padding(
         padding: EdgeInsets.all(16 * scale),
@@ -526,37 +535,55 @@ class _MyClassesCardState extends State<_MyClassesCard> {
               scale: scale,
               onTap: widget.onFilterAllClasses,
               title: 'All Classes',
-              trailingText: 'Total: 3',
+              trailingText: 'Total: ${_classes.length}',
               backgroundColor: _chipGreen,
             ),
             SizedBox(height: 16 * scale),
-            _ClassRow(
-              scale: scale,
-              title: 'Calculus 137',
-              statusText: 'Absent',
-              statusColor: _statusRed,
-              onTap: widget.onClassPressed,
-            ),
-            SizedBox(height: 16 * scale),
-            _ClassRow(
-              scale: scale,
-              title: 'Physics 138',
-              statusText: 'Ongoing',
-              statusColor: _chipGreen,
-              onTap: widget.onClassPressed,
-            ),
-            SizedBox(height: 16 * scale),
-            _ClassRow(
-              scale: scale,
-              title: 'Calculus 237',
-              statusText: 'Upcoming',
-              statusColor: _chipGreen,
-              onTap: widget.onClassPressed,
-            ),
+            ..._classes.map((classData) {
+              return Padding(
+                padding: EdgeInsets.only(bottom: 16 * scale),
+                child: _ClassRow(
+                  scale: scale,
+                  title: classData['title'],
+                  status: classData['status'],
+                  teacher: classData['teacher'],
+                  room: classData['room'],
+                  time: classData['time'],
+                  onTap: () => _handleClassTap(classData),
+                ),
+              );
+            }),
           ],
         ),
       ),
     );
+  }
+
+  void _handleClassTap(Map<String, dynamic> classData) {
+    print('Pressed class: ${classData['title']}');
+    print('Class status: ${classData['status']}');
+
+    if (classData['status'] == 'Ongoing') {
+      print('Navigating to CameraScreen');
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => StudentCameraScreen(
+            classId: classData['id'],
+            className: classData['title'],
+          ),
+        ),
+      );
+    } else {
+      print('Showing inactive SnackBar');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('This class is not currently active.'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          backgroundColor: const Color(0xFF1A2B3C),
+        ),
+      );
+    }
   }
 }
 
@@ -595,7 +622,7 @@ class _FilterChipRowState extends State<_FilterChipRow> {
           borderRadius: BorderRadius.circular(22 * scale),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.25),
+              color: Colors.black.withValues(alpha: 0.25),
               blurRadius: 10 * scale,
               offset: Offset(0, 6 * scale),
             ),
@@ -628,67 +655,149 @@ class _FilterChipRowState extends State<_FilterChipRow> {
   }
 }
 
-class _ClassRow extends StatefulWidget {
+class _ClassRow extends StatelessWidget {
   const _ClassRow({
     required this.scale,
     required this.title,
-    required this.statusText,
-    required this.statusColor,
+    required this.status,
+    required this.teacher,
+    required this.room,
+    required this.time,
     required this.onTap,
   });
 
   final double scale;
   final String title;
-  final String statusText;
-  final Color statusColor;
+  final String status;
+  final String teacher;
+  final String room;
+  final String time;
   final VoidCallback onTap;
 
   @override
-  State<_ClassRow> createState() => _ClassRowState();
-}
-
-class _ClassRowState extends State<_ClassRow> {
-  @override
   Widget build(BuildContext context) {
-    final scale = widget.scale;
-    return GestureDetector(
-      onTap: widget.onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 16 * scale, vertical: 16 * scale),
-        decoration: BoxDecoration(
-          color: widget.statusColor,
-          borderRadius: BorderRadius.circular(22 * scale),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.25),
-              blurRadius: 10 * scale,
-              offset: Offset(0, 6 * scale),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                widget.title,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 18 * scale,
+    Color statusColor;
+    Color statusTextColor = const Color(0xFF0C3343);
+    switch (status) {
+      case 'Ongoing':
+        statusColor = const Color(0xFF7FE26B); // Lime Green
+        break;
+      case 'Absent':
+        statusColor = const Color(0xFFFA8989); // Red
+        break;
+      case 'Upcoming':
+        statusColor = const Color(0xFF64B5F6); // Blue
+        break;
+      default:
+        statusColor = Colors.grey;
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF376375),
+        borderRadius: BorderRadius.circular(24 * scale),
+        border: Border.all(color: const Color(0xFFBDBBBB), width: 0.75 * scale),
+        boxShadow: [
+           BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 4 * scale,
+            offset: Offset(0, 2 * scale),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            print('ClassRow tapped: $title');
+            onTap();
+          },
+          child: Padding(
+            padding: EdgeInsets.only(left: 40 * scale, top: 20 * scale, right: 20 * scale, bottom: 20 * scale),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 22 * scale,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
-              ),
+                SizedBox(height: 5 * scale),
+                
+                // Stats Row
+                Row(
+                  children: [
+                    _buildStatColumn('Teacher', teacher, scale),
+                    SizedBox(width: 40 * scale), // Gap
+                    _buildStatColumn('Room', room, scale),
+                  ],
+                ),
+                
+                SizedBox(height: 5 * scale),
+                
+                // Next Schedule (Time)
+                Text(
+                  'Schedule: $time',
+                  style: TextStyle(
+                    fontSize: 15 * scale,
+                    color: const Color(0xFFD5D5D5),
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                
+                SizedBox(height: 5 * scale),
+                
+                // Status Button
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 20 * scale, vertical: 6 * scale),
+                    decoration: BoxDecoration(
+                    color: statusColor,
+                    borderRadius: BorderRadius.circular(20 * scale),
+                    ),
+                    child: Text(
+                      status,
+                      style: TextStyle(
+                      color: statusTextColor,
+                      fontSize: 13 * scale,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            Text(
-              widget.statusText,
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 18 * scale,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildStatColumn(String label, String value, double scale) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 15 * scale,
+            color: Colors.white60,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+        SizedBox(height: 2 * scale),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 18 * scale,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -726,7 +835,7 @@ class _CardContainerState extends State<_CardContainer> {
         border: borderColor != null ? Border.all(color: borderColor) : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.25),
+            color: Colors.black.withValues(alpha: 0.25),
             blurRadius: 10 * scale,
             offset: Offset(0, 6 * scale),
           ),
@@ -754,11 +863,13 @@ class _CardBackgroundState extends State<_CardBackground> {
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
-      child: Opacity(
-        opacity: 0.0,
-        child: Image.asset(
-          'assets/images/squigglytexture.png',
-          fit: BoxFit.cover,
+      child: IgnorePointer(
+        child: Opacity(
+          opacity: 0.0,
+          child: Image.asset(
+            'assets/images/squigglytexture.png',
+            fit: BoxFit.cover,
+          ),
         ),
       ),
     );
@@ -822,84 +933,55 @@ class _BottomNavState extends State<_BottomNav> {
   }
 }
 
-class _BottomItem extends StatefulWidget {
+class _BottomItem extends StatelessWidget {
   const _BottomItem({
     required this.icon,
     required this.label,
     required this.scale,
-    required this.onTap,
     this.isActive = false,
+    required this.onTap,
   });
 
   final IconData icon;
   final String label;
   final double scale;
-  final VoidCallback onTap;
   final bool isActive;
+  final VoidCallback onTap;
 
-  @override
-  State<_BottomItem> createState() => _BottomItemState();
-}
-
-class _BottomItemState extends State<_BottomItem> {
   @override
   Widget build(BuildContext context) {
-    final scale = widget.scale;
-    final Color iconAndTextColor = widget.isActive ? const Color(0xFF167C94) : Colors.black54;
-    
-    return Semantics(
-      label: widget.label,
-      button: true,
-      child: InkWell(
-        onTap: widget.onTap,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(widget.icon, color: iconAndTextColor, size: 28 * scale),
-            SizedBox(height: 4 * scale),
-            Text(
-              widget.label,
-              style: TextStyle(
-                color: iconAndTextColor,
-                fontSize: 12 * scale,
-                fontWeight: widget.isActive ? FontWeight.w600 : FontWeight.w500,
-              ),
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            color: isActive ? _bgTeal : Colors.grey,
+            size: 28 * scale,
+          ),
+          SizedBox(height: 4 * scale),
+          Text(
+            label,
+            style: TextStyle(
+              color: isActive ? _bgTeal : Colors.grey,
+              fontSize: 12 * scale,
+              fontWeight: FontWeight.w600,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-enum _NotificationType { success, warning, info }
-
-class _StudentNotification {
-  const _StudentNotification({
-    required this.title,
-    required this.subtitle,
-    required this.timestamp,
-    required this.type,
-  });
-
-  final String title;
-  final String subtitle;
-  final String timestamp;
-  final _NotificationType type;
-}
-
-const List<_StudentNotification> _notifications = [
+final List<_StudentNotification> _notifications = [
   _StudentNotification(
-    title: 'Assignment Graded',
-    subtitle: 'Calculus 137 - Quiz #3 has been graded',
-    timestamp: '2 minutes ago',
-    type: _NotificationType.success,
-  ),
-  _StudentNotification(
-    title: 'Low Attendance Alert',
-    subtitle: 'Physics 138 attendance below 80%',
+    title: 'Attendance Recorded',
+    subtitle: 'You have successfully recorded your attendance for Physics 138',
     timestamp: '1 hour ago',
-    type: _NotificationType.warning,
+    type: _NotificationType.success,
   ),
   _StudentNotification(
     title: 'New Student Enrolled',
@@ -1046,7 +1128,7 @@ class _NotificationTileState extends State<_NotificationTile> {
         border: Border.all(color: indicator.borderColor),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1A2B3C).withOpacity(0.08),
+            color: Color(0xFF1A2B3C).withValues(alpha: 0.08),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -1148,3 +1230,19 @@ class _Indicator {
   final Color backgroundColor;
   final Color borderColor;
 }
+
+class _StudentNotification {
+  const _StudentNotification({
+    required this.title,
+    required this.subtitle,
+    required this.timestamp,
+    required this.type,
+  });
+
+  final String title;
+  final String subtitle;
+  final String timestamp;
+  final _NotificationType type;
+}
+
+enum _NotificationType { success, warning, info }
