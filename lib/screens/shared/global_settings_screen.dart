@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/auth_service.dart';
-import 'package:t_racks_softdev_1/screens/student/student_profile_screen.dart';
-import 'package:t_racks_softdev_1/screens/educator/educator_profile_screen.dart';
+import 'package:t_racks_softdev_1/screens/shared/global_profile_screen.dart';
 
 // Student Colors
 const _studentBgTeal = Color(0xFF167C94);
@@ -32,9 +31,7 @@ class _GlobalSettingsScreenState extends State<GlobalSettingsScreen> {
   void onProfileSettingsPressed() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => widget.isEducator
-            ? const EducatorProfileScreen()
-            : const StudentProfileScreen(),
+        builder: (context) => GlobalProfileScreen(isEducator: widget.isEducator),
       ),
     );
   }

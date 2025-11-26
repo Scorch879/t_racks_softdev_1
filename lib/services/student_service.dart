@@ -13,6 +13,19 @@ class StudentService {
   static void onFilterAllClasses() {}
   static void onClassPressed() {}
 
+  static Future<Map<String, String>> fetchProfile() async {
+    // Mock data for now
+    await Future.delayed(const Duration(milliseconds: 500));
+    return {
+      'firstName': 'John',
+      'lastName': 'Virtues',
+      'email': 'john.virtues@example.com',
+      'bio': 'Teacher | Plumber | Fireman | Astronaut',
+      'gradeLevel': 'Grade 12',
+      'role': 'Student',
+    };
+  }
+
   static void onNavHome() {
     if (_ctx == null) return;
     if (_isNavigating()) return;

@@ -9,6 +9,7 @@ class EducatorProfileService {
       'lastName': 'Virtues',
       'email': 'john.virtues@example.com',
       'bio': 'Teacher | Plumber | Fireman | Astronaut',
+      'subjectDepartment': 'Mathematics',
       'role': 'Educator',
     };
   }

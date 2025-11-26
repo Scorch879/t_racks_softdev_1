@@ -1,31 +1,48 @@
 import 'package:flutter/material.dart';
-import '../../services/educator_profile_service.dart';
+import 'package:t_racks_softdev_1/services/student_service.dart';
+import 'package:t_racks_softdev_1/services/educator_profile_service.dart';
 
-// Educator Theme Colors
-const _bgDarkBlue = Color(0xFF0F3951);
-const _textCyan = Color(0xFF93C0D3);
+// Student Colors
+const _studentBgTeal = Color(0xFF167C94);
+const _studentHeaderTeal = Color(0xFF1B4A55);
+const _studentTextTeal = Color(0xFF167C94);
+
+// Educator Colors
+const _educatorBgDarkBlue = Color(0xFF0F3951);
+const _educatorTextCyan = Color(0xFF93C0D3);
+
+// Shared Colors
 const _textDarkBlue = Color(0xFF1A2B3C);
 const _borderGrey = Color(0xFFBFD5E3);
 const _statusRed = Color(0xFFDA6A6A);
 
-class EducatorProfileScreen extends StatefulWidget {
-  const EducatorProfileScreen({super.key});
+class GlobalProfileScreen extends StatefulWidget {
+  const GlobalProfileScreen({
+    super.key,
+    required this.isEducator,
+  });
+
+  final bool isEducator;
 
   @override
-  State<EducatorProfileScreen> createState() => _EducatorProfileScreenState();
+  State<GlobalProfileScreen> createState() => _GlobalProfileScreenState();
 }
 
-class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
-  // Logic State
+class _GlobalProfileScreenState extends State<GlobalProfileScreen> {
+  // Controllers
   late TextEditingController _firstNameController;
   late TextEditingController _lastNameController;
   late TextEditingController _emailController;
   late TextEditingController _bioController;
+  late TextEditingController _extraFieldController; // Grade Level or Subject Dept
 
+  // Initial values
   String _initialFirstName = '';
   String _initialLastName = '';
   String _initialEmail = '';
   String _initialBio = '';
+  String _initialExtraField = '';
+
   bool _hasChanges = false;
   bool _isLoading = true;
 
@@ -36,11 +53,13 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
     _lastNameController = TextEditingController();
     _emailController = TextEditingController();
     _bioController = TextEditingController();
+    _extraFieldController = TextEditingController();
 
     _firstNameController.addListener(_checkForChanges);
     _lastNameController.addListener(_checkForChanges);
     _emailController.addListener(_checkForChanges);
     _bioController.addListener(_checkForChanges);
+    _extraFieldController.addListener(_checkForChanges);
 
     _loadData();
   }
@@ -51,22 +70,36 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
     _lastNameController.dispose();
     _emailController.dispose();
     _bioController.dispose();
+    _extraFieldController.dispose();
     super.dispose();
   }
 
   Future<void> _loadData() async {
     try {
-      final profile = await EducatorProfileService.fetchProfile();
+      final Map<String, String> profile;
+      if (widget.isEducator) {
+        profile = await EducatorProfileService.fetchProfile();
+      } else {
+        profile = await StudentService.fetchProfile();
+      }
+
       if (mounted) {
         _initialFirstName = profile['firstName'] ?? '';
         _initialLastName = profile['lastName'] ?? '';
         _initialEmail = profile['email'] ?? '';
         _initialBio = profile['bio'] ?? '';
+        
+        if (widget.isEducator) {
+          _initialExtraField = profile['subjectDepartment'] ?? '';
+        } else {
+          _initialExtraField = profile['gradeLevel'] ?? '';
+        }
 
         _firstNameController.text = _initialFirstName;
         _lastNameController.text = _initialLastName;
         _emailController.text = _initialEmail;
         _bioController.text = _initialBio;
+        _extraFieldController.text = _initialExtraField;
 
         setState(() {
           _hasChanges = false;
@@ -78,6 +111,9 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
         setState(() {
           _isLoading = false;
         });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to load profile data')),
+        );
       }
     }
   }
@@ -86,7 +122,8 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
     final hasChanges = _firstNameController.text != _initialFirstName ||
         _lastNameController.text != _initialLastName ||
         _emailController.text != _initialEmail ||
-        _bioController.text != _initialBio;
+        _bioController.text != _initialBio ||
+        _extraFieldController.text != _initialExtraField;
 
     if (hasChanges != _hasChanges) {
       setState(() {
@@ -96,11 +133,13 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
   }
 
   void _saveChanges() {
+    // Here you would typically call a service to save the data
     setState(() {
       _initialFirstName = _firstNameController.text;
       _initialLastName = _lastNameController.text;
       _initialEmail = _emailController.text;
       _initialBio = _bioController.text;
+      _initialExtraField = _extraFieldController.text;
       _hasChanges = false;
     });
     ScaffoldMessenger.of(context).showSnackBar(
@@ -121,6 +160,11 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Dynamic Colors
+    final primaryColor = widget.isEducator ? _educatorBgDarkBlue : _studentBgTeal;
+    final accentColor = widget.isEducator ? _educatorTextCyan : _studentTextTeal;
+    final headerColor = widget.isEducator ? _educatorBgDarkBlue : _studentHeaderTeal;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
@@ -147,7 +191,11 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  _ProfileHeader(scale: scale),
+                  _ProfileHeader(
+                    scale: scale,
+                    primaryColor: primaryColor,
+                    accentColor: widget.isEducator ? _educatorTextCyan : const Color(0xFF93C0D3),
+                  ),
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 24 * scale),
                     child: Column(
@@ -166,7 +214,7 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
                           _bioController.text,
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: _textCyan,
+                            color: accentColor,
                             fontSize: 14 * scale,
                             fontWeight: FontWeight.w500,
                           ),
@@ -177,6 +225,8 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
                           hint: 'Input your first name here',
                           controller: _firstNameController,
                           scale: scale,
+                          labelColor: headerColor,
+                          accentColor: accentColor,
                         ),
                         SizedBox(height: 20 * scale),
                         _ProfileTextField(
@@ -184,6 +234,8 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
                           hint: 'Input your last name here',
                           controller: _lastNameController,
                           scale: scale,
+                          labelColor: headerColor,
+                          accentColor: accentColor,
                         ),
                         SizedBox(height: 20 * scale),
                         _ProfileTextField(
@@ -191,6 +243,17 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
                           hint: 'Input your email here',
                           controller: _emailController,
                           scale: scale,
+                          labelColor: headerColor,
+                          accentColor: accentColor,
+                        ),
+                        SizedBox(height: 20 * scale),
+                        _ProfileTextField(
+                          label: widget.isEducator ? 'Subject Department' : 'Grade Level',
+                          hint: widget.isEducator ? 'e.g. Mathematics' : 'e.g. Grade 12',
+                          controller: _extraFieldController,
+                          scale: scale,
+                          labelColor: headerColor,
+                          accentColor: accentColor,
                         ),
                         SizedBox(height: 20 * scale),
                         _ProfileTextField(
@@ -199,6 +262,8 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
                           controller: _bioController,
                           scale: scale,
                           maxLines: 3,
+                          labelColor: headerColor,
+                          accentColor: accentColor,
                         ),
                         SizedBox(height: 40 * scale),
                         SizedBox(
@@ -207,11 +272,11 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
                           child: OutlinedButton(
                             onPressed: _saveChanges,
                             style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: _textCyan),
+                              side: BorderSide(color: accentColor),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16 * scale),
                               ),
-                              foregroundColor: _textCyan,
+                              foregroundColor: accentColor,
                             ),
                             child: Text(
                               'Save Changes',
@@ -237,9 +302,15 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
 }
 
 class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({required this.scale});
+  const _ProfileHeader({
+    required this.scale,
+    required this.primaryColor,
+    required this.accentColor,
+  });
 
   final double scale;
+  final Color primaryColor;
+  final Color accentColor;
 
   @override
   Widget build(BuildContext context) {
@@ -252,7 +323,7 @@ class _ProfileHeader extends StatelessWidget {
             clipper: _HeaderClipper(),
             child: Container(
               height: 220 * scale,
-              color: _bgDarkBlue,
+              color: primaryColor,
               child: Stack(
                 children: [
                   Positioned.fill(
@@ -273,7 +344,7 @@ class _ProfileHeader extends StatelessWidget {
                         width: 48 * scale,
                         height: 48 * scale,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.25),
+                          color: Colors.white.withOpacity(0.25),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
@@ -308,7 +379,7 @@ class _ProfileHeader extends StatelessWidget {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
+                            color: Colors.black.withOpacity(0.15),
                             blurRadius: 12,
                             offset: const Offset(0, 6),
                           ),
@@ -322,7 +393,7 @@ class _ProfileHeader extends StatelessWidget {
                         width: 36 * scale,
                         height: 36 * scale,
                         decoration: BoxDecoration(
-                          color: _textCyan,
+                          color: accentColor,
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 2.5 * scale),
                         ),
@@ -388,6 +459,8 @@ class _ProfileTextField extends StatelessWidget {
     required this.hint,
     required this.controller,
     required this.scale,
+    required this.labelColor,
+    required this.accentColor,
     this.maxLines = 1,
   });
 
@@ -396,6 +469,8 @@ class _ProfileTextField extends StatelessWidget {
   final TextEditingController controller;
   final double scale;
   final int maxLines;
+  final Color labelColor;
+  final Color accentColor;
 
   @override
   Widget build(BuildContext context) {
@@ -405,7 +480,7 @@ class _ProfileTextField extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            color: _bgDarkBlue,
+            color: labelColor,
             fontSize: 16 * scale,
             fontWeight: FontWeight.w700,
           ),
@@ -422,7 +497,7 @@ class _ProfileTextField extends StatelessWidget {
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(
-              color: _textCyan,
+              color: accentColor,
               fontSize: 16 * scale,
             ),
             contentPadding: EdgeInsets.symmetric(
@@ -435,7 +510,7 @@ class _ProfileTextField extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12 * scale),
-              borderSide: const BorderSide(color: _textCyan, width: 1.5),
+              borderSide: BorderSide(color: accentColor, width: 1.5),
             ),
             filled: true,
             fillColor: Colors.white,
