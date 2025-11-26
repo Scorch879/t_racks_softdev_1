@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:t_racks_softdev_1/screens/student/student_settings_screen.dart';
+import 'package:t_racks_softdev_1/screens/shared/global_settings_screen.dart';
 import 'package:t_racks_softdev_1/screens/student/student_class_screen.dart';
 
 const _bgTeal = Color(0xFF167C94);
@@ -91,7 +91,14 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       navigator.push(
         MaterialPageRoute(
           builder: (context) {
-            return const StudentSettingsScreen();
+            return Scaffold(
+              backgroundColor: _bgTeal,
+              appBar: PreferredSize(
+                preferredSize: const Size.fromHeight(64),
+                child: _TopBar(scale: 1.0, onNotificationsPressed: onNotificationsPressed),
+              ),
+              body: const GlobalSettingsScreen(isEducator: false),
+            );
           },
           settings: const RouteSettings(name: '/settings'),
         ),

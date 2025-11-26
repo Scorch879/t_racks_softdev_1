@@ -1,44 +1,54 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/auth_service.dart';
-import 'package:t_racks_softdev_1/screens/login_screen.dart';
 import 'package:t_racks_softdev_1/screens/student/student_profile_screen.dart';
+import 'package:t_racks_softdev_1/screens/educator/educator_profile_screen.dart';
 
-const _bgTeal = Color(0xFF167C94);
-const _cardSurface = Color(0xFF173C45);
-const _chipGreen = Color(0xFF4DBD88);
-const _statusRed = Color(0xFFDA6A6A);
-const _borderTeal = Color(0xFF6AAFBF);
+// Student Colors
+const _studentBgTeal = Color(0xFF167C94);
+const _studentCardSurface = Color(0xFF173C45);
+const _studentChipGreen = Color(0xFF4DBD88);
+const _studentStatusRed = Color(0xFFDA6A6A);
+const _studentBorderTeal = Color(0xFF6AAFBF);
 
-class StudentSettingsContent extends StatefulWidget {
-  const StudentSettingsContent({
+// Educator Colors
+const _educatorCardSurface = Color(0xFF0F3951);
+const _educatorAccentCyan = Color(0xFF93C0D3);
+const _educatorChipGreen = Color(0xFF4CAF50);
+const _educatorStatusRed = Color(0xFFE53935);
+
+class GlobalSettingsScreen extends StatefulWidget {
+  const GlobalSettingsScreen({
     super.key,
-    required this.onNotificationsPressed,
+    required this.isEducator,
   });
 
-  final VoidCallback onNotificationsPressed;
+  final bool isEducator;
 
   @override
-  State<StudentSettingsContent> createState() => _StudentSettingsContentState();
+  State<GlobalSettingsScreen> createState() => _GlobalSettingsScreenState();
 }
 
-class _StudentSettingsContentState extends State<StudentSettingsContent> {
+class _GlobalSettingsScreenState extends State<GlobalSettingsScreen> {
   void onProfileSettingsPressed() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => const StudentProfileScreen(),
+        builder: (context) => widget.isEducator
+            ? const EducatorProfileScreen()
+            : const StudentProfileScreen(),
       ),
     );
   }
 
-  void onAccountSettingsPressed() {}
-
-  void onDeleteAccountPressed() {}
+  void onAccountSettingsPressed() {
+    // TODO: Implement Account Settings
+  }
 
   void onLogoutPressed() {
     showDialog(
       context: context,
       builder: (context) => _LogoutDialog(
         onConfirm: _handleLogout,
+        isEducator: widget.isEducator,
       ),
     );
   }
@@ -49,6 +59,11 @@ class _StudentSettingsContentState extends State<StudentSettingsContent> {
 
   @override
   Widget build(BuildContext context) {
+    // Determine colors based on user type
+    final bgColor = widget.isEducator ? Colors.transparent : _studentBgTeal;
+    // Note: EducatorShell has a gradient background, so we might want transparent here for Educator
+    // StudentShell passes _bgTeal.
+    
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
@@ -59,18 +74,19 @@ class _StudentSettingsContentState extends State<StudentSettingsContent> {
         return Container(
           width: double.infinity,
           height: double.infinity,
-          color: _bgTeal,
+          color: bgColor,
           child: Stack(
             children: [
-              Positioned.fill(
-                child: Opacity(
-                  opacity: 0.12,
-                  child: Image.asset(
-                    'assets/images/squigglytexture.png',
-                    fit: BoxFit.cover,
+              if (!widget.isEducator) // Only show texture for Student if needed, or both?
+                Positioned.fill(
+                  child: Opacity(
+                    opacity: 0.12,
+                    child: Image.asset(
+                      'assets/images/squigglytexture.png',
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
-              ),
               SingleChildScrollView(
                 padding: EdgeInsets.fromLTRB(
                   horizontalPadding,
@@ -87,6 +103,7 @@ class _StudentSettingsContentState extends State<StudentSettingsContent> {
                         _SettingsCard(
                           scale: scale,
                           radius: cardRadius,
+                          isEducator: widget.isEducator,
                           onProfileSettingsPressed: onProfileSettingsPressed,
                           onAccountSettingsPressed: onAccountSettingsPressed,
                           onLogoutPressed: onLogoutPressed,
@@ -108,12 +125,14 @@ class _SettingsCard extends StatefulWidget {
   const _SettingsCard({
     required this.scale,
     required this.radius,
+    required this.isEducator,
     required this.onProfileSettingsPressed,
     required this.onAccountSettingsPressed,
     required this.onLogoutPressed,
   });
   final double scale;
   final double radius;
+  final bool isEducator;
   final VoidCallback onProfileSettingsPressed;
   final VoidCallback onAccountSettingsPressed;
   final VoidCallback onLogoutPressed;
@@ -127,11 +146,22 @@ class _SettingsCardState extends State<_SettingsCard> {
   Widget build(BuildContext context) {
     final scale = widget.scale;
     final radius = widget.radius;
+    final isEducator = widget.isEducator;
+
+    final borderColor = isEducator
+        ? Colors.white.withValues(alpha: 0.15)
+        : _studentBorderTeal.withOpacity(0.45);
+    
+    final iconColor = isEducator ? _educatorAccentCyan : Colors.white;
+    final chipColor = isEducator ? _educatorChipGreen : _studentChipGreen;
+    final logoutColor = isEducator ? _educatorStatusRed : _studentStatusRed;
+
     return _CardContainer(
       radius: radius,
       scale: scale,
-      borderColor: _borderTeal.withOpacity(0.45),
-      background: const _CardBackground(),
+      borderColor: borderColor,
+      isEducator: isEducator,
+      background: isEducator ? null : const _CardBackground(),
       child: Padding(
         padding: EdgeInsets.all(18 * scale),
         child: Column(
@@ -139,7 +169,7 @@ class _SettingsCardState extends State<_SettingsCard> {
           children: [
             Row(
               children: [
-                Icon(Icons.settings, color: Colors.white, size: 24 * scale),
+                Icon(Icons.settings, color: iconColor, size: 24 * scale),
                 SizedBox(width: 8 * scale),
                 Text(
                   'Settings',
@@ -155,7 +185,7 @@ class _SettingsCardState extends State<_SettingsCard> {
             _SettingsPill(
               label: 'Profile Settings',
               icon: Icons.person,
-              color: _chipGreen,
+              color: chipColor,
               scale: scale,
               onTap: widget.onProfileSettingsPressed,
             ),
@@ -163,15 +193,15 @@ class _SettingsCardState extends State<_SettingsCard> {
             _SettingsPill(
               label: 'Account Settings',
               icon: Icons.settings,
-              color: _chipGreen,
+              color: chipColor,
               scale: scale,
               onTap: widget.onAccountSettingsPressed,
             ),
             SizedBox(height: 14 * scale),
             _SettingsPill(
               label: 'Log Out',
-              icon: Icons.logout_rounded,
-              color: _statusRed,
+              icon: isEducator ? Icons.logout : Icons.logout_rounded,
+              color: logoutColor,
               scale: scale,
               onTap: widget.onLogoutPressed,
             ),
@@ -248,6 +278,7 @@ class _CardContainer extends StatefulWidget {
     required this.child,
     required this.radius,
     required this.scale,
+    required this.isEducator,
     this.borderColor,
     this.background,
   });
@@ -255,6 +286,7 @@ class _CardContainer extends StatefulWidget {
   final Widget child;
   final double radius;
   final double scale;
+  final bool isEducator;
   final Color? borderColor;
   final Widget? background;
 
@@ -269,11 +301,16 @@ class _CardContainerState extends State<_CardContainer> {
     final scale = widget.scale;
     final background = widget.background;
     final borderColor = widget.borderColor;
+    
+    final surfaceColor = widget.isEducator 
+        ? _educatorCardSurface.withValues(alpha: 0.85)
+        : _studentCardSurface;
+
     return Container(
       decoration: BoxDecoration(
-        color: _cardSurface,
+        color: surfaceColor,
         borderRadius: BorderRadius.circular(radius),
-        border: borderColor != null ? Border.all(color: borderColor) : null,
+        border: borderColor != null ? Border.all(color: borderColor, width: widget.isEducator ? 2 : 1) : null,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.25),
@@ -315,14 +352,19 @@ class _CardBackgroundState extends State<_CardBackground> {
   }
 }
 
-
 class _LogoutDialog extends StatelessWidget {
-  const _LogoutDialog({required this.onConfirm});
+  const _LogoutDialog({
+    required this.onConfirm,
+    required this.isEducator,
+  });
 
   final VoidCallback onConfirm;
+  final bool isEducator;
 
   @override
   Widget build(BuildContext context) {
+    final titleColor = isEducator ? _educatorStatusRed : _studentStatusRed;
+    
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       backgroundColor: Colors.white,
@@ -332,10 +374,10 @@ class _LogoutDialog extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'Logging Out',
               style: TextStyle(
-                color: _statusRed,
+                color: titleColor,
                 fontSize: 24,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.5,

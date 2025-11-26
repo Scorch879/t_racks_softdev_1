@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/student/student_home_screen.dart';
-import 'package:t_racks_softdev_1/screens/student/student_settings_screen.dart';
+import 'package:t_racks_softdev_1/screens/shared/global_settings_screen.dart';
 
 class StudentService {
   static DateTime? _lastNavTime;
@@ -52,7 +52,10 @@ class StudentService {
       navigator.push(
         MaterialPageRoute(
           builder: (context) {
-            return const StudentSettingsScreen();
+            return Scaffold(
+              appBar: AppBar(title: const Text('Settings')),
+              body: const GlobalSettingsScreen(isEducator: false),
+            );
           },
           settings: const RouteSettings(name: '/settings'),
         ),

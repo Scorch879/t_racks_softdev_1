@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_home_screen.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_classes_screen.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_report_screen.dart';
-import 'package:t_racks_softdev_1/screens/educator/educator_settings_screen.dart';
+import 'package:t_racks_softdev_1/screens/shared/global_settings_screen.dart';
 import 'package:t_racks_softdev_1/services/educator_notification_service.dart';
 
 class EducatorShell extends StatefulWidget {
@@ -37,7 +37,7 @@ class _EducatorShellState extends State<EducatorShell> {
       case 2:
         return const EducatorReportScreen();
       case 3:
-        return const EducatorSettingsScreen();
+        return const GlobalSettingsScreen(isEducator: true);
       default:
         return const EducatorHomeScreen();
     }

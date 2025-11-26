@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/student/student_home_content.dart';
-import 'package:t_racks_softdev_1/screens/student/student_settings_content.dart';
+import 'package:t_racks_softdev_1/screens/shared/global_settings_screen.dart';
 import 'package:t_racks_softdev_1/screens/student/student_class_content.dart';
 
 const _bgTeal = Color(0xFF167C94);
@@ -60,9 +60,7 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
       case StudentNavTab.schedule:
         return const StudentClassScheduleContent();
       case StudentNavTab.settings:
-        return StudentSettingsContent(
-          onNotificationsPressed: _onNotificationsPressed,
-        );
+        return const GlobalSettingsScreen(isEducator: false);
     }
   }
 
