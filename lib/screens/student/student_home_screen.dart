@@ -433,13 +433,18 @@ class _TopBarState extends State<_TopBar> {
               children: [
                 IconButton(
                   iconSize: 22 * scale + 1,
+                  constraints: BoxConstraints(
+                    minWidth: 44 * scale,
+                    minHeight: 44 * scale,
+                  ),
+                  padding: EdgeInsets.zero,
                   onPressed: widget.onNotificationsPressed,
                   icon: const Icon(Icons.notifications_none_rounded),
                   color: Colors.black87,
                 ),
                 Positioned(
-                  right: 8 * scale,
-                  top: 8 * scale,
+                  right: 10 * scale,
+                  top: 10 * scale,
                   child: Container(
                     padding: EdgeInsets.all(2.5 * scale),
                     decoration: BoxDecoration(
@@ -781,34 +786,35 @@ class _BottomNavState extends State<_BottomNav> {
   Widget build(BuildContext context) {
     final scale = widget.scale;
     return Container(
-      padding: EdgeInsets.only(
-        left: 24 * scale,
-        right: 24 * scale,
-        top: 10 * scale,
-        bottom: 20 * scale,
-      ),
+      height: 70 * scale,
       decoration: const BoxDecoration(color: Colors.white),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _BottomItem(
-            icon: Icons.home_rounded,
-            label: 'Home',
-            scale: scale,
-            isActive: true,
-            onTap: widget.onNavHome,
+          Expanded(
+            child: _BottomItem(
+              icon: Icons.home_rounded,
+              label: 'Home',
+              scale: scale,
+              isActive: true,
+              onTap: widget.onNavHome,
+            ),
           ),
-          _BottomItem(
-            icon: Icons.calendar_month_rounded,
-            label: 'Schedule',
-            scale: scale,
-            onTap: widget.onNavSchedule,
+          Expanded(
+            child: _BottomItem(
+              icon: Icons.calendar_month_rounded,
+              label: 'Schedule',
+              scale: scale,
+              onTap: widget.onNavSchedule,
+            ),
           ),
-          _BottomItem(
-            icon: Icons.settings_rounded,
-            label: 'Settings',
-            scale: scale,
-            onTap: widget.onNavSettings,
+          Expanded(
+            child: _BottomItem(
+              icon: Icons.settings_rounded,
+              label: 'Settings',
+              scale: scale,
+              onTap: widget.onNavSettings,
+            ),
           ),
         ],
       ),
@@ -839,21 +845,27 @@ class _BottomItemState extends State<_BottomItem> {
   @override
   Widget build(BuildContext context) {
     final scale = widget.scale;
-    final Color iconAndTextColor = Colors.black87;
-    final Color activeBg = _accentCyan;
+    final Color iconAndTextColor = widget.isActive ? const Color(0xFF167C94) : Colors.black54;
+    
     return Semantics(
       label: widget.label,
       button: true,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16 * scale),
         onTap: widget.onTap,
-        child: Container(
-          padding: EdgeInsets.all(12 * scale),
-          decoration: BoxDecoration(
-            color: widget.isActive ? activeBg : Colors.transparent,
-            borderRadius: BorderRadius.circular(16 * scale),
-          ),
-          child: Icon(widget.icon, color: iconAndTextColor, size: 24 * scale),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(widget.icon, color: iconAndTextColor, size: 28 * scale),
+            SizedBox(height: 4 * scale),
+            Text(
+              widget.label,
+              style: TextStyle(
+                color: iconAndTextColor,
+                fontSize: 12 * scale,
+                fontWeight: widget.isActive ? FontWeight.w600 : FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       ),
     );
