@@ -1,18 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:t_racks_softdev_1/services/models/student_model.dart';
+import 'package:t_racks_softdev_1/services/database_service.dart';
 
 const _bgTeal = Color(0xFF167C94);
-const _headerTeal = Color(0xFF1B4A55);
+//const _headerTeal = Color(0xFF1B4A55);
 const _textDarkBlue = Color(0xFF1A2B3C);
 const _textTeal = Color(0xFF167C94);
-const _borderGrey = Color(0xFFBFD5E3);
+//const _borderGrey = Color(0xFFBFD5E3);
 const _statusRed = Color(0xFFDA6A6A);
 
 class StudentProfileContent extends StatefulWidget {
   const StudentProfileContent({
     super.key,
+    required this.student,
     required this.scale,
   });
 
+  final Student student;
   final double scale;
 
   @override
@@ -20,50 +24,68 @@ class StudentProfileContent extends StatefulWidget {
 }
 
 class _StudentProfileContentState extends State<StudentProfileContent> {
-  final _formKey = GlobalKey<FormState>();
+  //final _formKey = GlobalKey<FormState>();
+  final _databaseService = DatabaseService();
   
   // Controllers
   late TextEditingController _firstNameController;
   late TextEditingController _lastNameController;
   late TextEditingController _emailController;
-  late TextEditingController _bioController;
+  late TextEditingController _institutionController;
 
   // Initial values to check for changes
-  final String _initialFirstName = 'John';
-  final String _initialLastName = 'Virtues';
-  final String _initialEmail = 'JohnNotASinner@gmail.com';
-  final String _initialBio = 'Teacher | Plumber | Fireman | Astronaut';
+  late String? _initialFirstName;
+  late String? _initialLastName;
+  late String? _initialEmail;
+  late String? _initialInstitution;
 
   bool _hasChanges = false;
+  bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    _firstNameController = TextEditingController(text: _initialFirstName);
-    _lastNameController = TextEditingController(text: _initialLastName);
-    _emailController = TextEditingController(text: _initialEmail);
-    _bioController = TextEditingController(text: _initialBio);
+    _initializeControllersAndValues();
 
+    // Add listeners to check for any changes in the text fields
     _firstNameController.addListener(_checkForChanges);
     _lastNameController.addListener(_checkForChanges);
     _emailController.addListener(_checkForChanges);
-    _bioController.addListener(_checkForChanges);
+    _institutionController.addListener(_checkForChanges);
   }
 
   @override
   void dispose() {
+    _firstNameController.removeListener(_checkForChanges);
+    _lastNameController.removeListener(_checkForChanges);
+    _emailController.removeListener(_checkForChanges);
+    _institutionController.removeListener(_checkForChanges);
+
     _firstNameController.dispose();
     _lastNameController.dispose();
     _emailController.dispose();
-    _bioController.dispose();
+    _institutionController.dispose();
     super.dispose();
+  }
+
+  void _initializeControllersAndValues() {
+    final student = widget.student;
+    _initialFirstName = student.profile?.firstName;
+    _initialLastName = student.profile?.lastName;
+    _initialEmail = student.profile?.email;
+    _initialInstitution = student.institution;
+
+    _firstNameController = TextEditingController(text: _initialFirstName);
+    _lastNameController = TextEditingController(text: _initialLastName);
+    _emailController = TextEditingController(text: _initialEmail);
+    _institutionController = TextEditingController(text: _initialInstitution);
   }
 
   void _checkForChanges() {
     final hasChanges = _firstNameController.text != _initialFirstName ||
         _lastNameController.text != _initialLastName ||
         _emailController.text != _initialEmail ||
-        _bioController.text != _initialBio;
+        _institutionController.text != _initialInstitution;
 
     if (hasChanges != _hasChanges) {
       setState(() {
@@ -81,6 +103,41 @@ class _StudentProfileContentState extends State<StudentProfileContent> {
     );
 
     return shouldPop ?? false;
+  }
+
+  Future<void> _onSave() async {
+    if (!_hasChanges || _isSaving) return;
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      await _databaseService.updateStudentData(
+        firstName: _firstNameController.text,
+        lastName: _lastNameController.text,
+        institution: _institutionController.text,
+      );
+
+      // Update initial values to reflect the saved state
+      _initialFirstName = _firstNameController.text;
+      _initialLastName = _lastNameController.text;
+      _initialInstitution = _institutionController.text;
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Changes Saved Successfully!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving changes: $e')),
+        );
+      }
+    } finally {
+      setState(() { _isSaving = false; _hasChanges = false; });
+    }
   }
 
   @override
@@ -107,7 +164,7 @@ class _StudentProfileContentState extends State<StudentProfileContent> {
                 children: [
                   SizedBox(height: 10 * scale), // Reduced space for tighter layout
                   Text(
-                    'John Virtues',
+                    widget.student.fullName,
                     style: TextStyle(
                       color: _textDarkBlue,
                       fontSize: 28 * scale,
@@ -116,7 +173,7 @@ class _StudentProfileContentState extends State<StudentProfileContent> {
                   ),
                   SizedBox(height: 8 * scale),
                   Text(
-                    'Teacher | Plumber | Fireman | Astronaut',
+                    '${widget.student.educationalLevel ?? 'Student'} | ${widget.student.gradeYearLevel ?? ''}',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: _textTeal,
@@ -147,40 +204,36 @@ class _StudentProfileContentState extends State<StudentProfileContent> {
                   ),
                   SizedBox(height: 20 * scale),
                   _ProfileTextField(
-                    label: 'Bio',
-                    hint: 'Input your bio here',
-                    controller: _bioController,
+                    label: 'Institution',
+                    hint: 'Input your institution here',
+                    controller: _institutionController,
                     scale: scale,
-                    maxLines: 3,
                   ),
                   SizedBox(height: 40 * scale),
                   SizedBox(
                     width: double.infinity,
                     height: 60 * scale,
                     child: OutlinedButton(
-                      onPressed: () {
-                        // Save logic would go here
-                        setState(() {
-                          _hasChanges = false;
-                        });
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Changes Saved')),
-                        );
-                      },
+                      onPressed: (_hasChanges && !_isSaving) ? _onSave : null,
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: _textTeal),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16 * scale),
                         ),
                         foregroundColor: _textTeal,
+                        disabledForegroundColor: Colors.grey,
                       ),
-                      child: Text(
-                        'Save Changes',
-                        style: TextStyle(
-                          fontSize: 20 * scale,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+                      child: _isSaving
+                          ? const CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(_textTeal),
+                            )
+                          : Text(
+                              'Save Changes',
+                              style: TextStyle(
+                                fontSize: 20 * scale,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                     ),
                   ),
                   SizedBox(height: 40 * scale),
