@@ -26,6 +26,17 @@ class StudentClass {
       scheduleString = '$day $time';
     }
 
+    // Determine status from Attendance_Record
+    String derivedStatus;
+    // The RPC returns a single JSON object for today's attendance, or null.
+    final todaysRecord = json['Attendance_Record'] as Map<String, dynamic>?;
+
+    if (todaysRecord != null) {
+      derivedStatus = (todaysRecord['isPresent'] as bool? ?? false) ? 'Present' : 'Absent';
+    } else {
+      derivedStatus = 'Upcoming'; // If no record for today, it's upcoming.
+    }
+
     return StudentClass(
       id: json['id'] as String,
       name: json['class_name'] as String?,
@@ -33,7 +44,7 @@ class StudentClass {
       day: day,
       time: time,
       schedule: scheduleString,
-      status: json['status'] as String?,
+      status: derivedStatus,
     );
   }
 }
