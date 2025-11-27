@@ -22,7 +22,7 @@ class EducatorService {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => const EducatorHomeContent(),
+        builder: (context) => const EducatorHomeScreen(),
       ),
     );
   }
@@ -31,7 +31,7 @@ class EducatorService {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const EducatorClassesContent(),
+        builder: (context) => const EducatorClassesScreen(),
       ),
     );
   }
@@ -48,7 +48,7 @@ class EducatorService {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => const EducatorReportContent(),
+            builder: (context) => const EducatorReportScreen(),
           ),
         );
         break;
@@ -56,7 +56,7 @@ class EducatorService {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => const EducatorReportContent(),
+            builder: (context) => const EducatorReportScreen(),
           ),
         );
         break;
