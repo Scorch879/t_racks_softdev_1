@@ -107,6 +107,22 @@ class DatabaseService {
     }
   }
 
+  /// Fetches the details for a single class by its ID.
+  Future<StudentClass> getClassDetails(String classId) async {
+    try {
+      final data = await _supabase
+          .from('Classes_Table')
+          .select()
+          .eq('id', classId)
+          .single();
+
+      return StudentClass.fromJson(data);
+    } catch (e) {
+      print('Error fetching class details: $e');
+      rethrow;
+    }
+  }
+
   ///
   ///
   ///
