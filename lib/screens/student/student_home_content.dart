@@ -318,6 +318,19 @@ class _MyClassesCard extends StatefulWidget {
 }
 
 class _MyClassesCardState extends State<_MyClassesCard> {
+  Color _getStatusColor(String? status) {
+    switch (status?.toLowerCase()) {
+      case 'ongoing':
+        return _chipGreen;
+      case 'absent':
+        return _statusRed;
+      case 'upcoming':
+        return _accentCyan.withOpacity(0.7);
+      default:
+        return Colors.grey;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final scale = widget.scale;
@@ -378,8 +391,8 @@ class _MyClassesCardState extends State<_MyClassesCard> {
                     scale: scale,
                     title: sClass.name ?? 'Unnamed Class',
                     // Status logic can be implemented later
-                    statusText: 'Upcoming',
-                    statusColor: _chipGreen,
+                    statusText: sClass.status ?? 'Unknown',
+                    statusColor: _getStatusColor(sClass.status),
                     onTap: widget.onClassPressed,
                   ),
                 );
