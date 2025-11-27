@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:t_racks_softdev_1/services/models/educator_model.dart';
 import 'package:t_racks_softdev_1/services/models/profile_model.dart';
+import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:t_racks_softdev_1/services/models/student_model.dart';
 
 final _supabase = Supabase.instance.client;
@@ -83,6 +84,29 @@ class DatabaseService {
     }
   }
 
+  /// Fetches the classes for the current student.
+  Future<List<StudentClass>> getStudentClasses() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw 'User not logged in';
+
+      // This query fetches all classes that the current user is enrolled in.
+      // It uses the 'Enrollments_Table' as the join table.
+      final data = await _supabase
+          .from('Classes_Table')
+          .select('*, Enrollments_Table!inner(*)')
+          .eq('Enrollments_Table.student_id', userId);
+
+      final classes = (data as List)
+          .map((item) => StudentClass.fromJson(item))
+          .toList();
+      return classes;
+    } catch (e) {
+      print('Error fetching student classes: $e');
+      rethrow;
+    }
+  }
+
   ///
   ///
   ///
@@ -155,6 +179,23 @@ class AccountServices {
       await _supabase.from('profiles').delete().eq('id', userId);
     } catch (e) {
       throw 'Error deleting profile: $e';
+    }
+  }
+}
+
+class ClassesServices {
+  Future<void> createClass() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+
+      if (userId == null) {
+        throw 'User is not logged in';
+      }
+
+      // Class creation logic goes here
+
+    } catch (e) {
+      throw 'Error creating class: $e';
     }
   }
 }
