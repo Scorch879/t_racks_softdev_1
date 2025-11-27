@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/student/student_camera_screen.dart';
+import 'package:t_racks_softdev_1/services/database_service.dart';
+import 'package:t_racks_softdev_1/services/models/class_model.dart';
+import 'package:t_racks_softdev_1/services/models/student_model.dart';
 
-const _bgTeal = Color(0xFF167C94);
+
 const _cardSurface = Color(0xFF173C45);
 const _cardHeader = Color(0xFF1B4A55);
 const _accentCyan = Color(0xFF93C0D3);
 const _chipGreen = Color(0xFF4DBD88);
 const _statusRed = Color(0xFFDA6A6A);
-const _titleRed = Color(0xFFE57373);
+
 
 class StudentHomeContent extends StatefulWidget {
   const StudentHomeContent({
@@ -30,10 +33,37 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
       ),
     );
   }
+  final _databaseService = DatabaseService();
+  late Future<Map<String, dynamic>> _dataFuture;
+
+
 
   void onFilterAllClasses() {}
 
   void onClassPressed() {}
+
+  @override
+  void initState() {
+    super.initState();
+    _dataFuture = _fetchData();
+  }
+
+  Future<Map<String, dynamic>> _fetchData() async {
+    try {
+      // Fetch student profile and classes concurrently
+      final results = await Future.wait([
+        _databaseService.getStudentData(),
+        _databaseService.getStudentClasses(),
+      ]);
+      return {
+        'student': results[0] as Student?,
+        'classes': results[1] as List<StudentClass>,
+      };
+    } catch (e) {
+      // Propagate error to FutureBuilder
+      throw Exception('Failed to load home screen data: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,48 +74,66 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
         final horizontalPadding = 16.0 * scale;
         final cardRadius = 16.0 * scale;
 
-        return Stack(
-          children: [
-            Positioned.fill(
-              child: Opacity(
-                opacity: 0.12,
-                child: Image.asset(
-                  'assets/images/squigglytexture.png',
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-            SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                horizontalPadding,
-                12 * scale,
-                horizontalPadding,
-                100 * scale,
-              ),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 980),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _WelcomeAndOngoingCard(
-                        scale: scale,
-                        radius: cardRadius,
-                        onOngoingClassStatusPressed: onOngoingClassStatusPressed,
-                      ),
-                      SizedBox(height: 16 * scale),
-                      _MyClassesCard(
-                        scale: scale,
-                        radius: cardRadius,
-                        onFilterAllClasses: onFilterAllClasses,
-                        onClassPressed: onClassPressed,
-                      ),
-                    ],
+        return FutureBuilder<Map<String, dynamic>>(
+          future: _dataFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator(color: Colors.white));
+            }
+
+            if (snapshot.hasError) {
+              return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white)));
+            }
+
+            final student = snapshot.data?['student'] as Student?;
+            final classes = snapshot.data?['classes'] as List<StudentClass>? ?? [];
+
+            return Stack(
+              children: [
+                Positioned.fill(
+                  child: Opacity(
+                    opacity: 0.12,
+                    child: Image.asset(
+                      'assets/images/squigglytexture.png',
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
-              ),
-            ),
-          ],
+                SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(
+                    horizontalPadding,
+                    12 * scale,
+                    horizontalPadding,
+                    100 * scale,
+                  ),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 980),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _WelcomeAndOngoingCard(
+                            student: student,
+                            scale: scale,
+                            radius: cardRadius,
+                            onOngoingClassStatusPressed: onOngoingClassStatusPressed,
+                          ),
+                          SizedBox(height: 16 * scale),
+                          _MyClassesCard(
+                            classes: classes,
+                            scale: scale,
+                            radius: cardRadius,
+                            onFilterAllClasses: onFilterAllClasses,
+                            onClassPressed: onClassPressed,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -94,12 +142,14 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
 
 class _WelcomeAndOngoingCard extends StatefulWidget {
   const _WelcomeAndOngoingCard({
+    this.student,
     required this.scale,
     required this.radius,
     required this.onOngoingClassStatusPressed,
   });
   final double scale;
   final double radius;
+  final Student? student;
   final VoidCallback onOngoingClassStatusPressed;
 
   @override
@@ -113,7 +163,7 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
     return _CardContainer(
       radius: widget.radius,
       scale: scale,
-      borderColor: const Color(0xFF6AAFBF).withOpacity(0.35),
+      borderColor: const Color(0xFF6AAFBF).withValues(alpha: 0.35),
       background: const _CardBackground(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -124,7 +174,7 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Welcome! user',
+                  'Welcome! ${widget.student?.profile?.firstName ?? 'user'}',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 18 * scale,
@@ -163,7 +213,7 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
             decoration: BoxDecoration(
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.35),
+                  color: Colors.black.withValues(alpha: 0.35),
                   blurRadius: 12 * scale,
                   offset: Offset(0, 6 * scale),
                 ),
@@ -261,12 +311,14 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
 
 class _MyClassesCard extends StatefulWidget {
   const _MyClassesCard({
+    required this.classes,
     required this.scale,
     required this.radius,
     required this.onFilterAllClasses,
     required this.onClassPressed,
   });
   final double scale;
+  final List<StudentClass> classes;
   final double radius;
   final VoidCallback onFilterAllClasses;
   final VoidCallback onClassPressed;
@@ -276,13 +328,26 @@ class _MyClassesCard extends StatefulWidget {
 }
 
 class _MyClassesCardState extends State<_MyClassesCard> {
+  Color _getStatusColor(String? status) {
+    switch (status?.toLowerCase()) {
+      case 'ongoing':
+        return _chipGreen;
+      case 'absent':
+        return _statusRed;
+      case 'upcoming':
+        return _accentCyan.withValues(alpha: 0.7);
+      default:
+        return Colors.grey;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final scale = widget.scale;
     return _CardContainer(
       radius: widget.radius,
       scale: scale,
-      borderColor: const Color(0xFF6AAFBF).withOpacity(0.55),
+      borderColor: const Color(0xFF6AAFBF).withValues(alpha: 0.55),
       background: const _CardBackground(),
       child: Padding(
         padding: EdgeInsets.all(16 * scale),
@@ -313,33 +378,35 @@ class _MyClassesCardState extends State<_MyClassesCard> {
               scale: scale,
               onTap: widget.onFilterAllClasses,
               title: 'All Classes',
-              trailingText: 'Total: 3',
+              trailingText: 'Total: ${widget.classes.length}',
               backgroundColor: _chipGreen,
             ),
-            SizedBox(height: 16 * scale),
-            _ClassRow(
-              scale: scale,
-              title: 'Calculus 137',
-              statusText: 'Absent',
-              statusColor: _statusRed,
-              onTap: widget.onClassPressed,
-            ),
-            SizedBox(height: 16 * scale),
-            _ClassRow(
-              scale: scale,
-              title: 'Physics 138',
-              statusText: 'Ongoing',
-              statusColor: _chipGreen,
-              onTap: widget.onClassPressed,
-            ),
-            SizedBox(height: 16 * scale),
-            _ClassRow(
-              scale: scale,
-              title: 'Calculus 237',
-              statusText: 'Upcoming',
-              statusColor: _chipGreen,
-              onTap: widget.onClassPressed,
-            ),
+            if (widget.classes.isEmpty)
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: 40 * scale),
+                child: Text(
+                  'No classes yet',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 16 * scale,
+                  ),
+                ),
+              )
+            else
+              ...widget.classes.map((sClass) {
+                return Padding(
+                  padding: EdgeInsets.only(top: 16 * scale),
+                  child: _ClassRow(
+                    scale: scale,
+                    title: sClass.name ?? 'Unnamed Class',
+                    // Status logic can be implemented later
+                    statusText: sClass.status ?? 'Unknown',
+                    statusColor: _getStatusColor(sClass.status),
+                    onTap: widget.onClassPressed,
+                  ),
+                );
+              }).toList(),
           ],
         ),
       ),
@@ -382,7 +449,7 @@ class _FilterChipRowState extends State<_FilterChipRow> {
           borderRadius: BorderRadius.circular(22 * scale),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.25),
+              color: Colors.black.withValues(alpha: 0.25),
               blurRadius: 10 * scale,
               offset: Offset(0, 6 * scale),
             ),
@@ -447,7 +514,7 @@ class _ClassRowState extends State<_ClassRow> {
           borderRadius: BorderRadius.circular(22 * scale),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.25),
+              color: Colors.black.withValues(alpha: 0.25),
               blurRadius: 10 * scale,
               offset: Offset(0, 6 * scale),
             ),
@@ -509,7 +576,7 @@ class _CardContainerState extends State<_CardContainer> {
         border: widget.borderColor != null ? Border.all(color: widget.borderColor!) : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.25),
+            color: Colors.black.withValues(alpha: 0.25),
             blurRadius: 10 * widget.scale,
             offset: Offset(0, 6 * widget.scale),
           ),
@@ -547,4 +614,3 @@ class _CardBackgroundState extends State<_CardBackground> {
     );
   }
 }
-
