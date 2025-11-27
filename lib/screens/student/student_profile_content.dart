@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/models/student_model.dart';
+import 'package:t_racks_softdev_1/services/database_service.dart';
 
 const _bgTeal = Color(0xFF167C94);
-const _headerTeal = Color(0xFF1B4A55);
+//const _headerTeal = Color(0xFF1B4A55);
 const _textDarkBlue = Color(0xFF1A2B3C);
 const _textTeal = Color(0xFF167C94);
-const _borderGrey = Color(0xFFBFD5E3);
+//const _borderGrey = Color(0xFFBFD5E3);
 const _statusRed = Color(0xFFDA6A6A);
 
 class StudentProfileContent extends StatefulWidget {
@@ -23,7 +24,8 @@ class StudentProfileContent extends StatefulWidget {
 }
 
 class _StudentProfileContentState extends State<StudentProfileContent> {
-  final _formKey = GlobalKey<FormState>();
+  //final _formKey = GlobalKey<FormState>();
+  final _databaseService = DatabaseService();
   
   // Controllers
   late TextEditingController _firstNameController;
@@ -38,6 +40,7 @@ class _StudentProfileContentState extends State<StudentProfileContent> {
   late String? _initialInstitution;
 
   bool _hasChanges = false;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -100,6 +103,41 @@ class _StudentProfileContentState extends State<StudentProfileContent> {
     );
 
     return shouldPop ?? false;
+  }
+
+  Future<void> _onSave() async {
+    if (!_hasChanges || _isSaving) return;
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      await _databaseService.updateStudentData(
+        firstName: _firstNameController.text,
+        lastName: _lastNameController.text,
+        institution: _institutionController.text,
+      );
+
+      // Update initial values to reflect the saved state
+      _initialFirstName = _firstNameController.text;
+      _initialLastName = _lastNameController.text;
+      _initialInstitution = _institutionController.text;
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Changes Saved Successfully!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving changes: $e')),
+        );
+      }
+    } finally {
+      setState(() { _isSaving = false; _hasChanges = false; });
+    }
   }
 
   @override
@@ -176,29 +214,26 @@ class _StudentProfileContentState extends State<StudentProfileContent> {
                     width: double.infinity,
                     height: 60 * scale,
                     child: OutlinedButton(
-                      onPressed: () {
-                        // Save logic would go here
-                        setState(() {
-                          _hasChanges = false;
-                        });
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Changes Saved')),
-                        );
-                      },
+                      onPressed: (_hasChanges && !_isSaving) ? _onSave : null,
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: _textTeal),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16 * scale),
                         ),
                         foregroundColor: _textTeal,
+                        disabledForegroundColor: Colors.grey,
                       ),
-                      child: Text(
-                        'Save Changes',
-                        style: TextStyle(
-                          fontSize: 20 * scale,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+                      child: _isSaving
+                          ? const CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(_textTeal),
+                            )
+                          : Text(
+                              'Save Changes',
+                              style: TextStyle(
+                                fontSize: 20 * scale,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                     ),
                   ),
                   SizedBox(height: 40 * scale),

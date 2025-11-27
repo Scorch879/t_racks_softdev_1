@@ -27,6 +27,13 @@ class DatabaseService {
     }
   }
 
+  ///
+  ///
+  ///
+  ///Fetch functions right here
+  ///
+  ///
+  ///
   Future<Profile?> getProfile() async {
     try {
       final userId = _supabase.auth.currentUser?.id;
@@ -76,6 +83,43 @@ class DatabaseService {
     }
   }
 
+  ///
+  ///
+  ///
+  ///Update functions right here
+  ///
+  ///
+  ///
+  /// Updates the data for a student user in the database.
+  Future<void> updateStudentData({
+    required String firstName,
+    required String lastName,
+    required String? institution,
+  }) async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw 'User not logged in';
+
+      // 1. Update the 'profiles' table
+      final profileUpdate = {
+        'firstName': firstName,
+        'lastName': lastName,
+      };
+      await _supabase.from('profiles').update(profileUpdate).eq('id', userId);
+
+      // 2. Update the 'Student_Table'
+      final studentUpdate = {'institution': institution};
+      await _supabase
+          .from('Student_Table')
+          .update(studentUpdate)
+          .eq('id', userId);
+    } catch (e) {
+      // Rethrow the error to be handled by the UI
+      print('Error updating student data: $e');
+      rethrow;
+    }
+  }
+
   /// Fetches the complete data for an educator user.
   Future<Educator?> getEducatorData() async {
     try {
@@ -97,7 +141,6 @@ class DatabaseService {
       return null;
     }
   }
-  
 }
 
 class AccountServices {
