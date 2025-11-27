@@ -187,7 +187,7 @@ class _TopBarState extends State<_TopBar> {
   }
 }
 
-class _BottomNav extends StatelessWidget {
+class _BottomNav extends StatefulWidget {
   const _BottomNav({
     required this.scale,
     required this.currentTab,
@@ -198,7 +198,15 @@ class _BottomNav extends StatelessWidget {
   final ValueChanged<StudentNavTab> onTabChanged;
 
   @override
+  State<_BottomNav> createState() => _BottomNavState();
+}
+
+class _BottomNavState extends State<_BottomNav> {
+  @override
   Widget build(BuildContext context) {
+    final scale = widget.scale;
+    final currentTab = widget.currentTab;
+    final onTabChanged = widget.onTabChanged;
     return Container(
       padding: EdgeInsets.only(
         left: 24 * scale,
@@ -237,7 +245,7 @@ class _BottomNav extends StatelessWidget {
   }
 }
 
-class _BottomItem extends StatelessWidget {
+class _BottomItem extends StatefulWidget {
   const _BottomItem({
     required this.icon,
     required this.label,
@@ -253,22 +261,29 @@ class _BottomItem extends StatelessWidget {
   final bool isActive;
 
   @override
+  State<_BottomItem> createState() => _BottomItemState();
+}
+
+class _BottomItemState extends State<_BottomItem> {
+  @override
   Widget build(BuildContext context) {
     final Color iconAndTextColor = Colors.black87;
     final Color activeBg = _accentCyan;
+    final scale = widget.scale;
+    final isActive = widget.isActive;
     return Semantics(
-      label: label,
+      label: widget.label,
       button: true,
       child: InkWell(
         borderRadius: BorderRadius.circular(16 * scale),
-        onTap: onTap,
+        onTap: widget.onTap,
         child: Container(
           padding: EdgeInsets.all(12 * scale),
           decoration: BoxDecoration(
             color: isActive ? activeBg : Colors.transparent,
             borderRadius: BorderRadius.circular(16 * scale),
           ),
-          child: Icon(icon, color: iconAndTextColor, size: 24 * scale),
+          child: Icon(widget.icon, color: iconAndTextColor, size: 24 * scale),
         ),
       ),
     );
@@ -330,7 +345,7 @@ const List<_StudentNotification> _notifications = [
   ),
 ];
 
-class _NotificationDialog extends StatelessWidget {
+class _NotificationDialog extends StatefulWidget {
   const _NotificationDialog({
     required this.notifications,
     required this.isFull,
@@ -344,7 +359,16 @@ class _NotificationDialog extends StatelessWidget {
   final VoidCallback onToggle;
 
   @override
+  State<_NotificationDialog> createState() => _NotificationDialogState();
+}
+
+class _NotificationDialogState extends State<_NotificationDialog> {
+  @override
   Widget build(BuildContext context) {
+    final isFull = widget.isFull;
+    final notifications = widget.notifications;
+    final onClose = widget.onClose;
+    final onToggle = widget.onToggle;
     final double maxHeight = isFull ? 520 : 360;
     final String toggleLabel = isFull ? 'See Less' : 'View All Notifications';
 
@@ -422,13 +446,19 @@ class _NotificationDialog extends StatelessWidget {
   }
 }
 
-class _NotificationTile extends StatelessWidget {
+class _NotificationTile extends StatefulWidget {
   const _NotificationTile({required this.item});
 
   final _StudentNotification item;
 
   @override
+  State<_NotificationTile> createState() => _NotificationTileState();
+}
+
+class _NotificationTileState extends State<_NotificationTile> {
+  @override
   Widget build(BuildContext context) {
+    final item = widget.item;
     final _Indicator indicator = _indicatorFor(item.type);
 
     return Container(

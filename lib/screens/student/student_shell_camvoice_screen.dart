@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 
-class StudentShellCamvoiceScreen extends StatelessWidget {
+class StudentShellCamvoiceScreen extends StatefulWidget {
   final Widget child;
 
   const StudentShellCamvoiceScreen({super.key, required this.child});
 
   @override
+  State<StudentShellCamvoiceScreen> createState() => _StudentShellCamvoiceScreenState();
+}
+
+class _StudentShellCamvoiceScreenState extends State<StudentShellCamvoiceScreen> {
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true, // Important for the FAB docking effect
-      body: child,
+      body: widget.child,
       floatingActionButton: SizedBox(
         width: 70, // Slightly larger than standard
         height: 70,
@@ -131,7 +136,7 @@ class StudentShellCamvoiceScreen extends StatelessWidget {
   }
 }
 
-class _AttendanceOptionTile extends StatelessWidget {
+class _AttendanceOptionTile extends StatefulWidget {
   final IconData icon;
   final String title;
   final VoidCallback onTap;
@@ -143,6 +148,11 @@ class _AttendanceOptionTile extends StatelessWidget {
   });
 
   @override
+  State<_AttendanceOptionTile> createState() => _AttendanceOptionTileState();
+}
+
+class _AttendanceOptionTileState extends State<_AttendanceOptionTile> {
+  @override
   Widget build(BuildContext context) {
     return ListTile(
       leading: Container(
@@ -151,16 +161,16 @@ class _AttendanceOptionTile extends StatelessWidget {
           color: const Color(0xFFE0F7FA),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Icon(icon, color: const Color(0xFF006064)),
+        child: Icon(widget.icon, color: const Color(0xFF006064)),
       ),
       title: Text(
-        title,
+        widget.title,
         style: const TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w600,
         ),
       ),
-      onTap: onTap,
+      onTap: widget.onTap,
     );
   }
 }

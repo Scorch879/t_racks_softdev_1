@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 
-class StudentCameraContent extends StatelessWidget {
+class StudentCameraContent extends StatefulWidget {
   const StudentCameraContent({super.key});
 
+  @override
+  State<StudentCameraContent> createState() => _StudentCameraContentState();
+}
+
+class _StudentCameraContentState extends State<StudentCameraContent> {
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -251,14 +256,21 @@ class StudentCameraContent extends StatelessWidget {
   }
 }
 
-class _CornerBracket extends StatelessWidget {
+class _CornerBracket extends StatefulWidget {
   final bool isTop;
   final bool isLeft;
 
   const _CornerBracket({required this.isTop, required this.isLeft});
 
   @override
+  State<_CornerBracket> createState() => _CornerBracketState();
+}
+
+class _CornerBracketState extends State<_CornerBracket> {
+  @override
   Widget build(BuildContext context) {
+    final isTop = widget.isTop;
+    final isLeft = widget.isLeft;
     return Container(
       width: 40,
       height: 40,
@@ -274,7 +286,7 @@ class _CornerBracket extends StatelessWidget {
   }
 }
 
-class _CircleButton extends StatelessWidget {
+class _CircleButton extends StatefulWidget {
   final IconData icon;
   final Color color;
   final Color iconColor;
@@ -290,14 +302,20 @@ class _CircleButton extends StatelessWidget {
   });
 
   @override
+  State<_CircleButton> createState() => _CircleButtonState();
+}
+
+class _CircleButtonState extends State<_CircleButton> {
+  @override
   Widget build(BuildContext context) {
+    final size = widget.size;
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Container(
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: color,
+          color: widget.color,
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
@@ -308,8 +326,8 @@ class _CircleButton extends StatelessWidget {
           ],
         ),
         child: Icon(
-          icon,
-          color: iconColor,
+          widget.icon,
+          color: widget.iconColor,
           size: size * 0.5,
         ),
       ),

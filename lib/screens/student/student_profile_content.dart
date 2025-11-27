@@ -194,13 +194,19 @@ class _StudentProfileContentState extends State<StudentProfileContent> {
   }
 }
 
-class _ProfileHeader extends StatelessWidget {
+class _ProfileHeader extends StatefulWidget {
   const _ProfileHeader({required this.scale});
 
   final double scale;
 
   @override
+  State<_ProfileHeader> createState() => _ProfileHeaderState();
+}
+
+class _ProfileHeaderState extends State<_ProfileHeader> {
+  @override
   Widget build(BuildContext context) {
+    final scale = widget.scale;
     return SizedBox(
       height: 280 * scale,
       child: Stack(
@@ -340,7 +346,7 @@ class _HeaderClipper extends CustomClipper<Path> {
   bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }
 
-class _ProfileTextField extends StatelessWidget {
+class _ProfileTextField extends StatefulWidget {
   const _ProfileTextField({
     required this.label,
     required this.hint,
@@ -356,12 +362,18 @@ class _ProfileTextField extends StatelessWidget {
   final int maxLines;
 
   @override
+  State<_ProfileTextField> createState() => _ProfileTextFieldState();
+}
+
+class _ProfileTextFieldState extends State<_ProfileTextField> {
+  @override
   Widget build(BuildContext context) {
+    final scale = widget.scale;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          label,
+          widget.label,
           style: TextStyle(
             color: const Color(0xFF1B4A55),
             fontSize: 16 * scale,
@@ -370,15 +382,15 @@ class _ProfileTextField extends StatelessWidget {
         ),
         SizedBox(height: 8 * scale),
         TextFormField(
-          controller: controller,
-          maxLines: maxLines,
+          controller: widget.controller,
+          maxLines: widget.maxLines,
           style: TextStyle(
             color: _textDarkBlue,
             fontSize: 16 * scale,
             fontWeight: FontWeight.w500,
           ),
           decoration: InputDecoration(
-            hintText: hint,
+            hintText: widget.hint,
             hintStyle: TextStyle(
               color: const Color(0xFF93C0D3),
               fontSize: 16 * scale,
@@ -404,9 +416,14 @@ class _ProfileTextField extends StatelessWidget {
   }
 }
 
-class _UnsavedChangesDialog extends StatelessWidget {
+class _UnsavedChangesDialog extends StatefulWidget {
   const _UnsavedChangesDialog();
 
+  @override
+  State<_UnsavedChangesDialog> createState() => _UnsavedChangesDialogState();
+}
+
+class _UnsavedChangesDialogState extends State<_UnsavedChangesDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
