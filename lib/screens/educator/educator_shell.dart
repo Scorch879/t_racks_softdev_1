@@ -4,6 +4,7 @@ import 'package:t_racks_softdev_1/screens/educator/educator_classes_screen.dart'
 import 'package:t_racks_softdev_1/screens/educator/educator_report_screen.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_settings_screen.dart';
 import 'package:t_racks_softdev_1/services/educator_notification_service.dart';
+import 'package:t_racks_softdev_1/services/database_service.dart'; // Import DB Service
 
 class EducatorShell extends StatefulWidget {
   final int initialIndex;
@@ -15,11 +16,31 @@ class EducatorShell extends StatefulWidget {
 
 class _EducatorShellState extends State<EducatorShell> {
   late int _currentIndex;
-
+  String _educatorName = "Loading...";
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final dbService = DatabaseService();
+    // Use getProfile or getEducatorData depending on where the name is
+    print("--- FETCHING PROFILE ---");
+    final profile = await dbService.getProfile();
+    if (profile != null) {
+      // Now it's safe to print and use
+      print("--- PROFILE FOUND: ${profile.firstName} ---");
+      if (mounted && profile != null) {
+        setState(() {
+          // Combine first and last name
+          _educatorName = "${profile.firstName} ${profile.lastName}";
+        });
+      } else {
+        print("Profile is null or widget not mounted");
+      }
+    }
   }
 
   void _onItemTapped(int index) {
@@ -47,9 +68,12 @@ class _EducatorShellState extends State<EducatorShell> {
   Widget build(BuildContext context) {
     EducatorNotificationService.register(context);
     return Scaffold(
+      // 1. Allow body to extend behind the bottom bar
+      extendBody: true,
+
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(64),
-        child: _TopBar(),
+        child: _TopBar(educatorName: _educatorName),
       ),
       body: Stack(
         children: [
@@ -76,24 +100,33 @@ class _EducatorShellState extends State<EducatorShell> {
               ),
             ),
           ),
+
+          // 2. Wrap content in SafeArea so it doesn't get hidden behind the nav bar
+          // BUT only apply safe area to the bottom if needed
           SafeArea(
-            child: _buildContent(),
+            bottom: false, // Let content go to bottom if you want
+            child: Padding(
+              // Add padding equal to nav bar height so scrolling content isn't hidden
+              padding: const EdgeInsets.only(bottom: 80),
+              child: _buildContent(),
+            ),
           ),
         ],
       ),
+
+      // 3. Make the bottom nav bar transparent so background shows
       bottomNavigationBar: _buildBottomNavBar(),
     );
   }
 
   Widget _buildBottomNavBar() {
     return Container(
-      padding: const EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 10,
-        bottom: 20,
-      ),
+      padding: const EdgeInsets.only(left: 24, right: 24, top: 10, bottom: 20),
+      // 4. Change color to transparent or semi-transparent if you want the blue to show
+      // If you want it WHITE like your design, keep it white.
+      // But if you want the blue background to go all the way down, remove this line:
       decoration: const BoxDecoration(color: Colors.white),
+
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
@@ -112,24 +145,22 @@ class _EducatorShellState extends State<EducatorShell> {
       borderRadius: BorderRadius.circular(16),
       onTap: () => _onItemTapped(index),
       child: Container(
-        padding: const EdgeInsets.all(16), // Increased padding for larger hit area
+        padding: const EdgeInsets.all(
+          16,
+        ), // Increased padding for larger hit area
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF93C0D3) : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Icon(
-          icon,
-          color: Colors.black87,
-          size: 24,
-        ),
+        child: Icon(icon, color: Colors.black87, size: 24),
       ),
     );
   }
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar();
-
+  final String educatorName;
+  const _TopBar({required this.educatorName});
   @override
   Widget build(BuildContext context) {
     return AppBar(
@@ -142,19 +173,16 @@ class _TopBar extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: const Color(0xFFB7C5C9),
-            ),
+            CircleAvatar(radius: 20, backgroundColor: const Color(0xFFB7C5C9)),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Teacher',
-                    style: TextStyle(
+                    educatorName,
+                    style: const TextStyle(
                       color: Colors.black87,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -162,10 +190,7 @@ class _TopBar extends StatelessWidget {
                   ),
                   Text(
                     'Teacher',
-                    style: TextStyle(
-                      color: Colors.black54,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: Colors.black54, fontSize: 12),
                   ),
                 ],
               ),
@@ -188,7 +213,8 @@ class _TopBar extends StatelessWidget {
                 Positioned(
                   right: 8,
                   top: 8,
-                  child: IgnorePointer( // Ensure the badge doesn't block touches
+                  child: IgnorePointer(
+                    // Ensure the badge doesn't block touches
                     child: Container(
                       padding: const EdgeInsets.all(2.5),
                       decoration: BoxDecoration(

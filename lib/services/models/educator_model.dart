@@ -25,10 +25,10 @@ class Educator {
 
     return Educator(
       profile: Profile.fromJson(json),
-      birthDate: educatorMap['birthDate'] as String,
-      age: educatorMap['age'] as int,
+      birthDate: educatorMap['birthDate'] as String? ??'',
+      age: educatorMap['age'] as int? ??0,
       gender: educatorMap['gender'] as String?,
-      institution: educatorMap['institution'] as String,
+      institution: educatorMap['institution'] as String? ??'',
     );
   }
 
