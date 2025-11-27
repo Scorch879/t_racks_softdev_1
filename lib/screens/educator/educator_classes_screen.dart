@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_classroom_screen.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_view_model.dart';
 
-class EducatorClassesContent extends StatefulWidget {
-  const EducatorClassesContent({super.key});
+class EducatorClassesScreen extends StatefulWidget {
+  const EducatorClassesScreen({super.key});
 
   @override
-  State<EducatorClassesContent> createState() => _EducatorClassesContentState();
+  State<EducatorClassesScreen> createState() => _EducatorClassesContentState();
 }
 
-class _EducatorClassesContentState extends State<EducatorClassesContent> {
+class _EducatorClassesContentState extends State<EducatorClassesScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -21,15 +21,15 @@ class _EducatorClassesContentState extends State<EducatorClassesContent> {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      child: Column(
-        children: [
-          const SizedBox(height: 16),
-          _buildSummaryCards(),
+          child: Column(
+            children: [
+              const SizedBox(height: 16),
+              _buildSummaryCards(),
           const SizedBox(height: 24), // Increased spacing to separate sections
-          _buildMyClassesSection(),
-          const SizedBox(height: 16),
-        ],
-      ),
+              _buildMyClassesSection(),
+              const SizedBox(height: 16),
+            ],
+          ),
     );
   }
 
@@ -78,7 +78,7 @@ class _EducatorClassesContentState extends State<EducatorClassesContent> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -92,22 +92,22 @@ class _EducatorClassesContentState extends State<EducatorClassesContent> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                value,
-                style: const TextStyle(
+          Text(
+            value,
+            style: const TextStyle(
                   fontSize: 32, // Larger font for the number
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              Text(
-                label,
-                style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          Text(
+            label,
+            style: const TextStyle(
                   fontSize: 13,
-                  color: Colors.white70,
-                ),
-              ),
-            ],
+              color: Colors.white70,
+            ),
+          ),
+        ],
           )
         ],
       ),
@@ -127,7 +127,7 @@ class _EducatorClassesContentState extends State<EducatorClassesContent> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.25),
+            color: Colors.black.withValues(alpha: 0.25),
             blurRadius: 5,
             offset: const Offset(0, 0),
           ),
@@ -261,7 +261,7 @@ class _EducatorClassesContentState extends State<EducatorClassesContent> {
               color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 4,
               offset: const Offset(0, 2),
-            ),
+          ),
           ],
         ),
         child: Column(
@@ -284,8 +284,8 @@ class _EducatorClassesContentState extends State<EducatorClassesContent> {
                 _buildStatColumn('Students', '$students'),
                 const SizedBox(width: 75), // Gap between stats
                 _buildStatColumn('Attendance', '$attendance%'),
-              ],
-            ),
+                  ],
+                ),
             
             const SizedBox(height: 5),
             
@@ -304,13 +304,13 @@ class _EducatorClassesContentState extends State<EducatorClassesContent> {
             // Active Button (Left Aligned now)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-              decoration: BoxDecoration(
+                decoration: BoxDecoration(
                 color: const Color(0xFF7FE26B), // Lime green from Figma
                 borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                status,
-                style: const TextStyle(
+                ),
+                child: Text(
+                  status,
+                  style: const TextStyle(
                   color: Color(0xFF0C3343), // Dark text for contrast
                   fontSize: 13,
                   fontWeight: FontWeight.bold,

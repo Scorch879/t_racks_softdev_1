@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-class EducatorReportContent extends StatefulWidget {
-  const EducatorReportContent({super.key});
+class EducatorReportScreen extends StatefulWidget {
+  const EducatorReportScreen({super.key});
 
   @override
-  State<EducatorReportContent> createState() => _EducatorReportContentState();
+  State<EducatorReportScreen> createState() => _EducatorReportScreenState();
 }
 
-class _EducatorReportContentState extends State<EducatorReportContent> {
+class _EducatorReportScreenState extends State<EducatorReportScreen> {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
