@@ -22,14 +22,12 @@ class StudentClass {
     final time = json['time'] as String?;
     String? scheduleString;
 
-    // Combine day and time into a single schedule string for display.
     if (day != null && time != null) {
       scheduleString = '$day $time';
     }
 
     return StudentClass(
       id: json['id'] as String,
-      // Use the column names from your database schema
       name: json['class_name'] as String?,
       subject: json['subject'] as String?,
       day: day,
