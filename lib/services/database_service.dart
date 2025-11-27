@@ -61,6 +61,13 @@ class DatabaseService {
           .eq('id', userId)
           .single();
 
+      // The email is in the auth session, not the profiles table.
+      // We add it to the map before parsing the JSON.
+      final userEmail = _supabase.auth.currentUser?.email;
+      if (userEmail != null) {
+        data['email'] = userEmail;
+      }
+
       return Student.fromJson(data);
     } catch (e) {
       // Handle errors, e.g., user is not a student or data is missing.
