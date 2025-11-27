@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:t_racks_softdev_1/services/models/educator_model.dart';
 import 'package:t_racks_softdev_1/services/models/profile_model.dart';
+import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:t_racks_softdev_1/services/models/student_model.dart';
 
 final _supabase = Supabase.instance.client;
@@ -27,6 +28,13 @@ class DatabaseService {
     }
   }
 
+  ///
+  ///
+  ///
+  ///Fetch functions right here
+  ///
+  ///
+  ///
   Future<Profile?> getProfile() async {
     try {
       final userId = _supabase.auth.currentUser?.id;
@@ -61,11 +69,78 @@ class DatabaseService {
           .eq('id', userId)
           .single();
 
+      // The email is in the auth session, not the profiles table.
+      // We add it to the map before parsing the JSON.
+      final userEmail = _supabase.auth.currentUser?.email;
+      if (userEmail != null) {
+        data['email'] = userEmail;
+      }
+
       return Student.fromJson(data);
     } catch (e) {
       // Handle errors, e.g., user is not a student or data is missing.
       print('Error fetching student data: $e');
       return null;
+    }
+  }
+
+  /// Fetches the classes for the current student.
+  Future<List<StudentClass>> getStudentClasses() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw 'User not logged in';
+
+      // This query fetches all classes that the current user is enrolled in.
+      // It uses the 'Enrollments_Table' as the join table.
+      final data = await _supabase
+          .from('Classes_Table')
+          .select('*, Enrollments_Table!inner(*)')
+          .eq('Enrollments_Table.student_id', userId);
+
+      final classes = (data as List)
+          .map((item) => StudentClass.fromJson(item))
+          .toList();
+      return classes;
+    } catch (e) {
+      print('Error fetching student classes: $e');
+      rethrow;
+    }
+  }
+
+  ///
+  ///
+  ///
+  ///Update functions right here
+  ///
+  ///
+  ///
+  /// Updates the data for a student user in the database.
+  Future<void> updateStudentData({
+    required String firstName,
+    required String lastName,
+    required String? institution,
+  }) async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw 'User not logged in';
+
+      // 1. Update the 'profiles' table
+      final profileUpdate = {
+        'firstName': firstName,
+        'lastName': lastName,
+      };
+      await _supabase.from('profiles').update(profileUpdate).eq('id', userId);
+
+      // 2. Update the 'Student_Table'
+      final studentUpdate = {'institution': institution};
+      await _supabase
+          .from('Student_Table')
+          .update(studentUpdate)
+          .eq('id', userId);
+    } catch (e) {
+      // Rethrow the error to be handled by the UI
+      print('Error updating student data: $e');
+      rethrow;
     }
   }
 
@@ -90,7 +165,6 @@ class DatabaseService {
       return null;
     }
   }
-  
 }
 
 class AccountServices {
@@ -105,6 +179,23 @@ class AccountServices {
       await _supabase.from('profiles').delete().eq('id', userId);
     } catch (e) {
       throw 'Error deleting profile: $e';
+    }
+  }
+}
+
+class ClassesServices {
+  Future<void> createClass() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+
+      if (userId == null) {
+        throw 'User is not logged in';
+      }
+
+      // Class creation logic goes here
+
+    } catch (e) {
+      throw 'Error creating class: $e';
     }
   }
 }
