@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/student/student_settings_screen.dart';
 import 'package:t_racks_softdev_1/screens/student/student_class_screen.dart';
+import 'package:t_racks_softdev_1/screens/student/student_camera_screen.dart';
 
 const _bgTeal = Color(0xFF167C94);
 const _cardSurface = Color(0xFF173C45);
@@ -21,7 +22,14 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   DateTime? _lastNavTime;
   static const _navDebounceMs = 300;
 
-  void onOngoingClassStatusPressed() {}
+  void onOngoingClassStatusPressed() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const StudentCameraScreen(),
+      ),
+    );
+  }
 
   void onFilterAllClasses() {}
 
@@ -54,8 +62,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
     try {
       // Debug: indicate handler was triggered
-      // This helps confirm whether the tap is reaching this callback
-      // Visible briefly as a SnackBar and logged in debug console
       // ignore: avoid_print
       print('onNavSchedule called');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -341,23 +347,24 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                     ],
                   ),
                 ),
-                GestureDetector(
-                  onTap: widget.onOngoingClassStatusPressed,
-                  child: Container(
-                    padding: EdgeInsets.symmetric(
-                      vertical: 8 * scale,
-                      horizontal: 14 * scale,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _statusRed,
-                      borderRadius: BorderRadius.circular(20 * scale),
-                    ),
-                    child: Text(
-                      'Absent',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12 * scale,
-                        fontWeight: FontWeight.w800,
+                Material(
+                  color: _statusRed,
+                  borderRadius: BorderRadius.circular(20 * scale),
+                  child: InkWell(
+                    onTap: widget.onOngoingClassStatusPressed,
+                    borderRadius: BorderRadius.circular(20 * scale),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        vertical: 12 * scale,
+                        horizontal: 18 * scale,
+                      ),
+                      child: Text(
+                        'Absent',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12 * scale,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
@@ -366,6 +373,83 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MyClassesCard extends StatefulWidget {
+  const _MyClassesCard({
+    required this.scale,
+    required this.radius,
+    required this.onFilterAllClasses,
+    required this.onClassPressed,
+  });
+
+  final double scale;
+  final double radius;
+  final VoidCallback onFilterAllClasses;
+  final VoidCallback onClassPressed;
+
+  @override
+  State<_MyClassesCard> createState() => _MyClassesCardState();
+}
+
+class _MyClassesCardState extends State<_MyClassesCard> {
+  @override
+  Widget build(BuildContext context) {
+    final scale = widget.scale;
+    return _CardContainer(
+      radius: widget.radius,
+      scale: scale,
+      child: Padding(
+        padding: EdgeInsets.all(16 * scale),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'My Classes',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18 * scale,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: widget.onFilterAllClasses,
+                  child: Icon(Icons.filter_list_rounded, color: Colors.white, size: 24 * scale),
+                ),
+              ],
+            ),
+            SizedBox(height: 16 * scale),
+            _ClassRow(
+              scale: scale,
+              title: 'Calculus 137',
+              statusText: 'Present',
+              statusColor: _chipGreen,
+              onTap: widget.onClassPressed,
+            ),
+            SizedBox(height: 12 * scale),
+            _ClassRow(
+              scale: scale,
+              title: 'Physics 138',
+              statusText: 'Absent',
+              statusColor: _statusRed,
+              onTap: widget.onClassPressed,
+            ),
+            SizedBox(height: 12 * scale),
+            _ClassRow(
+              scale: scale,
+              title: 'Calculus 237',
+              statusText: 'Present',
+              statusColor: _chipGreen,
+              onTap: widget.onClassPressed,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -451,95 +535,6 @@ class _TopBarState extends State<_TopBar> {
                   ),
                 ),
               ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MyClassesCard extends StatefulWidget {
-  const _MyClassesCard({
-    required this.scale,
-    required this.radius,
-    required this.onFilterAllClasses,
-    required this.onClassPressed,
-  });
-  final double scale;
-  final double radius;
-  final VoidCallback onFilterAllClasses;
-  final VoidCallback onClassPressed;
-
-  @override
-  State<_MyClassesCard> createState() => _MyClassesCardState();
-}
-
-class _MyClassesCardState extends State<_MyClassesCard> {
-  @override
-  Widget build(BuildContext context) {
-    final scale = widget.scale;
-    final radius = widget.radius;
-    return _CardContainer(
-      radius: radius,
-      scale: scale,
-      borderColor: const Color(0xFF6AAFBF).withOpacity(0.55),
-      background: const _CardBackground(),
-      child: Padding(
-        padding: EdgeInsets.all(16 * scale),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.menu_rounded,
-                  color: _accentCyan,
-                  size: 24 * scale,
-                ),
-                SizedBox(width: 10 * scale),
-                Expanded(
-                  child: Text(
-                    'My Classes',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22 * scale,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 16 * scale),
-            _FilterChipRow(
-              scale: scale,
-              onTap: widget.onFilterAllClasses,
-              title: 'All Classes',
-              trailingText: 'Total: 3',
-              backgroundColor: _chipGreen,
-            ),
-            SizedBox(height: 16 * scale),
-            _ClassRow(
-              scale: scale,
-              title: 'Calculus 137',
-              statusText: 'Absent',
-              statusColor: _statusRed,
-              onTap: widget.onClassPressed,
-            ),
-            SizedBox(height: 16 * scale),
-            _ClassRow(
-              scale: scale,
-              title: 'Physics 138',
-              statusText: 'Ongoing',
-              statusColor: _chipGreen,
-              onTap: widget.onClassPressed,
-            ),
-            SizedBox(height: 16 * scale),
-            _ClassRow(
-              scale: scale,
-              title: 'Calculus 237',
-              statusText: 'Upcoming',
-              statusColor: _chipGreen,
-              onTap: widget.onClassPressed,
             ),
           ],
         ),
