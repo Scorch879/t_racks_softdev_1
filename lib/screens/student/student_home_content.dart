@@ -498,49 +498,83 @@ class _ClassRow extends StatefulWidget {
   final VoidCallback onTap;
 
   @override
-  State<_ClassRow> createState() => _ClassRowState();
+  State<_ClassRow> createState() => __ClassRowState();
 }
 
-class _ClassRowState extends State<_ClassRow> {
+class __ClassRowState extends State<_ClassRow> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleTap() async {
+    // Start the animation
+    await _controller.forward();
+    // After a short delay, call the original onTap to show the dialog
+    await Future.delayed(const Duration(milliseconds: 50));
+    widget.onTap();
+    // Reverse the animation to return to the original state
+    await _controller.reverse();
+  }
+
   @override
   Widget build(BuildContext context) {
     final scale = widget.scale;
     return GestureDetector(
-      onTap: widget.onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 16 * scale, vertical: 16 * scale),
-        decoration: BoxDecoration(
-          color: widget.statusColor,
-          borderRadius: BorderRadius.circular(22 * scale),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.25),
-              blurRadius: 10 * scale,
-              offset: Offset(0, 6 * scale),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                widget.title,
+      onTap: _handleTap,
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 16 * scale, vertical: 16 * scale),
+          decoration: BoxDecoration(
+            color: widget.statusColor,
+            borderRadius: BorderRadius.circular(22 * scale),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.25),
+                blurRadius: 10 * scale,
+                offset: Offset(0, 6 * scale),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  widget.title,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18 * scale,
+                  ),
+                ),
+              ),
+              Text(
+                widget.statusText,
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
                   fontSize: 18 * scale,
                 ),
               ),
-            ),
-            Text(
-              widget.statusText,
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 18 * scale,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
