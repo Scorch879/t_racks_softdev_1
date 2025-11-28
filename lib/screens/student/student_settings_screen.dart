@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/student/student_home_screen.dart';
-import 'package:t_racks_softdev_1/screens/student/student_profile_screen.dart';
 
 const _bgTeal = Color(0xFF167C94);
 const _cardSurface = Color(0xFF173C45);
@@ -20,13 +19,7 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen> {
   DateTime? _lastNavTime;
   static const _navDebounceMs = 300;
 
-  void onProfileSettingsPressed() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const StudentProfileScreen(),
-      ),
-    );
-  }
+  void onProfileSettingsPressed() {}
 
   void onAccountSettingsPressed() {}
 
@@ -103,11 +96,6 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen> {
         );
       },
     );
-  }
-
-  @override
-  void initState() {
-    super.initState();
   }
 
   @override
@@ -394,10 +382,7 @@ class _CardBackgroundState extends State<_CardBackground> {
 }
 
 class _TopBar extends StatefulWidget {
-  const _TopBar({
-    required this.scale,
-    required this.onNotificationsPressed,
-  });
+  const _TopBar({required this.scale, required this.onNotificationsPressed});
   final double scale;
   final VoidCallback onNotificationsPressed;
 
