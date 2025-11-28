@@ -1,20 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:t_racks_softdev_1/screens/student/student_class_content.dart';
 import 'package:t_racks_softdev_1/screens/student/student_camera_screen.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
-import 'package:t_racks_softdev_1/services/models/attendance_record_model.dart';
 import 'package:t_racks_softdev_1/services/models/student_model.dart';
-import 'package:t_racks_softdev_1/services/database_service.dart';
 
-//const _bgTeal = Color(0xFF167C94);
+const _bgTeal = Color(0xFF167C94);
 const _cardSurface = Color(0xFF173C45);
 const _cardHeader = Color(0xFF1B4A55);
 const _accentCyan = Color(0xFF93C0D3);
 const _chipGreen = Color(0xFF4DBD88);
 const _statusRed = Color(0xFFDA6A6A);
 const _titleRed = Color(0xFFE57373);
-const _titleGreen = Color(0xFF4DBD88);
 
 class StudentHomeContent extends StatefulWidget {
   const StudentHomeContent({
@@ -44,12 +40,7 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
 
   void onFilterAllClasses() {}
 
-  void _navigateToClassDetails(String classId) {
-    showDialog(
-      context: context,
-      builder: (context) => _ClassDetailsDialog(classId: classId),
-    );
-  }
+  void onClassPressed() {}
 
   @override
   void initState() {
@@ -63,12 +54,10 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
       final results = await Future.wait([
         _databaseService.getStudentData(),
         _databaseService.getStudentClasses(),
-        _databaseService.getTodaysAttendanceStatus(),
       ]);
       return {
         'student': results[0] as Student?,
         'classes': results[1] as List<StudentClass>,
-        'attendanceStatus': results[2] as String,
       };
     } catch (e) {
       // Propagate error to FutureBuilder
@@ -98,7 +87,6 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
 
             final student = snapshot.data?['student'] as Student?;
             final classes = snapshot.data?['classes'] as List<StudentClass>? ?? [];
-            final attendanceStatus = snapshot.data?['attendanceStatus'] as String? ?? 'Unknown';
 
             return Stack(
               children: [
@@ -125,7 +113,6 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           _WelcomeAndOngoingCard(
-                            attendanceStatus: attendanceStatus,
                             student: student,
                             scale: scale,
                             radius: cardRadius,
@@ -137,7 +124,7 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
                             scale: scale,
                             radius: cardRadius,
                             onFilterAllClasses: onFilterAllClasses,
-                            onClassPressed: _navigateToClassDetails,
+                            onClassPressed: onClassPressed,
                           ),
                         ],
                       ),
@@ -153,133 +140,14 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
   }
 }
 
-class _ClassDetailsDialog extends StatefulWidget {
-  final String classId;
-  const _ClassDetailsDialog({required this.classId});
-
-  @override
-  State<_ClassDetailsDialog> createState() => _ClassDetailsDialogState();
-}
-
-class _ClassDetailsDialogState extends State<_ClassDetailsDialog> {
-  final _databaseService = DatabaseService();
-  late final Future<Map<String, dynamic>> _detailsFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _detailsFuture = _fetchDetails();
-  }
-
-  Future<Map<String, dynamic>> _fetchDetails() async {
-    final results = await Future.wait([
-      _databaseService.getClassDetails(widget.classId),
-      _databaseService.getAttendanceHistory(widget.classId),
-    ]);
-    return {'class': results[0], 'history': results[1]};
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: _cardHeader, // Using a color available in this file
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: FutureBuilder<Map<String, dynamic>>(
-        future: _detailsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const SizedBox(
-              height: 200,
-              child: Center(child: CircularProgressIndicator(color: Colors.white)),
-            );
-          }
-
-          if (snapshot.hasError) {
-            return Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white)),
-            );
-          }
-
-          final sClass = snapshot.data?['class'] as StudentClass?;
-          final history = snapshot.data?['history'] as List<AttendanceRecord>? ?? [];
-          if (sClass == null) return const Center(child: Text('Class not found.'));
-
-          return Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  sClass.name ?? 'Class Details',
-                  style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 24),
-                _DetailItem(label: 'Subject', value: sClass.subject),
-                const Divider(color: Colors.white24),
-                _DetailItem(label: 'Schedule', value: sClass.schedule),
-                const Divider(color: Colors.white24),
-                _DetailItem(label: 'Current Status', value: sClass.status),
-                const SizedBox(height: 24),
-                const Text(
-                  'Attendance History',
-                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                if (history.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16.0),
-                    child: Text('No attendance records found.', style: TextStyle(color: Colors.white70)),
-                  )
-                else
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 150),
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: history.length,
-                      itemBuilder: (context, index) {
-                        final record = history[index];
-                        final dateString = '${record.date.month}/${record.date.day}/${record.date.year}';
-                        return ListTile(
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(dateString, style: const TextStyle(color: Colors.white)),
-                          trailing: Text(
-                            record.isPresent ? 'Present' : 'Absent',
-                            style: TextStyle(color: record.isPresent ? _titleGreen : _titleRed, fontWeight: FontWeight.bold),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                const SizedBox(height: 24),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Close', style: TextStyle(color: _accentCyan)),
-                  ),
-                )
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
 class _WelcomeAndOngoingCard extends StatefulWidget {
   const _WelcomeAndOngoingCard({
-    required this.attendanceStatus,
     this.student,
     required this.scale,
     required this.radius,
     required this.onOngoingClassStatusPressed,
   });
   final double scale;
-  final String attendanceStatus;
   final double radius;
   final Student? student;
   final VoidCallback onOngoingClassStatusPressed;
@@ -292,20 +160,6 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
   @override
   Widget build(BuildContext context) {
     final scale = widget.scale;
-    final isPresent = widget.attendanceStatus == 'Present';
-    final statusColor = isPresent ? _titleGreen : _titleRed;
-
-    // Handle 'Not Recorded' or 'Error' cases
-    String displayStatus = widget.attendanceStatus;
-    Color displayColor = statusColor;
-    IconData displayIcon = isPresent ? Icons.person_pin_circle_outlined : Icons.person_off_outlined;
-
-    if (widget.attendanceStatus != 'Present' && widget.attendanceStatus != 'Absent') {
-      displayStatus = 'Not Recorded';
-      displayColor = Colors.grey;
-      displayIcon = Icons.help_outline;
-    }
-
     return _CardContainer(
       radius: widget.radius,
       scale: scale,
@@ -338,13 +192,6 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                 SizedBox(height: 12 * scale),
                 Row(
                   children: [
-                    Icon(displayIcon,
-                        color: displayColor, size: 28 * scale),
-                    SizedBox(width: 8 * scale),
-                    Text(
-                      displayStatus,
-                      style: TextStyle(
-                        color: displayColor,
                     Icon(Icons.access_time_filled_rounded,
                         color: _chipGreen, size: 28 * scale),
                     SizedBox(width: 8 * scale),
@@ -431,23 +278,6 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                     ],
                   ),
                 ),
-                GestureDetector(
-                  onTap: widget.onOngoingClassStatusPressed,
-                  child: Container(
-                    padding: EdgeInsets.symmetric(
-                      vertical: 8 * scale,
-                      horizontal: 14 * scale,
-                    ),
-                    decoration: BoxDecoration(
-                      color: displayColor,
-                      borderRadius: BorderRadius.circular(20 * scale),
-                    ),
-                    child: Text(
-                      displayStatus,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12 * scale,
-                        fontWeight: FontWeight.w800,
                 Material(
                   color: _chipGreen,
                   borderRadius: BorderRadius.circular(20 * scale),
@@ -479,28 +309,6 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
   }
 }
 
-class _DetailItem extends StatelessWidget {
-  final String label;
-  final String? value;
-
-  const _DetailItem({required this.label, this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 14)),
-          const SizedBox(height: 4),
-          Text(value ?? 'Not available', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
-}
-
 class _MyClassesCard extends StatefulWidget {
   const _MyClassesCard({
     required this.classes,
@@ -513,7 +321,7 @@ class _MyClassesCard extends StatefulWidget {
   final List<StudentClass> classes;
   final double radius;
   final VoidCallback onFilterAllClasses;
-  final void Function(String classId) onClassPressed;
+  final VoidCallback onClassPressed;
 
   @override
   State<_MyClassesCard> createState() => _MyClassesCardState();
@@ -595,7 +403,7 @@ class _MyClassesCardState extends State<_MyClassesCard> {
                     // Status logic can be implemented later
                     statusText: sClass.status ?? 'Unknown',
                     statusColor: _getStatusColor(sClass.status),
-                    onTap: () => widget.onClassPressed(sClass.id),
+                    onTap: widget.onClassPressed,
                   ),
                 );
               }).toList(),
@@ -690,49 +498,83 @@ class _ClassRow extends StatefulWidget {
   final VoidCallback onTap;
 
   @override
-  State<_ClassRow> createState() => _ClassRowState();
+  State<_ClassRow> createState() => __ClassRowState();
 }
 
-class _ClassRowState extends State<_ClassRow> {
+class __ClassRowState extends State<_ClassRow> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleTap() async {
+    // Start the animation
+    await _controller.forward();
+    // After a short delay, call the original onTap to show the dialog
+    await Future.delayed(const Duration(milliseconds: 50));
+    widget.onTap();
+    // Reverse the animation to return to the original state
+    await _controller.reverse();
+  }
+
   @override
   Widget build(BuildContext context) {
     final scale = widget.scale;
     return GestureDetector(
-      onTap: widget.onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 16 * scale, vertical: 16 * scale),
-        decoration: BoxDecoration(
-          color: widget.statusColor,
-          borderRadius: BorderRadius.circular(22 * scale),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.25),
-              blurRadius: 10 * scale,
-              offset: Offset(0, 6 * scale),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                widget.title,
+      onTap: _handleTap,
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 16 * scale, vertical: 16 * scale),
+          decoration: BoxDecoration(
+            color: widget.statusColor,
+            borderRadius: BorderRadius.circular(22 * scale),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.25),
+                blurRadius: 10 * scale,
+                offset: Offset(0, 6 * scale),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  widget.title,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18 * scale,
+                  ),
+                ),
+              ),
+              Text(
+                widget.statusText,
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
                   fontSize: 18 * scale,
                 ),
               ),
-            ),
-            Text(
-              widget.statusText,
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 18 * scale,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

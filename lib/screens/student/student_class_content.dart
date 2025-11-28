@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
-import 'package:t_racks_softdev_1/services/models/attendance_record_model.dart';
-import 'package:intl/intl.dart';
 
 const _bgTeal = Color(0xFF167C94);
 // Summary/top-stat cards background (dark slate sampled from Figma)
@@ -215,20 +213,12 @@ class _ClassDetailsDialog extends StatefulWidget {
 
 class _ClassDetailsDialogState extends State<_ClassDetailsDialog> {
   final _databaseService = DatabaseService();
-  late final Future<Map<String, dynamic>> _detailsFuture;
+  late final Future<StudentClass> _classDetailsFuture;
 
   @override
   void initState() {
     super.initState();
-    _detailsFuture = _fetchDetails();
-  }
-
-  Future<Map<String, dynamic>> _fetchDetails() async {
-    final results = await Future.wait([
-      _databaseService.getClassDetails(widget.classId),
-      _databaseService.getAttendanceHistory(widget.classId),
-    ]);
-    return {'class': results[0], 'history': results[1]};
+    _classDetailsFuture = _databaseService.getClassDetails(widget.classId);
   }
 
   @override
@@ -236,8 +226,8 @@ class _ClassDetailsDialogState extends State<_ClassDetailsDialog> {
     return Dialog(
       backgroundColor: _myClassesPanel,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: FutureBuilder<Map<String, dynamic>>(
-        future: _detailsFuture,
+      child: FutureBuilder<StudentClass>(
+        future: _classDetailsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const SizedBox(
@@ -253,9 +243,7 @@ class _ClassDetailsDialogState extends State<_ClassDetailsDialog> {
             );
           }
 
-          final sClass = snapshot.data?['class'] as StudentClass?;
-          final history = snapshot.data?['history'] as List<AttendanceRecord>? ?? [];
-          if (sClass == null) return const Center(child: Text('Class not found.'));
+          final sClass = snapshot.data!;
 
           return Padding(
             padding: const EdgeInsets.all(24.0),
@@ -272,39 +260,7 @@ class _ClassDetailsDialogState extends State<_ClassDetailsDialog> {
                 const Divider(color: Colors.white24),
                 _DetailItem(label: 'Schedule', value: sClass.schedule),
                 const Divider(color: Colors.white24),
-                _DetailItem(label: 'Current Status', value: sClass.status),
-                const SizedBox(height: 24),
-                const Text(
-                  'Attendance History',
-                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                if (history.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16.0),
-                    child: Text('No attendance records found.', style: TextStyle(color: Colors.white70)),
-                  )
-                else
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 150),
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: history.length,
-                      itemBuilder: (context, index) {
-                        final record = history[index];
-                        final dateString = DateFormat.yMd().format(record.date);
-                        return ListTile(
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(dateString, style: const TextStyle(color: Colors.white)),
-                          trailing: Text(
-                            record.isPresent ? 'Present' : 'Absent',
-                            style: TextStyle(color: record.isPresent ? _chipGreen : _statusRed, fontWeight: FontWeight.bold),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
+                _DetailItem(label: 'Status', value: sClass.status),
                 const SizedBox(height: 24),
                 Align(
                   alignment: Alignment.centerRight,
@@ -593,91 +549,129 @@ class _ClassCard extends StatefulWidget {
   final Color? cardColor;
 
   @override
-  State<_ClassCard> createState() => _ClassCardState();
+  State<_ClassCard> createState() => __ClassCardState();
 }
 
-class _ClassCardState extends State<_ClassCard> {
+class __ClassCardState extends State<_ClassCard> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleTap() async {
+    // This assumes the parent widget has a GestureDetector with an onTap.
+    // We'll just animate here.
+    await _controller.forward();
+    await Future.delayed(const Duration(milliseconds: 50));
+    await _controller.reverse();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(16 * widget.scale),
-      decoration: BoxDecoration(
-        color: widget.cardColor ?? _cardSurface,
-        borderRadius: BorderRadius.circular(16 * widget.scale),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.25),
-            blurRadius: 10 * widget.scale,
-            offset: Offset(0, 6 * widget.scale),
+    // The parent GestureDetector will call _handleTap if needed,
+    // but we add it here to make the card itself interactive.
+    return GestureDetector(
+      onTap: _handleTap,
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: Container(
+          padding: EdgeInsets.all(16 * widget.scale),
+          decoration: BoxDecoration(
+            color: widget.cardColor ?? _cardSurface,
+            borderRadius: BorderRadius.circular(16 * widget.scale),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.25),
+                blurRadius: 10 * widget.scale,
+                offset: Offset(0, 6 * widget.scale),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            widget.title,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20 * widget.scale,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          SizedBox(height: 8 * widget.scale),
-          Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Students ${widget.students}',
+                widget.title,
                 style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14 * widget.scale,
-                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  fontSize: 20 * widget.scale,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-              SizedBox(width: 16 * widget.scale),
+              SizedBox(height: 8 * widget.scale),
+              Row(
+                children: [
+                  Text(
+                    'Students ${widget.students}',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14 * widget.scale,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(width: 16 * widget.scale),
+                  Text(
+                    widget.isUpcoming ? 'Present Upcoming' : 'Present ${widget.present}',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14 * widget.scale,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 8 * widget.scale),
               Text(
-                widget.isUpcoming ? 'Present Upcoming' : 'Present ${widget.present}',
+                widget.time,
                 style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14 * widget.scale,
-                  fontWeight: FontWeight.w600,
+                  color: Colors.white60,
+                  fontSize: 12 * widget.scale,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              SizedBox(height: 12 * widget.scale),
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: 16 * widget.scale,
+                  vertical: 8 * widget.scale,
+                ),
+                decoration: BoxDecoration(
+                  color: widget.statusColor,
+                  borderRadius: BorderRadius.circular(20 * widget.scale),
+                ),
+                child: Text(
+                  widget.status,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14 * widget.scale,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ],
           ),
-          SizedBox(height: 8 * widget.scale),
-          Text(
-            widget.time,
-            style: TextStyle(
-              color: Colors.white60,
-              fontSize: 12 * widget.scale,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          SizedBox(height: 12 * widget.scale),
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: 16 * widget.scale,
-              vertical: 8 * widget.scale,
-            ),
-            decoration: BoxDecoration(
-              color: widget.statusColor,
-              borderRadius: BorderRadius.circular(20 * widget.scale),
-            ),
-            child: Text(
-              widget.status,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14 * widget.scale,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
+
 
 class _SettingsCard extends StatefulWidget {
   const _SettingsCard({required this.scale, required this.radius});

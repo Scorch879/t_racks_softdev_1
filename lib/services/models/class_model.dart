@@ -22,29 +22,20 @@ class StudentClass {
     final time = json['time'] as String?;
     String? scheduleString;
 
+    // Combine day and time into a single schedule string for display.
     if (day != null && time != null) {
       scheduleString = '$day $time';
     }
 
-    // Determine status from Attendance_Record
-    String derivedStatus;
-    // The RPC returns a single JSON object for today's attendance, or null.
-    final todaysRecord = json['Attendance_Record'] as Map<String, dynamic>?;
-
-    if (todaysRecord != null) {
-      derivedStatus = (todaysRecord['isPresent'] as bool? ?? false) ? 'Present' : 'Absent';
-    } else {
-      derivedStatus = 'Upcoming'; // If no record for today, it's upcoming.
-    }
-
     return StudentClass(
       id: json['id'] as String,
+      // Use the column names from your database schema
       name: json['class_name'] as String?,
       subject: json['subject'] as String?,
       day: day,
       time: time,
       schedule: scheduleString,
-      status: derivedStatus,
+      status: json['status'] as String?,
     );
   }
 }
