@@ -280,6 +280,34 @@ class DatabaseService {
       return [];
     }
   }
+
+  Future<void> createClass({
+    required String className,
+    required String subject,
+    required String day,
+    required String time,
+  }) async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw 'User not logged in';
+
+      final newClass = {
+        'educator_id': userId,
+        'class_name': className,
+        'subject': subject,
+        'day': day,
+        'time': time,
+        'status': 'Active', // Default status
+        // 'schedule': ... you are splitting schedule into day/time now, which is good!
+      };
+
+      await _supabase.from('Classes_Table').insert(newClass);
+    } catch (e) {
+      print('Error creating class: $e');
+      rethrow;
+    }
+  }
+  
 }
 
 class AccountServices {

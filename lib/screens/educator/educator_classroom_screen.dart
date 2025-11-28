@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
-// import 'package:t_racks_softdev_1/screens/educator/educator_add_student_screen.dart';
+import 'package:t_racks_softdev_1/screens/educator/educator_add_student_screen.dart';
 
 class EducatorClassroomScreen extends StatefulWidget {
   final String classId;
@@ -84,6 +84,7 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0), // Remove bottom padding here
               child: Column(
                 // This Column takes up the screen height
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Use Flexible to allow the card to shrink/grow
                   Flexible(

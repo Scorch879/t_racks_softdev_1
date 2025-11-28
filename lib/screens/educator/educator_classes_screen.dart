@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_classroom_screen.dart';
+import 'package:t_racks_softdev_1/screens/educator/create_class_modal.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 
 class EducatorClassesScreen extends StatefulWidget {
@@ -11,6 +12,21 @@ class EducatorClassesScreen extends StatefulWidget {
 
 class _EducatorClassesContentState extends State<EducatorClassesScreen> {
   final DatabaseService _dbService = DatabaseService();
+  late Future<List<EducatorClassSummary>> _classesFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    // 2. Load the data when the screen first opens
+    _classesFuture = _dbService.getEducatorClasses();
+  }
+
+  // 3. Add a function to refresh the data
+  void _refreshClasses() {
+    setState(() {
+      _classesFuture = _dbService.getEducatorClasses();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,16 +91,24 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
               
               // --- REPLACED GESTURE DETECTOR WITH ELEVATED BUTTON ---
               SizedBox(
-                height: 32, // Set a fixed height to keep it compact like a chip
+                height: 32,
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    // TODO: Navigate to Create Class Screen
-                    print("Create Class Tapped");
+                  // 1. Make this async so we can wait
+                  onPressed: () async {
+                    // 2. Use showDialog for the centered, floating look
+                    await showDialog(
+                      context: context,
+                      builder: (context) => const CreateClassModal(),
+                    );
+                    
+                    // 3. This runs ONLY after the modal closes
+                    // It refreshes the list to show your new class immediately
+                    _refreshClasses();
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF7FE26B), // The "Active" green
                     foregroundColor: const Color(0xFF0C3343), // Dark text/icon color
-                    elevation: 0, // Flat style to match your design
+                    elevation: 0, 
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
