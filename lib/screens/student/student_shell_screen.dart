@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/student/student_home_content.dart';
 import 'package:t_racks_softdev_1/screens/student/student_settings_content.dart';
 import 'package:t_racks_softdev_1/screens/student/student_class_content.dart';
-import 'package:t_racks_softdev_1/services/database_service.dart';
-import 'package:t_racks_softdev_1/services/models/student_model.dart';
 
 const _bgTeal = Color(0xFF167C94);
 const _accentCyan = Color(0xFF93C0D3);
@@ -18,8 +16,6 @@ class StudentShellScreen extends StatefulWidget {
 }
 
 class _StudentShellScreenState extends State<StudentShellScreen> {
-  final _databaseService = DatabaseService();
-  late Future<Student?> _studentDataFuture;
   StudentNavTab _currentTab = StudentNavTab.home;
 
   void _onTabChanged(StudentNavTab tab) {
@@ -71,12 +67,6 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    _studentDataFuture = _databaseService.getStudentData();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -89,7 +79,6 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
             preferredSize: Size.fromHeight(64 * scale),
             child: _TopBar(
               scale: scale,
-              studentDataFuture: _studentDataFuture,
               onNotificationsPressed: _onNotificationsPressed,
             ),
           ),
@@ -108,13 +97,11 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
 class _TopBar extends StatefulWidget {
   const _TopBar({
     required this.scale,
-    required this.studentDataFuture,
     required this.onNotificationsPressed,
   });
 
   final double scale;
   final VoidCallback onNotificationsPressed;
-  final Future<Student?> studentDataFuture;
 
   @override
   State<_TopBar> createState() => _TopBarState();
@@ -140,35 +127,26 @@ class _TopBarState extends State<_TopBar> {
             ),
             SizedBox(width: 12 * scale),
             Expanded(
-              child: FutureBuilder<Student?>(
-                future: widget.studentDataFuture,
-                builder: (context, snapshot) {
-                  final student = snapshot.data;
-                  final name = student?.fullName ?? 'Student';
-                  final role = student?.profile?.role ?? 'Student';
-
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        style: TextStyle(
-                          color: Colors.black87,
-                          fontSize: 16 * scale,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        role,
-                        style: TextStyle(
-                          color: Colors.black54,
-                          fontSize: 12 * scale,
-                        ),
-                      ),
-                    ],
-                  );
-                },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Student',
+                    style: TextStyle(
+                      color: Colors.black87,
+                      fontSize: 16 * scale,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    'Student',
+                    style: TextStyle(
+                      color: Colors.black54,
+                      fontSize: 12 * scale,
+                    ),
+                  ),
+                ],
               ),
             ),
             Stack(
@@ -562,3 +540,4 @@ class _Indicator {
   final Color backgroundColor;
   final Color borderColor;
 }
+
