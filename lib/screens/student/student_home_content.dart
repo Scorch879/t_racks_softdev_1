@@ -40,7 +40,7 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
   final _databaseService = DatabaseService();
   late Future<Map<String, dynamic>> _dataFuture;
 
-  void onOngoingClassStatusPressed() {}
+  //void onOngoingClassStatusPressed() {} commented this out cuz awas giving errors
 
   void onFilterAllClasses() {}
 
