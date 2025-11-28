@@ -186,28 +186,33 @@ class DatabaseService {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) throw 'User not logged in';
 
-      // Fetch classes owned by this educator
+      // 1. Updated Select Query: Added 'day' and 'time'
       final response = await _supabase
           .from('Classes_Table')
-          .select('id, class_name')
+          .select('id, class_name, subject, status, day, time') 
           .eq('educator_id', userId);
 
       List<EducatorClassSummary> classes = [];
 
       for (var row in response) {
-        // Count students in this class using Enrollments_Table
         final countResponse = await _supabase
             .from('Enrollments_Table')
             .select('student_id')
             .eq('class_id', row['id']);
+        
+        // 2. Combine Day and Time into one string
+        String day = row['day'] ?? '';
+        String time = row['time'] ?? '';
+        String fullSchedule = "$day $time".trim(); 
 
-        classes.add(
-          EducatorClassSummary(
-            id: row['id'],
-            className: row['class_name'] ?? 'Unnamed Class',
-            studentCount: countResponse.length,
-          ),
-        );
+        classes.add(EducatorClassSummary(
+          id: row['id'],
+          className: row['class_name'] ?? 'Unnamed Class',
+          subject: row['subject'] ?? '',
+          status: row['status'] ?? 'Active',
+          schedule: fullSchedule, // Use the combined string
+          studentCount: countResponse.length,
+        ));
       }
       return classes;
     } catch (e) {
@@ -313,11 +318,17 @@ class ClassesServices {
 class EducatorClassSummary {
   final String id;
   final String className;
+  final String subject;
+  final String schedule; // Derived from day + time
+  final String status;
   final int studentCount;
 
   EducatorClassSummary({
     required this.id,
     required this.className,
+    required this.subject,
+    required this.schedule,
+    required this.status,
     required this.studentCount,
   });
 }
