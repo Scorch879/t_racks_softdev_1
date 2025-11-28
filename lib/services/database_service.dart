@@ -4,6 +4,7 @@ import 'package:t_racks_softdev_1/services/models/profile_model.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:t_racks_softdev_1/services/models/student_model.dart';
 import 'package:collection/collection.dart';
+import 'dart:math';
 
 final _supabase = Supabase.instance.client;
 
@@ -189,7 +190,7 @@ class DatabaseService {
       // 1. Updated Select Query: Added 'day' and 'time'
       final response = await _supabase
           .from('Classes_Table')
-          .select('id, class_name, subject, status, day, time') 
+          .select('id, class_name, subject, status, day, time')
           .eq('educator_id', userId);
 
       List<EducatorClassSummary> classes = [];
@@ -199,20 +200,22 @@ class DatabaseService {
             .from('Enrollments_Table')
             .select('student_id')
             .eq('class_id', row['id']);
-        
+
         // 2. Combine Day and Time into one string
         String day = row['day'] ?? '';
         String time = row['time'] ?? '';
-        String fullSchedule = "$day $time".trim(); 
+        String fullSchedule = "$day $time".trim();
 
-        classes.add(EducatorClassSummary(
-          id: row['id'],
-          className: row['class_name'] ?? 'Unnamed Class',
-          subject: row['subject'] ?? '',
-          status: row['status'] ?? 'Active',
-          schedule: fullSchedule, // Use the combined string
-          studentCount: countResponse.length,
-        ));
+        classes.add(
+          EducatorClassSummary(
+            id: row['id'],
+            className: row['class_name'] ?? 'Unnamed Class',
+            subject: row['subject'] ?? '',
+            status: row['status'] ?? 'Active',
+            schedule: fullSchedule, // Use the combined string
+            studentCount: countResponse.length,
+          ),
+        );
       }
       return classes;
     } catch (e) {
@@ -281,6 +284,17 @@ class DatabaseService {
     }
   }
 
+  String _generateClassCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final random = Random();
+    return String.fromCharCodes(
+      Iterable.generate(
+        6,
+        (_) => chars.codeUnitAt(random.nextInt(chars.length)),
+      ),
+    );
+  }
+
   Future<void> createClass({
     required String className,
     required String subject,
@@ -290,7 +304,7 @@ class DatabaseService {
     try {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) throw 'User not logged in';
-
+      String classCode = _generateClassCode();
       final newClass = {
         'educator_id': userId,
         'class_name': className,
@@ -298,7 +312,7 @@ class DatabaseService {
         'day': day,
         'time': time,
         'status': 'Active', // Default status
-        // 'schedule': ... you are splitting schedule into day/time now, which is good!
+        'class_code': classCode,
       };
 
       await _supabase.from('Classes_Table').insert(newClass);
@@ -307,7 +321,6 @@ class DatabaseService {
       rethrow;
     }
   }
-  
 }
 
 class AccountServices {

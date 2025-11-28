@@ -84,7 +84,6 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0), // Remove bottom padding here
               child: Column(
                 // This Column takes up the screen height
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Use Flexible to allow the card to shrink/grow
                   Flexible(
