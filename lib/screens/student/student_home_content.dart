@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/student/student_class_content.dart';
+import 'package:t_racks_softdev_1/screens/student/student_camera_screen.dart';
+import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:t_racks_softdev_1/services/models/attendance_record_model.dart';
 import 'package:t_racks_softdev_1/services/models/student_model.dart';
@@ -27,6 +29,14 @@ class StudentHomeContent extends StatefulWidget {
 }
 
 class _StudentHomeContentState extends State<StudentHomeContent> {
+  void onOngoingClassStatusPressed() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const StudentCameraScreen(),
+      ),
+    );
+  }
   final _databaseService = DatabaseService();
   late Future<Map<String, dynamic>> _dataFuture;
 
@@ -335,6 +345,13 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                       displayStatus,
                       style: TextStyle(
                         color: displayColor,
+                    Icon(Icons.access_time_filled_rounded,
+                        color: _chipGreen, size: 28 * scale),
+                    SizedBox(width: 8 * scale),
+                    Text(
+                      'Ongoing',
+                      style: TextStyle(
+                        color: _chipGreen,
                         fontSize: 28 * scale,
                         fontWeight: FontWeight.w800,
                       ),
@@ -395,7 +412,7 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Calculus 137',
+                        'Physics 138',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 16 * scale,
@@ -431,6 +448,24 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                         color: Colors.white,
                         fontSize: 12 * scale,
                         fontWeight: FontWeight.w800,
+                Material(
+                  color: _chipGreen,
+                  borderRadius: BorderRadius.circular(20 * scale),
+                  child: InkWell(
+                    onTap: widget.onOngoingClassStatusPressed,
+                    borderRadius: BorderRadius.circular(20 * scale),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        vertical: 12 * scale,
+                        horizontal: 18 * scale,
+                      ),
+                      child: Text(
+                        'Ongoing',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12 * scale,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
