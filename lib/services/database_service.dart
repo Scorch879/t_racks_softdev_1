@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:t_racks_softdev_1/services/models/educator_model.dart';
 import 'package:t_racks_softdev_1/services/models/profile_model.dart';
+import 'package:t_racks_softdev_1/services/models/attendance_record_model.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:t_racks_softdev_1/services/models/student_model.dart';
 import 'package:collection/collection.dart';
@@ -26,6 +27,30 @@ class DatabaseService {
       return true;
     } catch (e) {
       return false;
+    }
+  }
+
+  /// Fetches the attendance history for a student in a specific class.
+  Future<List<AttendanceRecord>> getAttendanceHistory(String classId) async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw 'User not logged in';
+
+      final data = await _supabase
+          .from('Attendance_Record')
+          .select()
+          .eq('student_id', userId)
+          .eq('class_id', classId)
+          .order('date', ascending: false); // Show most recent first
+
+      final history = (data as List)
+          .map((item) => AttendanceRecord.fromJson(item))
+          .toList();
+
+      return history;
+    } catch (e) {
+      print('Error fetching attendance history: $e');
+      rethrow;
     }
   }
 
@@ -92,12 +117,11 @@ class DatabaseService {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) throw 'User not logged in';
 
-      // This query fetches all classes that the current user is enrolled in.
-      // It uses the 'Enrollments_Table' as the join table.
+      // Call the RPC function to get classes with today's attendance status.
       final data = await _supabase
-          .from('Classes_Table')
-          .select('*, Enrollments_Table!inner(*)')
-          .eq('Enrollments_Table.student_id', userId);
+          .rpc('get_student_classes_with_attendance', params: {
+        'p_student_id': userId,
+      });
 
       final classes = (data as List)
           .map((item) => StudentClass.fromJson(item))
@@ -156,6 +180,70 @@ class DatabaseService {
       // Rethrow the error to be handled by the UI
       print('Error updating student data: $e');
       rethrow;
+    }
+  }
+
+  /// Marks or updates a student's attendance for a specific class on the current date.
+  ///
+  /// This uses `upsert` to prevent creating duplicate records for the same student,
+  /// in the same class, on the same day.
+  ///
+  /// Note: For this to work correctly, you should have a UNIQUE constraint
+  /// on the combination of (student_id, class_id, date) in your `Attendance_Record` table.
+  Future<void> markAttendance({
+    required String studentId,
+    required String classId,
+    required bool isPresent,
+  }) async {
+    try {
+      final attendanceRecord = {
+        'student_id': studentId,
+        'class_id': classId,
+        'date': DateTime.now().toIso8601String(),
+        'isPresent': isPresent,
+      };
+
+      await _supabase.from('Attendance_Record').upsert(
+            attendanceRecord,
+            onConflict: 'student_id,class_id,date',
+          );
+    } catch (e) {
+      print('Error marking attendance: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetches the student's attendance status for the current day.
+  /// Returns 'Present', 'Absent', or 'Not Recorded'.
+  Future<String> getTodaysAttendanceStatus() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return 'Unknown';
+
+      final now = DateTime.now();
+      // Set up date range for today
+      final today = DateTime(now.year, now.month, now.day);
+      final tomorrow = today.add(const Duration(days: 1));
+
+      final data = await _supabase
+          .from('Attendance_Record')
+          .select('isPresent')
+          .eq('student_id', userId)
+          .gte('date', today.toIso8601String())
+          .lt('date', tomorrow.toIso8601String())
+          .order('date', ascending: false) // Get the latest record for the day
+          .limit(1)
+          .maybeSingle();
+
+      if (data == null) {
+        return 'Not Recorded';
+      }
+
+      final isPresent = data['isPresent'] as bool?;
+      return isPresent == true ? 'Present' : 'Absent';
+    } catch (e) {
+      print('Error fetching today\'s attendance: $e');
+      return 'Error';
     }
   }
 

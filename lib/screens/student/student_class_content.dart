@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
+import 'package:t_racks_softdev_1/services/models/attendance_record_model.dart';
+import 'package:intl/intl.dart';
 
 const _bgTeal = Color(0xFF167C94);
 // Summary/top-stat cards background (dark slate sampled from Figma)
@@ -213,12 +215,20 @@ class _ClassDetailsDialog extends StatefulWidget {
 
 class _ClassDetailsDialogState extends State<_ClassDetailsDialog> {
   final _databaseService = DatabaseService();
-  late final Future<StudentClass> _classDetailsFuture;
+  late final Future<Map<String, dynamic>> _detailsFuture;
 
   @override
   void initState() {
     super.initState();
-    _classDetailsFuture = _databaseService.getClassDetails(widget.classId);
+    _detailsFuture = _fetchDetails();
+  }
+
+  Future<Map<String, dynamic>> _fetchDetails() async {
+    final results = await Future.wait([
+      _databaseService.getClassDetails(widget.classId),
+      _databaseService.getAttendanceHistory(widget.classId),
+    ]);
+    return {'class': results[0], 'history': results[1]};
   }
 
   @override
@@ -226,8 +236,8 @@ class _ClassDetailsDialogState extends State<_ClassDetailsDialog> {
     return Dialog(
       backgroundColor: _myClassesPanel,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: FutureBuilder<StudentClass>(
-        future: _classDetailsFuture,
+      child: FutureBuilder<Map<String, dynamic>>(
+        future: _detailsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const SizedBox(
@@ -243,7 +253,9 @@ class _ClassDetailsDialogState extends State<_ClassDetailsDialog> {
             );
           }
 
-          final sClass = snapshot.data!;
+          final sClass = snapshot.data?['class'] as StudentClass?;
+          final history = snapshot.data?['history'] as List<AttendanceRecord>? ?? [];
+          if (sClass == null) return const Center(child: Text('Class not found.'));
 
           return Padding(
             padding: const EdgeInsets.all(24.0),
@@ -260,7 +272,39 @@ class _ClassDetailsDialogState extends State<_ClassDetailsDialog> {
                 const Divider(color: Colors.white24),
                 _DetailItem(label: 'Schedule', value: sClass.schedule),
                 const Divider(color: Colors.white24),
-                _DetailItem(label: 'Status', value: sClass.status),
+                _DetailItem(label: 'Current Status', value: sClass.status),
+                const SizedBox(height: 24),
+                const Text(
+                  'Attendance History',
+                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                if (history.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16.0),
+                    child: Text('No attendance records found.', style: TextStyle(color: Colors.white70)),
+                  )
+                else
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 150),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: history.length,
+                      itemBuilder: (context, index) {
+                        final record = history[index];
+                        final dateString = DateFormat.yMd().format(record.date);
+                        return ListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(dateString, style: const TextStyle(color: Colors.white)),
+                          trailing: Text(
+                            record.isPresent ? 'Present' : 'Absent',
+                            style: TextStyle(color: record.isPresent ? _chipGreen : _statusRed, fontWeight: FontWeight.bold),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                 const SizedBox(height: 24),
                 Align(
                   alignment: Alignment.centerRight,

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:t_racks_softdev_1/services/auth_service.dart';
 import 'package:t_racks_softdev_1/screens/login_screen.dart';
 import 'package:t_racks_softdev_1/screens/student/student_profile_screen.dart';
+import 'package:t_racks_softdev_1/services/auth_service.dart';
+import 'package:t_racks_softdev_1/services/database_service.dart';
 
 const _bgTeal = Color(0xFF167C94);
 const _cardSurface = Color(0xFF173C45);
@@ -44,7 +45,10 @@ class _StudentSettingsContentState extends State<StudentSettingsContent> {
   }
 
   Future<void> _handleLogout() async {
-    await AuthService().logoutAndNavigateToLogin(context);
+    // This should be handled by the parent screen (StudentShellScreen)
+    // to ensure proper navigation state management.
+    // For now, we can keep it here, but it's better to lift this state up.
+     await AuthService().logoutAndNavigateToLogin(context);
   }
 
   @override
