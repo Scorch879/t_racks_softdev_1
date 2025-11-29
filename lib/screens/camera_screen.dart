@@ -187,9 +187,19 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
                 children: [
                   // 7. Display the live camera feed
                   Positioned.fill(
-                    child: AspectRatio(
-                      aspectRatio: _controller!.value.aspectRatio,
-                      child: CameraPreview(_controller!),
+                    child: FittedBox(
+                      fit: BoxFit.cover,
+                      alignment: Alignment.center,
+                      child: SizedBox(
+                        // Use previewSize when available, fallback to screen size
+                        width:
+                            _controller!.value.previewSize?.width ??
+                            MediaQuery.of(context).size.width,
+                        height:
+                            _controller!.value.previewSize?.height ??
+                            MediaQuery.of(context).size.height,
+                        child: CameraPreview(_controller!),
+                      ),
                     ),
                   ),
                   // 8. Overlay the detection status at the bottom
