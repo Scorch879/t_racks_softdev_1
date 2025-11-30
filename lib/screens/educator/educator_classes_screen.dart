@@ -63,7 +63,7 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
         color: const Color(0xFF0C3343),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: const Color(0xFFBDBBBB).withValues(alpha: 1),
+          color: const Color(0xFFBDBBBB),
           width: 0.75
         ),
         boxShadow: [
@@ -185,7 +185,7 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
           color: const Color(0xFF376375),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(color: const Color(0xFFBDBBBB), width: 0.75),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4)],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 4)],
         ),
         // Use Stack to position elements
         child: Stack(

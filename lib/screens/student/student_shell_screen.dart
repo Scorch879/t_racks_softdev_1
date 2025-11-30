@@ -74,7 +74,9 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
         final scale = (width / 430).clamp(0.8, 1.6);
 
         return Scaffold(
-          backgroundColor: _bgTeal,
+          // Remove the solid background color
+          // backgroundColor: _bgTeal, 
+
           appBar: PreferredSize(
             preferredSize: Size.fromHeight(64 * scale),
             child: _TopBar(
@@ -82,7 +84,28 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
               onNotificationsPressed: _onNotificationsPressed,
             ),
           ),
-          body: _buildContent(),
+          
+          // Use a Stack to layer the Gradient behind your content
+          body: Stack(
+            children: [
+              // 1. The Gradient Background
+              Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Color(0xFF194B61),
+                      Color(0xFF2A7FA3),
+                      Color(0xFF267394),
+                      Color(0xFF349BC7),
+                    ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+              ),
+              _buildContent(),
+            ],
+          ),
           bottomNavigationBar: _BottomNav(
             scale: scale,
             currentTab: _currentTab,

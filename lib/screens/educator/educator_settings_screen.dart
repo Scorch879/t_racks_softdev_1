@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/auth_service.dart';
 import 'package:t_racks_softdev_1/screens/login_screen.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_profile_screen.dart';
+// Import the separated dialog
+import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
 
 // Educator Colors
 const _educatorCardSurface = Color(0xFF0F3951);
@@ -19,78 +21,24 @@ class EducatorSettingsScreen extends StatefulWidget {
 class _EducatorSettingsScreenState extends State<EducatorSettingsScreen> {
   final AuthService _authService = AuthService();
 
-  Future<void> _handleLogout() async {
-    final shouldLogout = await showDialog<bool>(
+  // 1. Shows the separated LogoutDialog
+  void _handleLogout() {
+    showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text(
-          'Logging Out',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Color(0xFFE53935),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: const Text(
-          "You're about to be logged out.\nAre you sure to continue?",
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Color(0xFF1A2B3C),
-            fontSize: 16,
-          ),
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        actionsAlignment: MainAxisAlignment.center,
-        actions: [
-          OutlinedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-              side: const BorderSide(color: Color(0xFF93C0D3)),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text(
-              'Yes',
-              style: TextStyle(
-                color: Color(0xFF1A2B3C),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          OutlinedButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-              side: const BorderSide(color: Color(0xFF93C0D3)),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(
-                color: Color(0xFF1A2B3C),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
+      builder: (context) => LogoutDialog(
+        onConfirm: _performLogout,
       ),
     );
+  }
 
-    if (shouldLogout == true) {
-      await _authService.signOut();
-      if (mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-          (route) => false,
-        );
-      }
+  // 2. Performs the actual logout logic when "Yes" is clicked
+  Future<void> _performLogout() async {
+    await _authService.signOut();
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
     }
   }
 
@@ -103,34 +51,38 @@ class _EducatorSettingsScreenState extends State<EducatorSettingsScreen> {
         final horizontalPadding = 16.0 * scale;
         final cardRadius = 16.0 * scale;
 
-        return SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            horizontalPadding,
-            12 * scale,
-            horizontalPadding,
-            100 * scale,
-          ),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 980),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _SettingsCard(
-                    scale: scale,
-                    radius: cardRadius,
-                    onProfileSettingsPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const EducatorProfileScreen(),
-                        ),
-                      );
-                    },
-                    onAccountSettingsPressed: () {},
-                    onLogoutPressed: _handleLogout,
-                  ),
-                ],
+        return SizedBox(
+          height: constraints.maxHeight,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(
+              horizontalPadding,
+              12 * scale,
+              horizontalPadding,
+              100 * scale,
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 980),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _SettingsCard(
+                      scale: scale,
+                      radius: cardRadius,
+                      onProfileSettingsPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const EducatorProfileScreen(),
+                          ),
+                        );
+                      },
+                      onAccountSettingsPressed: () {},
+                      onLogoutPressed: _handleLogout,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -174,7 +126,8 @@ class _SettingsCardState extends State<_SettingsCard> {
           children: [
             Row(
               children: [
-                Icon(Icons.settings, color: _educatorAccentCyan, size: 24 * scale),
+                Icon(Icons.settings,
+                    color: _educatorAccentCyan, size: 24 * scale),
                 SizedBox(width: 8 * scale),
                 Text(
                   'Settings',
@@ -213,7 +166,7 @@ class _SettingsCardState extends State<_SettingsCard> {
           ],
         ),
       ),
-      background: null, // Educator card doesn't use the texture background in the card itself based on previous code
+      background: null,
     );
   }
 }
@@ -245,7 +198,8 @@ class _SettingsPillState extends State<_SettingsPill> {
       borderRadius: BorderRadius.circular(22 * scale),
       onTap: widget.onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 18 * scale, vertical: 16 * scale),
+        padding:
+            EdgeInsets.symmetric(horizontal: 18 * scale, vertical: 16 * scale),
         decoration: BoxDecoration(
           color: widget.color,
           borderRadius: BorderRadius.circular(22 * scale),
@@ -271,7 +225,8 @@ class _SettingsPillState extends State<_SettingsPill> {
                 ),
               ),
             ),
-            Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16 * scale),
+            Icon(Icons.arrow_forward_ios,
+                color: Colors.white, size: 16 * scale),
           ],
         ),
       ),
@@ -309,7 +264,9 @@ class _CardContainerState extends State<_CardContainer> {
       decoration: BoxDecoration(
         color: _educatorCardSurface.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(radius),
-        border: borderColor != null ? Border.all(color: borderColor, width: 2) : null,
+        border: borderColor != null
+            ? Border.all(color: borderColor, width: 2)
+            : null,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.25),
