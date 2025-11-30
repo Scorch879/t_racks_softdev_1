@@ -103,34 +103,41 @@ class _EducatorSettingsScreenState extends State<EducatorSettingsScreen> {
         final horizontalPadding = 16.0 * scale;
         final cardRadius = 16.0 * scale;
 
-        return SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            horizontalPadding,
-            12 * scale,
-            horizontalPadding,
-            100 * scale,
-          ),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 980),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _SettingsCard(
-                    scale: scale,
-                    radius: cardRadius,
-                    onProfileSettingsPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const EducatorProfileScreen(),
-                        ),
-                      );
-                    },
-                    onAccountSettingsPressed: () {},
-                    onLogoutPressed: _handleLogout,
-                  ),
-                ],
+        // FIX: Wrap SingleChildScrollView in a SizedBox or Container that forces 
+        // it to be at least the height of the parent constraints.
+        // This ensures the Shell's Stack expands to fill the screen, showing the background.
+        return SizedBox(
+          height: constraints.maxHeight,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(
+              horizontalPadding,
+              12 * scale,
+              horizontalPadding,
+              100 * scale,
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 980),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _SettingsCard(
+                      scale: scale,
+                      radius: cardRadius,
+                      onProfileSettingsPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const EducatorProfileScreen(),
+                          ),
+                        );
+                      },
+                      onAccountSettingsPressed: () {},
+                      onLogoutPressed: _handleLogout,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -174,7 +181,8 @@ class _SettingsCardState extends State<_SettingsCard> {
           children: [
             Row(
               children: [
-                Icon(Icons.settings, color: _educatorAccentCyan, size: 24 * scale),
+                Icon(Icons.settings,
+                    color: _educatorAccentCyan, size: 24 * scale),
                 SizedBox(width: 8 * scale),
                 Text(
                   'Settings',
@@ -213,7 +221,7 @@ class _SettingsCardState extends State<_SettingsCard> {
           ],
         ),
       ),
-      background: null, // Educator card doesn't use the texture background in the card itself based on previous code
+      background: null,
     );
   }
 }
@@ -245,7 +253,8 @@ class _SettingsPillState extends State<_SettingsPill> {
       borderRadius: BorderRadius.circular(22 * scale),
       onTap: widget.onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 18 * scale, vertical: 16 * scale),
+        padding:
+            EdgeInsets.symmetric(horizontal: 18 * scale, vertical: 16 * scale),
         decoration: BoxDecoration(
           color: widget.color,
           borderRadius: BorderRadius.circular(22 * scale),
@@ -271,7 +280,8 @@ class _SettingsPillState extends State<_SettingsPill> {
                 ),
               ),
             ),
-            Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16 * scale),
+            Icon(Icons.arrow_forward_ios,
+                color: Colors.white, size: 16 * scale),
           ],
         ),
       ),
@@ -309,7 +319,9 @@ class _CardContainerState extends State<_CardContainer> {
       decoration: BoxDecoration(
         color: _educatorCardSurface.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(radius),
-        border: borderColor != null ? Border.all(color: borderColor, width: 2) : null,
+        border: borderColor != null
+            ? Border.all(color: borderColor, width: 2)
+            : null,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.25),
