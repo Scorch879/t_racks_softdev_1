@@ -58,7 +58,18 @@ class _StudentSettingsContentState extends State<StudentSettingsContent> {
 
         return Container(
           constraints: BoxConstraints.expand(),
-          color: _bgTeal,
+          decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Color(0xFF194B61),
+                    Color(0xFF2A7FA3),
+                    Color(0xFF267394),
+                    Color(0xFF349BC7),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
           child: Stack(
             children: [
               Positioned.fill(
