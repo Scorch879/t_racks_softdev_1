@@ -4,9 +4,9 @@ import 'package:t_racks_softdev_1/screens/login_screen.dart';
 import 'package:t_racks_softdev_1/screens/student/student_profile_screen.dart';
 
 const _bgTeal = Color(0xFF167C94);
-const _cardSurface = Color(0xFF173C45);
-const _chipGreen = Color(0xFF4DBD88);
-const _statusRed = Color(0xFFDA6A6A);
+const _cardSurface = Color(0xFF0C3343);
+const _chipGreen = Color(0xFF37AA82);
+const _statusRed = Color(0xFFDA5454);
 const _borderTeal = Color(0xFF6AAFBF);
 
 class StudentSettingsContent extends StatefulWidget {
@@ -57,8 +57,7 @@ class _StudentSettingsContentState extends State<StudentSettingsContent> {
         final cardRadius = 16.0 * scale;
 
         return Container(
-          width: double.infinity,
-          height: double.infinity,
+          constraints: BoxConstraints.expand(),
           color: _bgTeal,
           child: Stack(
             children: [
@@ -67,6 +66,8 @@ class _StudentSettingsContentState extends State<StudentSettingsContent> {
                   opacity: 0.12,
                   child: Image.asset(
                     'assets/images/squigglytexture.png',
+                    width: double.infinity,
+                    height: double.infinity,
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -126,11 +127,10 @@ class _SettingsCardState extends State<_SettingsCard> {
   @override
   Widget build(BuildContext context) {
     final scale = widget.scale;
-    final radius = widget.radius;
     return _CardContainer(
-      radius: radius,
+      radius: 16,
       scale: scale,
-      borderColor: _borderTeal.withOpacity(0.45),
+      border: Border.all(color: Color(0xFFBDBBBB), width: 0.5),
       background: const _CardBackground(),
       child: Padding(
         padding: EdgeInsets.all(18 * scale),
@@ -154,6 +154,8 @@ class _SettingsCardState extends State<_SettingsCard> {
             SizedBox(height: 20 * scale),
             _SettingsPill(
               label: 'Profile Settings',
+              labelFontSize: 16 * scale,
+              labelFontWeight: FontWeight.w100,
               icon: Icons.person,
               color: _chipGreen,
               scale: scale,
@@ -162,6 +164,8 @@ class _SettingsCardState extends State<_SettingsCard> {
             SizedBox(height: 14 * scale),
             _SettingsPill(
               label: 'Account Settings',
+              labelFontSize: 16 * scale,
+              labelFontWeight: FontWeight.w100,
               icon: Icons.settings,
               color: _chipGreen,
               scale: scale,
@@ -170,6 +174,8 @@ class _SettingsCardState extends State<_SettingsCard> {
             SizedBox(height: 14 * scale),
             _SettingsPill(
               label: 'Log Out',
+              labelFontSize: 16 * scale,
+              labelFontWeight: FontWeight.w100,
               icon: Icons.logout_rounded,
               color: _statusRed,
               scale: scale,
@@ -189,6 +195,8 @@ class _SettingsPill extends StatefulWidget {
     required this.color,
     required this.scale,
     required this.onTap,
+    this.labelFontSize,
+    this.labelFontWeight,
   });
 
   final String label;
@@ -196,6 +204,12 @@ class _SettingsPill extends StatefulWidget {
   final Color color;
   final double scale;
   final VoidCallback onTap;
+
+  // Optional override for the label font size (in logical pixels). If null,
+  // the widget falls back to `16 * scale` to preserve current behavior.
+  final double? labelFontSize;
+  final FontWeight? labelFontWeight;
+
 
   @override
   State<_SettingsPill> createState() => _SettingsPillState();
@@ -215,9 +229,9 @@ class _SettingsPillState extends State<_SettingsPill> {
           borderRadius: BorderRadius.circular(22 * scale),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.25),
-              blurRadius: 10 * scale,
-              offset: Offset(0, 6 * scale),
+              color: Colors.black.withValues(alpha:0.25),
+              blurRadius: 3,
+              offset: Offset(0, 6),
             ),
           ],
         ),
@@ -230,7 +244,7 @@ class _SettingsPillState extends State<_SettingsPill> {
                 widget.label,
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 16 * scale,
+                    fontSize: widget.labelFontSize ?? 16 * scale,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -248,14 +262,14 @@ class _CardContainer extends StatefulWidget {
     required this.child,
     required this.radius,
     required this.scale,
-    this.borderColor,
+    this.border,
     this.background,
   });
 
   final Widget child;
   final double radius;
   final double scale;
-  final Color? borderColor;
+  final Border? border;
   final Widget? background;
 
   @override
@@ -268,12 +282,11 @@ class _CardContainerState extends State<_CardContainer> {
     final radius = widget.radius;
     final scale = widget.scale;
     final background = widget.background;
-    final borderColor = widget.borderColor;
     return Container(
       decoration: BoxDecoration(
         color: _cardSurface,
         borderRadius: BorderRadius.circular(radius),
-        border: borderColor != null ? Border.all(color: borderColor) : null,
+        border: Border.all(color: Color(0xFFBDBBBB), width: 0.5),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.25),
@@ -305,9 +318,11 @@ class _CardBackgroundState extends State<_CardBackground> {
   Widget build(BuildContext context) {
     return Positioned.fill(
       child: Opacity(
-        opacity: 0.08,
+        opacity: 0,
         child: Image.asset(
           'assets/images/squigglytexture.png',
+          width: double.infinity,
+          height: double.infinity,
           fit: BoxFit.cover,
         ),
       ),

@@ -5,8 +5,8 @@ import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:t_racks_softdev_1/services/models/student_model.dart';
 
 const _blueIcon = Color(0xFF57B0D7);
-const _cardSurface = Color(0xFF173C45);
-const _cardHeader = Color(0xFF1B4A55);
+const _cardSurface = Color(0xFF0C3343);
+const _cardHeader = Color(0xFF0D3B4E);
 const _statusYellow = Color(0xFFDAE26B);
 const _chipGreen = Color(0xFF37AA82);
 const _statusGreen = Color(0xFF7FE26B);
@@ -90,50 +90,54 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
             final student = snapshot.data?['student'] as Student?;
             final classes = snapshot.data?['classes'] as List<StudentClass>? ?? [];
 
-            return Stack(
-              children: [
-                Positioned.fill(
-                  child: Opacity(
-                    opacity: 0.12,
-                    child: Image.asset(
-                      'assets/images/squigglytexture.png',
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-                SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(
-                    horizontalPadding,
-                    12 * scale,
-                    horizontalPadding,
-                    100 * scale,
-                  ),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 980),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _WelcomeAndOngoingCard(
-                            student: student,
-                            scale: scale,
-                            radius: cardRadius,
-                            onOngoingClassStatusPressed: onOngoingClassStatusPressed,
-                          ),
-                          SizedBox(height: 16 * scale),
-                          _MyClassesCard(
-                            classes: classes,
-                            scale: scale,
-                            radius: cardRadius,
-                            onFilterAllClasses: onFilterAllClasses,
-                            onClassPressed: onClassPressed,
-                          ),
-                        ],
+            return SizedBox.expand(
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: Opacity(
+                      opacity: 0.12,
+                      child: Image.asset(
+                        'assets/images/squigglytexture.png',
+                        width: double.infinity,
+                        height: double.infinity,
+                        fit: BoxFit.cover,
                       ),
                     ),
                   ),
-                ),
-              ],
+                  SingleChildScrollView(
+                    padding: EdgeInsets.fromLTRB(
+                      horizontalPadding,
+                      12 * scale,
+                      horizontalPadding,
+                      100 * scale,
+                    ),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 980),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _WelcomeAndOngoingCard(
+                              student: student,
+                              scale: scale,
+                              radius: cardRadius,
+                              onOngoingClassStatusPressed: onOngoingClassStatusPressed,
+                            ),
+                            SizedBox(height: 16 * scale),
+                            _MyClassesCard(
+                              classes: classes,
+                              scale: scale,
+                              radius: cardRadius,
+                              onFilterAllClasses: onFilterAllClasses,
+                              onClassPressed: onClassPressed,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             );
           },
         );
@@ -178,7 +182,7 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                   'Welcome! ${widget.student?.profile?.firstName ?? 'user'}',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 18 * scale,
+                    fontSize: 22 * scale,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -186,8 +190,9 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                 Text(
                   "Today's Status",
                   style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12 * scale,
+                    color: Colors.white.withValues(alpha: 0.75),
+                    fontSize: 17 * scale,
+                    fontWeight: FontWeight.w100,
                   ),
                 ),
                 SizedBox(height: 12 * scale),
@@ -609,7 +614,7 @@ class _CardContainerState extends State<_CardContainer> {
       decoration: BoxDecoration(
         color: _cardSurface,
         borderRadius: BorderRadius.circular(widget.radius),
-        border: widget.borderColor != null ? Border.all(color: const Color(0xFFC8C8C8), width: 0.5) : null,
+        border: widget.borderColor != null ? Border.all(color: const Color(0xFFC8C8C8), width: 0.75) : null,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.25),
@@ -641,9 +646,11 @@ class _CardBackgroundState extends State<_CardBackground> {
   Widget build(BuildContext context) {
     return Positioned.fill(
       child: Opacity(
-        opacity: 0.0,
+        opacity: 0,
         child: Image.asset(
           'assets/images/squigglytexture.png',
+          width: double.infinity,
+          height: double.infinity,
           fit: BoxFit.cover,
         ),
       ),
