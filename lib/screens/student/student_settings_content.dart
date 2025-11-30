@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/auth_service.dart';
-import 'package:t_racks_softdev_1/screens/login_screen.dart';
 import 'package:t_racks_softdev_1/screens/student/student_profile_screen.dart';
+// Adjust this import path if you placed the file elsewhere
+import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
 
 const _bgTeal = Color(0xFF167C94);
 const _cardSurface = Color(0xFF0C3343);
@@ -37,7 +38,8 @@ class _StudentSettingsContentState extends State<StudentSettingsContent> {
   void onLogoutPressed() {
     showDialog(
       context: context,
-      builder: (context) => _LogoutDialog(
+      // Updated to use the imported public widget
+      builder: (context) => LogoutDialog(
         onConfirm: _handleLogout,
       ),
     );
@@ -57,19 +59,19 @@ class _StudentSettingsContentState extends State<StudentSettingsContent> {
         final cardRadius = 16.0 * scale;
 
         return Container(
-          constraints: BoxConstraints.expand(),
+          constraints: const BoxConstraints.expand(),
           decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Color(0xFF194B61),
-                    Color(0xFF2A7FA3),
-                    Color(0xFF267394),
-                    Color(0xFF349BC7),
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-              ),
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF194B61),
+                Color(0xFF2A7FA3),
+                Color(0xFF267394),
+                Color(0xFF349BC7),
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
           child: Stack(
             children: [
               Positioned.fill(
@@ -141,7 +143,7 @@ class _SettingsCardState extends State<_SettingsCard> {
     return _CardContainer(
       radius: 16,
       scale: scale,
-      border: Border.all(color: Color(0xFFBDBBBB), width: 0.5),
+      border: Border.all(color: const Color(0xFFBDBBBB), width: 0.5),
       background: const _CardBackground(),
       child: Padding(
         padding: EdgeInsets.all(18 * scale),
@@ -216,11 +218,8 @@ class _SettingsPill extends StatefulWidget {
   final double scale;
   final VoidCallback onTap;
 
-  // Optional override for the label font size (in logical pixels). If null,
-  // the widget falls back to `16 * scale` to preserve current behavior.
   final double? labelFontSize;
   final FontWeight? labelFontWeight;
-
 
   @override
   State<_SettingsPill> createState() => _SettingsPillState();
@@ -240,9 +239,9 @@ class _SettingsPillState extends State<_SettingsPill> {
           borderRadius: BorderRadius.circular(22 * scale),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha:0.25),
+              color: Colors.black.withValues(alpha: 0.25),
               blurRadius: 3,
-              offset: Offset(0, 6),
+              offset: const Offset(0, 6),
             ),
           ],
         ),
@@ -255,7 +254,7 @@ class _SettingsPillState extends State<_SettingsPill> {
                 widget.label,
                 style: TextStyle(
                   color: Colors.white,
-                    fontSize: widget.labelFontSize ?? 16 * scale,
+                  fontSize: widget.labelFontSize ?? 16 * scale,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -297,7 +296,7 @@ class _CardContainerState extends State<_CardContainer> {
       decoration: BoxDecoration(
         color: _cardSurface,
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: Color(0xFFBDBBBB), width: 0.5),
+        border: Border.all(color: const Color(0xFFBDBBBB), width: 0.5),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.25),
@@ -335,100 +334,6 @@ class _CardBackgroundState extends State<_CardBackground> {
           width: double.infinity,
           height: double.infinity,
           fit: BoxFit.cover,
-        ),
-      ),
-    );
-  }
-}
-
-
-class _LogoutDialog extends StatelessWidget {
-  const _LogoutDialog({required this.onConfirm});
-
-  final VoidCallback onConfirm;
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      backgroundColor: Colors.white,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Logging Out',
-              style: TextStyle(
-                color: _statusRed,
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'You’re about to be logged out.\nAre you sure to continue?',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Color(0xFF1A2B3C),
-                fontSize: 16,
-                height: 1.5,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 32),
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 52,
-                    child: OutlinedButton(
-                      onPressed: onConfirm,
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFFBFD5E3)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        foregroundColor: const Color(0xFF1A2B3C),
-                      ),
-                      child: const Text(
-                        'Yes',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: SizedBox(
-                    height: 52,
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFFBFD5E3)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        foregroundColor: const Color(0xFF1A2B3C),
-                      ),
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
         ),
       ),
     );
