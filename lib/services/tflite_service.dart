@@ -1,233 +1,189 @@
-import 'package:tflite_flutter/tflite_flutter.dart';
-import 'dart:io';
+import 'dart:async';
+import 'dart:typed_data';
+import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
-import 'package:image/image.dart' as img;
-import 'dart:typed_data';
-import 'dart:math';
+import 'package:tflite_flutter/tflite_flutter.dart';
 
 const int INPUT_SIZE = 224;
-const double NORM_FACTOR = 255.0;
 
 class ModelManager {
-  Interpreter? _interpreter; //no clue what this is but it holds the model
+  Interpreter? _interpreter;
   bool _isModelLoaded = false;
   List<String> _labels = [];
 
   bool get isModelLoaded => _isModelLoaded;
-  List<String> get labels => List.unmodifiable(_labels);
+  List<String> get labels => _labels;
 
   Future<void> loadModel() async {
     try {
-      _interpreter = await Interpreter.fromAsset('assets/models/model.tflite');
-      
-      // Print input/output tensor shapes and types for debugging
-      if (_interpreter != null) {
-        final inputTensors = _interpreter!.getInputTensors();
-        final outputTensors = _interpreter!.getOutputTensors();
-        print('Input tensor shape: ${inputTensors[0].shape}, type: ${inputTensors[0].type}');
-        print('Output tensor shape: ${outputTensors[0].shape}, type: ${outputTensors[0].type}');
-      }
-      
+      final options = InterpreterOptions();
+      // options.addDelegate(GpuDelegateV2()); // Uncomment for extra speed on Android
+
+      _interpreter = await Interpreter.fromAsset(
+        'assets/models/model.tflite',
+        options: options,
+      );
+
       await _loadLabels();
       _isModelLoaded = true;
-      print('Model loaded successfully with ${_labels.length} labels');
+      print('Model Loaded Successfully.');
     } catch (e) {
       print('Error loading model: $e');
-      _isModelLoaded = false;
-      _labels = [];
     }
   }
 
   Future<void> _loadLabels() async {
     try {
-      final String labelsString =
-          await rootBundle.loadString('assets/models/labels.txt');
+      final String labelsString = await rootBundle.loadString(
+        'assets/models/labels.txt',
+      );
       _labels = labelsString
           .split('\n')
-          .where((line) => line.trim().isNotEmpty)
-          .map((line) {
-        // Extract label name from format "0 Face (Real Face)" or "0 Label"
-        final parts = line.trim().split(' ');
-        if (parts.length > 1) {
-          return parts.sublist(1).join(' ').trim();
-        }
-        return line.trim();
-      }).toList();
-      print('Labels loaded: $_labels');
+          .where((l) => l.trim().isNotEmpty)
+          .toList();
     } catch (e) {
-      print('Error loading labels: $e');
-      _labels = [];
+      print('Warning: Labels failed to load.');
     }
   }
 
   void close() {
     _interpreter?.close();
-    _isModelLoaded = false;
-    _labels = [];
   }
 
-  Future<List<double>> runInferenceOnCameraImage(
-    CameraImage cameraImage,
-  ) async {
-    if (!_isModelLoaded || _interpreter == null) {
-      throw Exception('Model is not loaded');
-    }
+  Future<List<double>> runInferenceOnCameraImage(CameraImage image) async {
+    if (!_isModelLoaded || _interpreter == null) return [];
 
-    final img.Image? rgbImage = _convertCameraImageToImage(cameraImage);
-    if (rgbImage == null) {
-      throw Exception('Failed to convert CameraImage to Image');
-    }
+    // 1. Prepare data for Isolate
+    final planes = image.planes.map((p) => p.bytes).toList();
 
-    final inputTensor = _preprocessImage(rgbImage);
+    // Safety check for format
+    // YUV420 has 3 planes, BGRA8888 has 1 plane
+    final isYUV = image.planes.length >= 3;
 
-    // Model outputs 3 classes based on labels.txt:
-    // 0 = Face (Real Face)
-    // 1 = Background (No face)
-    // 2 = Face (Fake)
-    // Use float32 for output (most common for classification models)
-    var output = List.filled(1 * 3, 0.0).reshape([1, 3]);
-
-    _interpreter!.run(inputTensor, output);
-
-    // Safely convert output to List<double>
-    // Handle both int and double types from the model output
-    final outputList = output[0] as List;
-    return outputList.map((e) {
-      if (e is int) {
-        return e.toDouble();
-      } else if (e is double) {
-        return e;
-      } else {
-        // Fallback: try to parse as double
-        return (e as num).toDouble();
-      }
-    }).toList();
-  }
-
-  List _preprocessImage(img.Image image) {
-    final img.Image resizedImage = img.copyResize(
-      image,
-      width: INPUT_SIZE,
-      height: INPUT_SIZE,
+    // 2. Run Heavy Image Processing in Background Thread
+    final inputTensor = await compute(
+      _processImageInIsolate,
+      _IsolateData(
+        planes: planes,
+        width: image.width,
+        height: image.height,
+        yRowStride: image.planes[0].bytesPerRow,
+        uvRowStride: isYUV ? image.planes[1].bytesPerRow : 0,
+        uvPixelStride: isYUV ? (image.planes[1].bytesPerPixel ?? 1) : 0,
+        isYUV: isYUV,
+      ),
     );
 
-    // Create flattened array: [batch*height*width*channels]
-    // Format: RGBRGBRGB... for all pixels
-    // Shape will be [1, 224, 224, 3] when reshaped
-    // Model expects uint8 (0-255), not normalized doubles
-    final int totalSize = 1 * INPUT_SIZE * INPUT_SIZE * 3;
-    final Uint8List flattened = Uint8List(totalSize);
+    // 3. Prepare Output
+    int classCount = _labels.isNotEmpty ? _labels.length : 3;
+    var output = List.filled(classCount, 0.0).reshape([1, classCount]);
 
-    int index = 0;
-    for (int y = 0; y < INPUT_SIZE; y++) {
-      for (int x = 0; x < INPUT_SIZE; x++) {
-        // Get pixel and extract RGB components from Pixel object
-        final pixel = resizedImage.getPixel(x, y);
-        // Use raw uint8 values (0-255), not normalized doubles
-        final r = pixel.r.toInt();
-        final g = pixel.g.toInt();
-        final b = pixel.b.toInt();
+    // 4. Run Inference
+    _interpreter!.run(inputTensor, output);
 
-        // Flatten in order: R, G, B for each pixel
-        flattened[index++] = r;
-        flattened[index++] = g;
-        flattened[index++] = b;
-      }
-    }
-
-    // Reshape to [1, 224, 224, 3] - 4D tensor
-    return flattened.reshape([1, INPUT_SIZE, INPUT_SIZE, 3]);
+    // 5. Return results
+    return (output[0] as List).map((e) => (e as num).toDouble()).toList();
   }
 
-  Uint8List _convertBGRAtoRGB(Uint8List bgraBytes) {
-    // BGRA is 4 bytes per pixel, RGB is 3 bytes per pixel
-    final int numPixels = bgraBytes.length ~/ 4;
-    final Uint8List rgbBytes = Uint8List(numPixels * 3);
+  /// STATIC FUNCTION: Runs in background
+  static Float32List _processImageInIsolate(_IsolateData data) {
+    final int width = data.width;
+    final int height = data.height;
+    final int cropSize = math.min(width, height);
+    final int cropX = (width - cropSize) ~/ 2;
+    final int cropY = (height - cropSize) ~/ 2;
 
-    int rgbIndex = 0;
-    for (int i = 0; i < bgraBytes.length; i += 4) {
-      // BGRA order: [B, G, R, A]
-      // Target RGB order: [R, G, B]
-      rgbBytes[rgbIndex] = bgraBytes[i + 2]; // R
-      rgbBytes[rgbIndex + 1] = bgraBytes[i + 1]; // G
-      rgbBytes[rgbIndex + 2] = bgraBytes[i]; // B
-      rgbIndex += 3;
-    }
-    return rgbBytes;
-  }
+    final floatInput = Float32List(1 * INPUT_SIZE * INPUT_SIZE * 3);
+    int pixelIndex = 0;
 
-  img.Image? _convertCameraImageToImage(CameraImage image) {
-    try {
-      if (image.format.group == ImageFormatGroup.yuv420) {
-        //andoird
-        return _convertYUV420ToImage(image);
-      } else if (image.format.group == ImageFormatGroup.bgra8888) {
-        // iPhone
-        final Uint8List bgraBytes = image.planes[0].bytes;
-        final Uint8List rgbBytes = _convertBGRAtoRGB(bgraBytes);
+    if (data.isYUV) {
+      // --- ANDROID / YUV Processing ---
+      final yBytes = data.planes[0];
+      final uBytes = data.planes[1];
+      final vBytes = data.planes[2];
 
-        return img.Image.fromBytes(
-          width: image.width,
-          height: image.height,
-          bytes: rgbBytes.buffer,
-          format: img.Format.uint8,
-        );
-      }
-      return null;
-    } catch (e) {
-      print("Conversion failed: $e");
-      return null;
-    }
-  }
+      for (int y = 0; y < INPUT_SIZE; y++) {
+        final int srcY = cropY + (y * cropSize ~/ INPUT_SIZE);
+        for (int x = 0; x < INPUT_SIZE; x++) {
+          final int srcX = cropX + (x * cropSize ~/ INPUT_SIZE);
 
-  img.Image? _convertYUV420ToImage(CameraImage cameraImage) {
-    final int width = cameraImage.width;
-    final int height = cameraImage.height;
+          final int uvX = srcX ~/ 2;
+          final int uvY = srcY ~/ 2;
 
-    final plane = cameraImage.planes[0]; // Y-Plane
-    final uvPlaneU = cameraImage.planes[1]; // U-Plane (or Cr)
-    final uvPlaneV = cameraImage.planes[2]; // V-Plane (or Cb)
+          final int indexY = srcY * data.yRowStride + srcX;
+          final int indexUV =
+              uvY * data.uvRowStride + (uvX * data.uvPixelStride);
 
-    // Create an image object for the final RGB data
-    final img.Image image = img.Image(width: width, height: height);
+          if (indexY >= yBytes.length || indexUV >= uBytes.length) {
+            pixelIndex += 3;
+            continue;
+          }
 
-    // YUV to RGB conversion loop
-    for (int y = 0; y < height; y++) {
-      for (int x = 0; x < width; x++) {
-        final int uvX = x ~/ 2;
-        final int uvY = y ~/ 2;
+          final int yVal = yBytes[indexY];
+          final int uVal = uBytes[indexUV];
+          final int vVal = vBytes[indexUV];
 
-        final int yIndex = y * plane.bytesPerRow + x;
+          int r = (yVal + 1.402 * (vVal - 128)).toInt();
+          int g = (yVal - 0.344136 * (uVal - 128) - 0.714136 * (vVal - 128))
+              .toInt();
+          int b = (yVal + 1.772 * (uVal - 128)).toInt();
 
-        // This indexing is specific to the YUV_420_888 format layout
-        final int uIndex = uvY * uvPlaneU.bytesPerRow + uvX;
-        final int vIndex = uvY * uvPlaneV.bytesPerRow + uvX;
-
-        // Ensure indices are within bounds
-        if (yIndex >= plane.bytes.length ||
-            uIndex >= uvPlaneU.bytes.length ||
-            vIndex >= uvPlaneV.bytes.length) {
-          continue; // Skip out of bounds pixels
+          floatInput[pixelIndex++] = r.clamp(0, 255) / 255.0;
+          floatInput[pixelIndex++] = g.clamp(0, 255) / 255.0;
+          floatInput[pixelIndex++] = b.clamp(0, 255) / 255.0;
         }
+      }
+    } else {
+      // --- EMULATOR / iOS / BGRA Processing ---
+      // BGRA8888 typically has 1 plane with all data
+      final bytes = data.planes[0];
+      // 4 bytes per pixel: B, G, R, A
 
-        final int Y = plane.bytes[yIndex];
-        final int U = uvPlaneU.bytes[uIndex];
-        final int V = uvPlaneV.bytes[vIndex];
+      for (int y = 0; y < INPUT_SIZE; y++) {
+        final int srcY = cropY + (y * cropSize ~/ INPUT_SIZE);
+        for (int x = 0; x < INPUT_SIZE; x++) {
+          final int srcX = cropX + (x * cropSize ~/ INPUT_SIZE);
 
-        int r = (Y + 1.402 * (V - 128)).toInt();
-        int g = (Y - 0.344136 * (U - 128) - 0.714136 * (V - 128)).toInt();
-        int b = (Y + 1.772 * (U - 128)).toInt();
+          final int index = (srcY * data.yRowStride) + (srcX * 4);
 
-        // Clamp values to 0-255 range
-        r = r.clamp(0, 255);
-        g = g.clamp(0, 255);
-        b = b.clamp(0, 255);
+          if (index + 2 >= bytes.length) {
+            pixelIndex += 3;
+            continue;
+          }
 
-        // Set the RGB pixel color
-        image.setPixelRgb(x, y, r, g, b);
+          final b = bytes[index];
+          final g = bytes[index + 1];
+          final r = bytes[index + 2];
+          // A is at index+3, usually ignored for models
+
+          floatInput[pixelIndex++] = r / 255.0;
+          floatInput[pixelIndex++] = g / 255.0;
+          floatInput[pixelIndex++] = b / 255.0;
+        }
       }
     }
-    return image;
+    return floatInput;
   }
+}
+
+class _IsolateData {
+  final List<Uint8List> planes;
+  final int width;
+  final int height;
+  final int yRowStride;
+  final int uvRowStride;
+  final int uvPixelStride;
+  final bool isYUV; // Flag to tell isolate which format to use
+
+  _IsolateData({
+    required this.planes,
+    required this.width,
+    required this.height,
+    required this.yRowStride,
+    required this.uvRowStride,
+    required this.uvPixelStride,
+    required this.isYUV,
+  });
 }

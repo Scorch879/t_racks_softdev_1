@@ -1,7 +1,7 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/tflite_service.dart';
-import 'package:t_racks_softdev_1/services/camera_service.dart';
+import 'package:t_racks_softdev_1/services/camera_service.dart'; // Ensure this path is correct
 
 class AttendanceCameraScreen extends StatefulWidget {
   final List<CameraDescription> cameras;
@@ -13,12 +13,13 @@ class AttendanceCameraScreen extends StatefulWidget {
 }
 
 class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
-  // Variables for Camera Control and Initialization Status
   CameraController? _controller;
   Future<void>? _initializeControllerFuture;
-
-  // Flag to prevent processing frames before the previous one is done
   bool _isDetecting = false;
+
+  // Performance: Throttle AI to run only 2 times per second
+  int _lastRunTime = 0;
+  final int _throttleDuration = 500;
 
   final ModelManager _modelManager = ModelManager();
 
@@ -28,138 +29,98 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
   @override
   void initState() {
     super.initState();
-
     _modelManager
         .loadModel()
         .then((_) {
           if (mounted) {
-            setState(() {
-              _detectionStatus = 'Model Loaded. Initializing Camera...';
-            });
+            setState(
+              () => _detectionStatus = 'Model Loaded. Starting Camera...',
+            );
             _initializeCamera();
           }
         })
         .catchError((e) {
-          if (mounted) {
-            setState(() {
-              _detectionStatus = 'Model Load Failed: $e';
-            });
-          }
+          if (mounted) setState(() => _detectionStatus = 'Model Error: $e');
         });
-
-    if (widget.cameras.isEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error: No camera available.')),
-        );
-        Navigator.of(context).pop();
-      });
-    }
   }
 
-  // Function to initialize camera and start stream
   void _initializeCamera() {
-    // Attempt to find the front camera, otherwise use the first one available
+    if (widget.cameras.isEmpty) return;
+
+    // Use front camera if available
     final frontCamera = widget.cameras.firstWhere(
-      (description) => description.lensDirection == CameraLensDirection.front,
+      (c) => c.lensDirection == CameraLensDirection.front,
       orElse: () => widget.cameras[0],
     );
 
-    // ResolutionPreset.low is best for ML inference speed
     _controller = CameraController(
       frontCamera,
-      ResolutionPreset.low, // Lower resolution is faster for ML inference
+      ResolutionPreset
+          .medium, // Medium is a good balance for preview quality vs AI speed
       enableAudio: false,
       imageFormatGroup: ImageFormatGroup.yuv420,
     );
 
-    _initializeControllerFuture = _controller!
-        .initialize()
-        .then((_) {
-          if (mounted) {
-            setState(() {
-              _detectionStatus = 'Camera Ready. Waiting for face...';
-            });
-            if (_modelManager.isModelLoaded) {
-              _startImageStream();
-            }
-          }
-        })
-        .catchError((error) {
-          print('Camera initialization error: $error');
-          if (mounted) {
-            setState(() {
-              _detectionStatus = 'Camera Error. Check permissions.';
-            });
-          }
-        });
+    _initializeControllerFuture = _controller!.initialize().then((_) {
+      if (mounted) {
+        setState(() {});
+        if (_modelManager.isModelLoaded) {
+          _startImageStream();
+        }
+      }
+    });
   }
 
-  // Method to start listening for continuous image frames
   void _startImageStream() {
     if (_controller == null || !_controller!.value.isInitialized) return;
 
     _controller!.startImageStream((CameraImage image) async {
-      // Prevents frame processing overlap (CRITICAL for performance)
+      // Throttle (500ms)
+      final int currentTime = DateTime.now().millisecondsSinceEpoch;
+      if (currentTime - _lastRunTime < _throttleDuration) return;
+
       if (!_isDetecting && _modelManager.isModelLoaded) {
         _isDetecting = true;
+        _lastRunTime = currentTime;
 
         try {
-          // ACTUAL ML INFERENCE CALL
           final results = await _modelManager.runInferenceOnCameraImage(image);
 
-          // Interpretation based on labels.txt:
-          // results[0] = Face (Real Face)
-          // results[1] = Background (No face)
-          // results[2] = Face (Fake)
-          double realFaceScore = results[0];
-          double backgroundScore = results[1];
-          double fakeImageScore = results[2];
-
-          String newStatus = 'Analyzing...';
-
-          // Find the highest confidence class
-          final maxScore = [
-            realFaceScore,
-            backgroundScore,
-            fakeImageScore,
-          ].reduce((a, b) => a > b ? a : b);
-          final predictedClass = maxScore == realFaceScore
-              ? 0
-              : (maxScore == backgroundScore ? 1 : 2);
-
-          if (predictedClass == 0 && realFaceScore > 0.95) {
-            newStatus = 'Status: REAL FACE detected';
-            // Stop the stream and potentially navigate/save attendance
-            //_controller!.stopImageStream();
-
-            // TODO: Add Firestore/Supabase logic to mark attendance here
-          } else if (predictedClass == 2 && fakeImageScore > 0.8) {
-            newStatus = 'Status: FAKE IMAGE detected!';
-          } else if (predictedClass == 1) {
-            newStatus = 'Status: No face detected (Background)';
-          } else {
-            newStatus =
-                'Status: Analyzing... (Real: ${realFaceScore.toStringAsFixed(2)}, Fake: ${fakeImageScore.toStringAsFixed(2)})';
+          if (results.isEmpty) {
+            throw Exception("Model returned empty results");
           }
 
-          // Update UI with status and confidence
+          // --- LOGIC TO DISPLAY RESULTS ---
+          // Assuming 3 classes. Adjust indices [0,1,2] to match your labels.txt
+          // Example: 0=Real, 1=Background, 2=Fake
+          double realScore = results.length > 0 ? results[0] : 0;
+          double fakeScore = results.length > 2 ? results[2] : 0;
+
+          String statusText = "Scanning...";
+
+          if (realScore > 0.8) {
+            statusText = "✅ REAL FACE (${(realScore * 100).toInt()}%)";
+          } else if (fakeScore > 0.8) {
+            statusText = "⚠️ FAKE DETECTED (${(fakeScore * 100).toInt()}%)";
+          } else {
+            statusText = "Analyzing... ($results)";
+          }
+
           if (mounted) {
             setState(() {
-              _detectionStatus = newStatus;
-              _realFaceConfidence = realFaceScore;
+              _detectionStatus = statusText;
+              _realFaceConfidence = realScore;
             });
           }
         } catch (e) {
-          // Only log error, don't update UI to avoid spam
+          // SHOW ERROR ON SCREEN so we know why it's stuck
           if (mounted) {
-            // Optionally show error status, but don't spam
             setState(() {
-              _detectionStatus = 'Error: Inference failed';
+              _detectionStatus = "Error: $e";
             });
           }
+          print("Inference Error: $e");
         } finally {
-          // Once processing is complete, reset the flag
           _isDetecting = false;
         }
       }
@@ -177,80 +138,74 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor:
+          Colors.black, // Dark background looks better for camera apps
       appBar: AppBar(title: const Text('Face Attendance')),
       body: FutureBuilder<void>(
         future: _initializeControllerFuture,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.done) {
-            if (_controller != null && _controller!.value.isInitialized) {
-              return Stack(
-                children: [
-                  // 7. Display the live camera feed
-                  Positioned.fill(
-                    child: FittedBox(
-                      fit: BoxFit.cover,
-                      alignment: Alignment.center,
-                      child: SizedBox(
-                        // Use previewSize when available, fallback to screen size
-                        width:
-                            _controller!.value.previewSize?.width ??
-                            MediaQuery.of(context).size.width,
-                        height:
-                            _controller!.value.previewSize?.height ??
-                            MediaQuery.of(context).size.height,
-                        child: CameraPreview(_controller!),
-                      ),
-                    ),
-                  ),
-                  // 8. Overlay the detection status at the bottom
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      color: Colors.black54,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            _detectionStatus,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Confidence: ${_realFaceConfidence.toStringAsFixed(2)}',
-                            style: const TextStyle(color: Colors.white70),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              );
+          if (snapshot.connectionState == ConnectionState.done &&
+              _controller != null &&
+              _controller!.value.isInitialized) {
+            // --- FIX START: Aspect Ratio & Scaling Logic ---
+            final size = MediaQuery.of(context).size;
+            final deviceRatio = size.width / size.height;
+
+            // Calculate scale to ensure the camera covers the screen (BoxFit.cover equivalent)
+            // This math fixes the "squished" look on emulators and tall phones
+            double scale = 1.0;
+            if (deviceRatio < _controller!.value.aspectRatio) {
+              // Screen is taller than camera (Portrait phone vs Landscape sensor)
+              scale = 1 / _controller!.value.aspectRatio * deviceRatio;
+              // Invert logic if needed depending on exact sensor rotation
+              if (scale < 1) scale = 1 / scale;
             } else {
-              return Center(
-                child: Text(
-                  'Failed to initialize camera. Status: $_detectionStatus',
-                ),
-              );
+              scale = _controller!.value.aspectRatio / deviceRatio;
             }
-          } else {
-            // Display a loading spinner while waiting for initialization
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: 16),
-                  Text(_detectionStatus),
-                ],
-              ),
+
+            return Stack(
+              children: [
+                // 1. The Camera Preview (Scaled & Centered)
+                Center(
+                  child: Transform.scale(
+                    scale: scale,
+                    alignment: Alignment.center,
+                    child: CameraPreview(_controller!),
+                  ),
+                ),
+
+                // 2. Dark Overlay for text legibility
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Container(
+                    width: double.infinity,
+                    color: Colors.black54,
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _detectionStatus,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        Text(
+                          'Confidence: ${(_realFaceConfidence * 100).toStringAsFixed(1)}%',
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             );
+            // --- FIX END ---
+          } else {
+            return const Center(child: CircularProgressIndicator());
           }
         },
       ),
