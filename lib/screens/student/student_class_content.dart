@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:t_racks_softdev_1/services/database_service.dart';
+import 'package:t_racks_softdev_1/services/models/class_model.dart';
 
 const _bgTeal = Color(0xFF167C94);
 // Summary/top-stat cards background (dark slate sampled from Figma)
@@ -22,6 +24,24 @@ class StudentClassClassesContent extends StatefulWidget {
 }
 
 class _StudentClassClassesContentState extends State<StudentClassClassesContent> {
+  final _databaseService = DatabaseService();
+  late Future<List<StudentClass>> _classesFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _classesFuture = _databaseService.getStudentClasses();
+  }
+
+  void _showClassDetails(String classId) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return _ClassDetailsDialog(classId: classId);
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -30,130 +50,230 @@ class _StudentClassClassesContentState extends State<StudentClassClassesContent>
         final scale = (width / 430).clamp(0.8, 1.6);
         final horizontalPadding = 16.0 * scale;
 
-        return Stack(
-          children: [
-            // Background Texture
-            Positioned.fill(
-              child: Opacity(
-                opacity: 0.12,
-                child: Image.asset(
-                  'assets/images/squigglytexture.png',
-                  fit: BoxFit.cover,
+        return FutureBuilder<List<StudentClass>>(
+          future: _classesFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator(color: Colors.white));
+            }
+
+            if (snapshot.hasError) {
+              return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white)));
+            }
+
+            final classes = snapshot.data ?? [];
+
+            return Stack(
+              children: [
+                // Background Texture
+                Positioned.fill(
+                  child: Opacity(
+                    opacity: 0.12,
+                    child: Image.asset(
+                      'assets/images/squigglytexture.png',
+                      fit: BoxFit.cover,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            // Scrollable Content
-            SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                horizontalPadding,
-                12 * scale,
-                horizontalPadding,
-                100 * scale, // Padding for bottom nav
-              ),
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 980),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // 1. Top Summary Row
-                      Row(
+                // Scrollable Content
+                SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(
+                    horizontalPadding,
+                    12 * scale,
+                    horizontalPadding,
+                    100 * scale, // Padding for bottom nav
+                  ),
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 980),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Expanded(
-                            child: _SummaryCard(
-                              scale: scale,
-                              icon: Icons.bookmark_rounded,
-                              value: '3',
-                              label: 'Total Classes',
-                              iconColor: _chipGreen,
-                            ),
+                          // 1. Top Summary Row
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _SummaryCard(
+                                  scale: scale,
+                                  icon: Icons.bookmark_rounded,
+                                  value: classes.length.toString(),
+                                  label: 'Total Classes',
+                                  iconColor: _chipGreen,
+                                ),
+                              ),
+                              SizedBox(width: 12 * scale),
+                              Expanded(
+                                child: _SummaryCard(
+                                  scale: scale,
+                                  icon: Icons.bar_chart_rounded,
+                                  value: '1', // This can be calculated later
+                                  label: 'Absences This Week',
+                                  iconColor: _chipGreen,
+                                ),
+                              ),
+                            ],
                           ),
-                          SizedBox(width: 12 * scale),
-                          Expanded(
-                            child: _SummaryCard(
-                              scale: scale,
-                              icon: Icons.bar_chart_rounded,
-                              value: '1',
-                              label: 'Absences This Week',
-                              iconColor: _chipGreen,
+                          SizedBox(height: 16 * scale),
+
+                          // 2. Main 'My Classes' Container
+                          Container(
+                            padding: EdgeInsets.all(16 * scale),
+                            decoration: BoxDecoration(
+                              color: _myClassesPanel,
+                              borderRadius: BorderRadius.circular(16 * scale),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.25),
+                                  blurRadius: 10 * scale,
+                                  offset: Offset(0, 6 * scale),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                // Header
+                                _MyClassesHeader(scale: scale),
+                                SizedBox(height: 12 * scale),
+                                
+                                // Search
+                                _SearchBar(scale: scale),
+                                SizedBox(height: 12 * scale),
+
+                                // Class List
+                                if (classes.isEmpty)
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 60 * scale),
+                                    child: Text(
+                                      'No classes yet',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 18 * scale,
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  ...classes.map((sClass) {
+                                    return Padding(
+                                      padding: EdgeInsets.only(bottom: 12 * scale),
+                                      child: GestureDetector(
+                                        onTap: () => _showClassDetails(sClass.id),
+                                        child: _ClassCard(
+                                          scale: scale,
+                                          title: sClass.name ?? 'Unnamed Class',
+                                          students: 0, // This data would need another query
+                                          present: 0, // This data would need another query
+                                          time: sClass.schedule ?? 'No schedule',
+                                          status: sClass.status ?? 'Unknown',
+                                          statusColor: _getStatusColor(sClass.status),
+                                          cardColor: _myClassCardSurface,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                              ],
                             ),
                           ),
                         ],
                       ),
-                      SizedBox(height: 16 * scale),
-
-                      // 2. Main 'My Classes' Container
-                      Container(
-                        padding: EdgeInsets.all(16 * scale),
-                        decoration: BoxDecoration(
-                          color: _myClassesPanel,
-                          borderRadius: BorderRadius.circular(16 * scale),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.25),
-                              blurRadius: 10 * scale,
-                              offset: Offset(0, 6 * scale),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // Header
-                            _MyClassesHeader(scale: scale),
-                            SizedBox(height: 12 * scale),
-                            
-                            // Search
-                            _SearchBar(scale: scale),
-                            SizedBox(height: 12 * scale),
-
-                            // Class List
-                            _ClassCard(
-                              scale: scale,
-                              title: 'Calculus 137',
-                              students: 28,
-                              present: 26,
-                              time: 'Yesterday 10:00 AM',
-                              status: 'Absent',
-                              statusColor: _statusRed,
-                              // enforce requested hex for class cards
-                              cardColor: _myClassCardSurface,
-                            ),
-                            SizedBox(height: 12 * scale),
-                            _ClassCard(
-                              scale: scale,
-                              title: 'Physics 138',
-                              students: 38,
-                              present: 35,
-                              time: 'Ongoing 9:00 AM',
-                              status: 'Ongoing',
-                              statusColor: _chipGreen,
-                              cardColor: _myClassCardSurface,
-                            ),
-                            SizedBox(height: 12 * scale),
-                            _ClassCard(
-                              scale: scale,
-                              title: 'Calculus 237',
-                              students: 18,
-                              present: 0,
-                              time: 'Next: Tomorrow 9:00 AM',
-                              status: 'Upcoming',
-                              statusColor: _statusYellow,
-                              isUpcoming: true,
-                              cardColor: _myClassCardSurface,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-            ),
-          ],
+              ],
+            );
+          },
         );
       },
+    );
+  }
+
+  Color _getStatusColor(String? status) {
+    switch (status?.toLowerCase()) {
+      case 'ongoing':
+        return _chipGreen;
+      case 'absent':
+        return _statusRed;
+      case 'upcoming':
+        return _statusYellow;
+      default:
+        return Colors.grey;
+    }
+  }
+}
+
+class _ClassDetailsDialog extends StatefulWidget {
+  final String classId;
+  const _ClassDetailsDialog({required this.classId});
+
+  @override
+  State<_ClassDetailsDialog> createState() => _ClassDetailsDialogState();
+}
+
+class _ClassDetailsDialogState extends State<_ClassDetailsDialog> {
+  final _databaseService = DatabaseService();
+  late final Future<StudentClass> _classDetailsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _classDetailsFuture = _databaseService.getClassDetails(widget.classId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: _myClassesPanel,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: FutureBuilder<StudentClass>(
+        future: _classDetailsFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const SizedBox(
+              height: 200,
+              child: Center(child: CircularProgressIndicator(color: Colors.white)),
+            );
+          }
+
+          if (snapshot.hasError) {
+            return Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white)),
+            );
+          }
+
+          final sClass = snapshot.data!;
+
+          return Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  sClass.name ?? 'Class Details',
+                  style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 24),
+                _DetailItem(label: 'Subject', value: sClass.subject),
+                const Divider(color: Colors.white24),
+                _DetailItem(label: 'Schedule', value: sClass.schedule),
+                const Divider(color: Colors.white24),
+                _DetailItem(label: 'Status', value: sClass.status),
+                const SizedBox(height: 24),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Close', style: TextStyle(color: _accentCyan)),
+                  ),
+                )
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -233,6 +353,28 @@ class _StudentClassSettingsContentState extends State<StudentClassSettingsConten
           ),
         );
       },
+    );
+  }
+}
+
+class _DetailItem extends StatelessWidget {
+  final String label;
+  final String? value;
+
+  const _DetailItem({required this.label, this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+          const SizedBox(height: 4),
+          Text(value ?? 'Not available', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+        ],
+      ),
     );
   }
 }
@@ -392,9 +534,9 @@ class _ClassCard extends StatefulWidget {
     required this.time,
     required this.status,
     required this.statusColor,
-    this.isUpcoming = false,
+    bool isUpcoming = false,
     this.cardColor,
-  });
+  }) : isUpcoming = isUpcoming;
 
   final double scale;
   final String title;
