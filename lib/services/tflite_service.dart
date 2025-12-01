@@ -19,7 +19,7 @@ class ModelManager {
   Future<void> loadModel() async {
     try {
       final options = InterpreterOptions();
-      // options.addDelegate(GpuDelegateV2()); // Uncomment for extra speed on Android
+      // options.addDelegate(GpuDelegateV2()); // Optional: Enable for faster Android performance
 
       _interpreter = await Interpreter.fromAsset(
         'assets/models/model.tflite',
@@ -28,7 +28,9 @@ class ModelManager {
 
       await _loadLabels();
       _isModelLoaded = true;
-      print('Model Loaded Successfully.');
+      print(
+        'Model Loaded Successfully. Input Shape: ${_interpreter?.getInputTensors().first.shape}',
+      );
     } catch (e) {
       print('Error loading model: $e');
     }
@@ -56,14 +58,12 @@ class ModelManager {
     if (!_isModelLoaded || _interpreter == null) return [];
 
     // 1. Prepare data for Isolate
+    // We copy the bytes to send to the background thread
     final planes = image.planes.map((p) => p.bytes).toList();
-
-    // Safety check for format
-    // YUV420 has 3 planes, BGRA8888 has 1 plane
     final isYUV = image.planes.length >= 3;
 
     // 2. Run Heavy Image Processing in Background Thread
-    final inputTensor = await compute(
+    final flatInput = await compute(
       _processImageInIsolate,
       _IsolateData(
         planes: planes,
@@ -76,14 +76,19 @@ class ModelManager {
       ),
     );
 
-    // 3. Prepare Output
+    // 3. FIX: RESHAPE INPUT TO [1, 224, 224, 3]
+    // The model expects a 4D array, but 'flatInput' is 1D.
+    // This .reshape() call converts the flat list into the nested 4D structure.
+    final input = flatInput.reshape([1, INPUT_SIZE, INPUT_SIZE, 3]);
+
+    // 4. Prepare Output
     int classCount = _labels.isNotEmpty ? _labels.length : 3;
     var output = List.filled(classCount, 0.0).reshape([1, classCount]);
 
-    // 4. Run Inference
-    _interpreter!.run(inputTensor, output);
+    // 5. Run Inference
+    _interpreter!.run(input, output);
 
-    // 5. Return results
+    // 6. Return results
     return (output[0] as List).map((e) => (e as num).toDouble()).toList();
   }
 
@@ -125,11 +130,13 @@ class ModelManager {
           final int uVal = uBytes[indexUV];
           final int vVal = vBytes[indexUV];
 
+          // YUV to RGB
           int r = (yVal + 1.402 * (vVal - 128)).toInt();
           int g = (yVal - 0.344136 * (uVal - 128) - 0.714136 * (vVal - 128))
               .toInt();
           int b = (yVal + 1.772 * (uVal - 128)).toInt();
 
+          // Normalize to [0.0, 1.0]
           floatInput[pixelIndex++] = r.clamp(0, 255) / 255.0;
           floatInput[pixelIndex++] = g.clamp(0, 255) / 255.0;
           floatInput[pixelIndex++] = b.clamp(0, 255) / 255.0;
@@ -137,9 +144,7 @@ class ModelManager {
       }
     } else {
       // --- EMULATOR / iOS / BGRA Processing ---
-      // BGRA8888 typically has 1 plane with all data
       final bytes = data.planes[0];
-      // 4 bytes per pixel: B, G, R, A
 
       for (int y = 0; y < INPUT_SIZE; y++) {
         final int srcY = cropY + (y * cropSize ~/ INPUT_SIZE);
@@ -156,7 +161,6 @@ class ModelManager {
           final b = bytes[index];
           final g = bytes[index + 1];
           final r = bytes[index + 2];
-          // A is at index+3, usually ignored for models
 
           floatInput[pixelIndex++] = r / 255.0;
           floatInput[pixelIndex++] = g / 255.0;
@@ -175,7 +179,7 @@ class _IsolateData {
   final int yRowStride;
   final int uvRowStride;
   final int uvPixelStride;
-  final bool isYUV; // Flag to tell isolate which format to use
+  final bool isYUV;
 
   _IsolateData({
     required this.planes,

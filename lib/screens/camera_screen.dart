@@ -1,7 +1,15 @@
+import 'dart:async';
+import 'dart:io';
+import 'dart:math';
+import 'dart:typed_data';
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:t_racks_softdev_1/services/tflite_service.dart';
-import 'package:t_racks_softdev_1/services/camera_service.dart'; // Ensure this path is correct
+import 'package:flutter/services.dart';
+import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+
+// Enum for different challenges
+enum ChallengeType { smile, blink, turnLeft, turnRight }
 
 class AttendanceCameraScreen extends StatefulWidget {
   final List<CameraDescription> cameras;
@@ -15,39 +23,32 @@ class AttendanceCameraScreen extends StatefulWidget {
 class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
   CameraController? _controller;
   Future<void>? _initializeControllerFuture;
-  bool _isDetecting = false;
+  bool _isProcessing = false;
+  late FaceDetector _faceDetector;
 
-  // Performance: Throttle AI to run only 2 times per second
-  int _lastRunTime = 0;
-  final int _throttleDuration = 500;
-
-  final ModelManager _modelManager = ModelManager();
-
-  String _detectionStatus = 'Initializing...';
-  double _realFaceConfidence = 0.0;
+  // Liveness Logic Variables
+  List<ChallengeType> _challenges = [];
+  int _currentChallengeIndex = 0;
+  bool _isSessionActive = false;
+  String _statusMessage = "Initializing...";
+  Color _statusColor = Colors.white;
+  bool _isVerified = false;
 
   @override
   void initState() {
     super.initState();
-    _modelManager
-        .loadModel()
-        .then((_) {
-          if (mounted) {
-            setState(
-              () => _detectionStatus = 'Model Loaded. Starting Camera...',
-            );
-            _initializeCamera();
-          }
-        })
-        .catchError((e) {
-          if (mounted) setState(() => _detectionStatus = 'Model Error: $e');
-        });
+    final options = FaceDetectorOptions(
+      enableClassification: true, // Needed for Smile/Eyes
+      enableLandmarks: true, // Needed for Head Rotation
+      performanceMode: FaceDetectorMode.fast,
+    );
+    _faceDetector = FaceDetector(options: options);
+    _initializeCamera();
   }
 
   void _initializeCamera() {
     if (widget.cameras.isEmpty) return;
 
-    // Use front camera if available
     final frontCamera = widget.cameras.firstWhere(
       (c) => c.lensDirection == CameraLensDirection.front,
       orElse: () => widget.cameras[0],
@@ -55,81 +56,216 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
 
     _controller = CameraController(
       frontCamera,
-      ResolutionPreset
-          .medium, // Medium is a good balance for preview quality vs AI speed
+      ResolutionPreset.medium,
       enableAudio: false,
-      imageFormatGroup: ImageFormatGroup.yuv420,
+      imageFormatGroup: Platform.isAndroid
+          ? ImageFormatGroup.nv21
+          : ImageFormatGroup.bgra8888,
     );
 
     _initializeControllerFuture = _controller!.initialize().then((_) {
       if (mounted) {
         setState(() {});
-        if (_modelManager.isModelLoaded) {
-          _startImageStream();
-        }
+        _startLivenessSession(); // Start the challenge immediately
+        _startImageStream();
       }
     });
+  }
+
+  // Generate a random list of 2 challenges
+  void _startLivenessSession() {
+    final random = Random();
+    // Possible challenges
+    List<ChallengeType> allTypes = ChallengeType.values.toList();
+
+    _challenges = [];
+    // Pick 2 random challenges
+    for (int i = 0; i < 2; i++) {
+      _challenges.add(allTypes[random.nextInt(allTypes.length)]);
+    }
+
+    setState(() {
+      _isSessionActive = true;
+      _currentChallengeIndex = 0;
+      _isVerified = false;
+      _updateStatusMessage();
+    });
+  }
+
+  void _updateStatusMessage() {
+    if (_isVerified) {
+      _statusMessage = "✅ VERIFIED: REAL HUMAN";
+      _statusColor = Colors.greenAccent;
+      return;
+    }
+
+    if (_currentChallengeIndex >= _challenges.length) {
+      // All done!
+      _isVerified = true;
+      _statusMessage = "✅ VERIFIED!";
+      // TODO: Save Attendance Here
+      return;
+    }
+
+    ChallengeType current = _challenges[_currentChallengeIndex];
+    switch (current) {
+      case ChallengeType.smile:
+        _statusMessage = "Step ${_currentChallengeIndex + 1}: Please SMILE 😀";
+        break;
+      case ChallengeType.blink:
+        _statusMessage = "Step ${_currentChallengeIndex + 1}: Please BLINK 😉";
+        break;
+      case ChallengeType.turnLeft:
+        _statusMessage =
+            "Step ${_currentChallengeIndex + 1}: Turn Head LEFT ⬅️";
+        break;
+      case ChallengeType.turnRight:
+        _statusMessage =
+            "Step ${_currentChallengeIndex + 1}: Turn Head RIGHT ➡️";
+        break;
+    }
+    _statusColor = Colors.yellowAccent;
   }
 
   void _startImageStream() {
-    if (_controller == null || !_controller!.value.isInitialized) return;
-
+    if (_controller == null) return;
     _controller!.startImageStream((CameraImage image) async {
-      // Throttle (500ms)
-      final int currentTime = DateTime.now().millisecondsSinceEpoch;
-      if (currentTime - _lastRunTime < _throttleDuration) return;
-
-      if (!_isDetecting && _modelManager.isModelLoaded) {
-        _isDetecting = true;
-        _lastRunTime = currentTime;
-
-        try {
-          final results = await _modelManager.runInferenceOnCameraImage(image);
-
-          if (results.isEmpty) {
-            throw Exception("Model returned empty results");
-          }
-
-          // --- LOGIC TO DISPLAY RESULTS ---
-          // Assuming 3 classes. Adjust indices [0,1,2] to match your labels.txt
-          // Example: 0=Real, 1=Background, 2=Fake
-          double realScore = results.length > 0 ? results[0] : 0;
-          double fakeScore = results.length > 2 ? results[2] : 0;
-
-          String statusText = "Scanning...";
-
-          if (realScore > 0.8) {
-            statusText = "✅ REAL FACE (${(realScore * 100).toInt()}%)";
-          } else if (fakeScore > 0.8) {
-            statusText = "⚠️ FAKE DETECTED (${(fakeScore * 100).toInt()}%)";
-          } else {
-            statusText = "Analyzing... ($results)";
-          }
-
-          if (mounted) {
-            setState(() {
-              _detectionStatus = statusText;
-              _realFaceConfidence = realScore;
-            });
-          }
-        } catch (e) {
-          // SHOW ERROR ON SCREEN so we know why it's stuck
-          if (mounted) {
-            setState(() {
-              _detectionStatus = "Error: $e";
-            });
-          }
-          print("Inference Error: $e");
-        } finally {
-          _isDetecting = false;
-        }
+      if (_isProcessing || !_isSessionActive || _isVerified) return;
+      _isProcessing = true;
+      try {
+        await _processCameraImage(image);
+      } catch (e) {
+        print("Error processing image: $e");
+      } finally {
+        _isProcessing = false;
       }
     });
   }
 
+  Future<void> _processCameraImage(CameraImage image) async {
+    final inputImage = _inputImageFromCameraImage(image);
+    if (inputImage == null) return;
+
+    final List<Face> faces = await _faceDetector.processImage(inputImage);
+    if (faces.isEmpty) return;
+
+    final Face face = faces.first;
+    _checkChallenge(face);
+  }
+
+  void _checkChallenge(Face face) {
+    if (_isVerified) return;
+
+    ChallengeType current = _challenges[_currentChallengeIndex];
+    bool passed = false;
+
+    // Thresholds
+    double smileThreshold = 0.8;
+    double blinkThreshold =
+        0.1; // Probability of eyes being OPEN (low = closed)
+    double headRotationThreshold = 15.0; // Degrees
+
+    switch (current) {
+      case ChallengeType.smile:
+        if ((face.smilingProbability ?? 0) > smileThreshold) passed = true;
+        break;
+      case ChallengeType.blink:
+        // Check if either eye is closed
+        if ((face.leftEyeOpenProbability ?? 1) < blinkThreshold ||
+            (face.rightEyeOpenProbability ?? 1) < blinkThreshold) {
+          passed = true;
+        }
+        break;
+      case ChallengeType.turnLeft:
+        // HeadEulerAngleY: Negative is right, Positive is left (depending on camera mirror)
+        // Adjust logic based on your specific camera (front cameras are often mirrored)
+        if ((face.headEulerAngleY ?? 0) > headRotationThreshold) passed = true;
+        break;
+      case ChallengeType.turnRight:
+        if ((face.headEulerAngleY ?? 0) < -headRotationThreshold) passed = true;
+        break;
+    }
+
+    if (passed) {
+      // Delay slightly so the user sees the success
+      if (mounted) {
+        setState(() {
+          _currentChallengeIndex++;
+          _updateStatusMessage();
+        });
+
+        // If finished
+        if (_currentChallengeIndex >= _challenges.length) {
+          setState(() {
+            _isVerified = true;
+            _statusMessage = "✅ IDENTITY CONFIRMED";
+            _statusColor = Colors.green;
+          });
+          // TODO: Navigate away or save data
+        }
+      }
+    }
+  }
+
+  // ... (Keep the exact same _inputImageFromCameraImage helper method from previous response)
+  InputImage? _inputImageFromCameraImage(CameraImage image) {
+    // Paste the helper function from my previous reply here
+    // (Omitted for brevity, but it is required!)
+    if (_controller == null) return null;
+    final camera = _controller!.description;
+    final sensorOrientation = camera.sensorOrientation;
+    InputImageRotation? rotation;
+    if (Platform.isIOS) {
+      rotation = InputImageRotationValue.fromRawValue(sensorOrientation);
+    } else if (Platform.isAndroid) {
+      var rotationCompensation =
+          _orientations[_controller!.value.deviceOrientation];
+      if (rotationCompensation == null) return null;
+      if (camera.lensDirection == CameraLensDirection.front) {
+        rotationCompensation = (sensorOrientation + rotationCompensation) % 360;
+      } else {
+        rotationCompensation =
+            (sensorOrientation - rotationCompensation + 360) % 360;
+      }
+      rotation = InputImageRotationValue.fromRawValue(rotationCompensation);
+    }
+    if (rotation == null) return null;
+    final format = InputImageFormatValue.fromRawValue(image.format.raw);
+
+    final planeData = image.planes.map((Plane plane) {
+      return InputImagePlaneMetadata(
+        bytesPerRow: plane.bytesPerRow,
+        height: plane.height,
+        width: plane.width,
+      );
+    }).toList();
+
+    final inputImageData = InputImageData(
+      size: Size(image.width.toDouble(), image.height.toDouble()),
+      imageRotation: rotation,
+      inputImageFormat: format ?? InputImageFormat.nv21,
+      planeData: planeData,
+    );
+
+    final WriteBuffer allBytes = WriteBuffer();
+    for (final Plane plane in image.planes) {
+      allBytes.putUint8List(plane.bytes);
+    }
+    final bytes = allBytes.done().buffer.asUint8List();
+
+    return InputImage.fromBytes(bytes: bytes, inputImageData: inputImageData);
+  }
+
+  final _orientations = {
+    DeviceOrientation.portraitUp: 0,
+    DeviceOrientation.landscapeLeft: 90,
+    DeviceOrientation.portraitDown: 180,
+    DeviceOrientation.landscapeRight: 270,
+  };
+
   @override
   void dispose() {
-    _modelManager.close();
+    _faceDetector.close();
     _controller?.stopImageStream();
     _controller?.dispose();
     super.dispose();
@@ -138,64 +274,48 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor:
-          Colors.black, // Dark background looks better for camera apps
-      appBar: AppBar(title: const Text('Face Attendance')),
+      backgroundColor: Colors.black,
+      appBar: AppBar(title: const Text('Active Liveness Check')),
       body: FutureBuilder<void>(
         future: _initializeControllerFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done &&
               _controller != null &&
               _controller!.value.isInitialized) {
-            // --- FIX START: Aspect Ratio & Scaling Logic ---
             final size = MediaQuery.of(context).size;
-            final deviceRatio = size.width / size.height;
-
-            // Calculate scale to ensure the camera covers the screen (BoxFit.cover equivalent)
-            // This math fixes the "squished" look on emulators and tall phones
-            double scale = 1.0;
-            if (deviceRatio < _controller!.value.aspectRatio) {
-              // Screen is taller than camera (Portrait phone vs Landscape sensor)
-              scale = 1 / _controller!.value.aspectRatio * deviceRatio;
-              // Invert logic if needed depending on exact sensor rotation
-              if (scale < 1) scale = 1 / scale;
-            } else {
-              scale = _controller!.value.aspectRatio / deviceRatio;
-            }
+            var scale = _controller!.value.aspectRatio * size.aspectRatio;
+            if (scale < 1) scale = 1 / scale;
 
             return Stack(
               children: [
-                // 1. The Camera Preview (Scaled & Centered)
                 Center(
                   child: Transform.scale(
                     scale: scale,
-                    alignment: Alignment.center,
                     child: CameraPreview(_controller!),
                   ),
                 ),
-
-                // 2. Dark Overlay for text legibility
                 Align(
                   alignment: Alignment.bottomCenter,
                   child: Container(
                     width: double.infinity,
-                    color: Colors.black54,
-                    padding: const EdgeInsets.all(20),
+                    color: Colors.black87,
+                    padding: const EdgeInsets.all(30),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          _detectionStatus,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
+                          _statusMessage,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: _statusColor,
+                            fontSize: 26,
                             fontWeight: FontWeight.bold,
                           ),
-                          textAlign: TextAlign.center,
                         ),
+                        const SizedBox(height: 10),
                         Text(
-                          'Confidence: ${(_realFaceConfidence * 100).toStringAsFixed(1)}%',
-                          style: const TextStyle(color: Colors.white70),
+                          "Challenge ${_currentChallengeIndex + 1} of ${_challenges.length}",
+                          style: const TextStyle(color: Colors.white54),
                         ),
                       ],
                     ),
@@ -203,7 +323,6 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
                 ),
               ],
             );
-            // --- FIX END ---
           } else {
             return const Center(child: CircularProgressIndicator());
           }
