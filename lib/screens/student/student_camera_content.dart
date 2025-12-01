@@ -208,44 +208,18 @@ class StudentCameraContent extends StatelessWidget {
           ),
         ),
 
-        // 4. Bottom: Three control buttons
-        Positioned(
-          bottom: 20,
-          left: 0,
-          right: 0,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Camera Switch Button
-              _CircleButton(
-                icon: Icons.cameraswitch_outlined,
-                color: const Color(0xFF173C45), // Dark teal
-                iconColor: Colors.white,
-                onTap: () {},
-              ),
-              const SizedBox(width: 24),
-              
-              // Close 'X' Button (Main Action)
-              _CircleButton(
-                icon: Icons.close,
-                color: const Color(0xFFDA6A6A), // Red
-                iconColor: Colors.white,
-                size: 64,
-                onTap: () => Navigator.of(context).pop(),
-              ),
-              
-              const SizedBox(width: 24),
-
-              // Microphone Button
-              _CircleButton(
-                icon: Icons.mic_none_rounded,
-                color: const Color(0xFF167C94), // Teal
-                iconColor: Colors.white,
-                onTap: () {},
-              ),
-            ],
-          ),
-        ),
+        // 4. Bottom: Controls removed (handled by Shell)
+        // Positioned(
+        //   bottom: 20,
+        //   left: 0,
+        //   right: 0,
+        //   child: Row(
+        //     mainAxisAlignment: MainAxisAlignment.center,
+        //     children: [
+        //       // ... buttons ...
+        //     ],
+        //   ),
+        // ),
       ],
     );
   }

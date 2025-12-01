@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:t_racks_softdev_1/services/models/student_model.dart';
+import 'package:t_racks_softdev_1/screens/student/student_camera_screen.dart';
 
 const _bgTeal = Color(0xFF167C94);
 const _cardSurface = Color(0xFF173C45);
@@ -27,7 +28,14 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
   final _databaseService = DatabaseService();
   late Future<Map<String, dynamic>> _dataFuture;
 
-  void onOngoingClassStatusPressed() {}
+  void onOngoingClassStatusPressed() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const StudentCameraScreen(),
+      ),
+    );
+  }
 
   void onFilterAllClasses() {}
 
