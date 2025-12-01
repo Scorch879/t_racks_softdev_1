@@ -316,11 +316,16 @@ class _CardBackgroundState extends State<_CardBackground> {
 }
 
 
-class _LogoutDialog extends StatelessWidget {
+class _LogoutDialog extends StatefulWidget {
   const _LogoutDialog({required this.onConfirm});
 
   final VoidCallback onConfirm;
 
+  @override
+  State<_LogoutDialog> createState() => _LogoutDialogState();
+}
+
+class _LogoutDialogState extends State<_LogoutDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -359,7 +364,7 @@ class _LogoutDialog extends StatelessWidget {
                   child: SizedBox(
                     height: 52,
                     child: OutlinedButton(
-                      onPressed: onConfirm,
+                      onPressed: widget.onConfirm,
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Color(0xFFBFD5E3)),
                         shape: RoundedRectangleBorder(

@@ -8,51 +8,8 @@ class EducatorHomeScreen extends StatefulWidget {
   State<EducatorHomeScreen> createState() => _EducatorHomeScreenState();
 }
 
-class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
-  final DatabaseService _dbService = DatabaseService();
-
-  // State
-  EducatorClassSummary? selectedClass; // If null, "All Classes" is selected
-  List<StudentAttendanceItem> studentList = [];
-  bool isLoadingStudents = false;
-
-  @override
-  void initState() {
-    super.initState();
-    // Default to "All Classes" (null) on start
-    selectedClass = null;
-  }
-
-  // Handle "All Classes" tap
-  void _onAllClassesSelected() {
-    setState(() {
-      selectedClass = null;
-      studentList = []; // Clear the list
-    });
-  }
-
-  // Handle Specific Class tap
-  void _onClassSelected(EducatorClassSummary classData) async {
-    // If already selected, do nothing
-    if (selectedClass?.id == classData.id) return;
-
-    setState(() {
-      selectedClass = classData;
-      isLoadingStudents = true;
-    });
-
-    try {
-      final students = await _dbService.getClassStudents(classData.id);
-      if (mounted) {
-        setState(() {
-          studentList = students;
-          isLoadingStudents = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => isLoadingStudents = false);
-    }
-  }
+class _EducatorHomeContentState extends State<EducatorHomeContent> {
+  String selectedClass = 'All Classes';
 
   @override
   Widget build(BuildContext context) {
@@ -206,10 +163,8 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
             ),
           ],
         ),
-        transform: isSelected
-            ? Matrix4.diagonal3Values(1.02, 1.02, 1.0)
-            : Matrix4.identity(),
-        transformAlignment: Alignment.center,
+        transform: isSelected ? (Matrix4.identity()..scale(1.03)) : Matrix4.identity(),
+        transformAlignment: FractionalOffset.center,
         child: Row(
           children: [
             Expanded(

@@ -22,10 +22,9 @@ class Profile {
       id: json['id'] as String??'',
       firstName: json['firstName'] as String? ??'',
       middleName: json['middleName'] as String?,
-      lastName: json['lastName'] as String? ??'',
-      email : json['email'] as String? ??'',
-      role: json['role'] as String? ??'',
-    );  
+      lastName: json['lastName'] as String,
+      role: json['role'] as String,
+    );
   }
 
   String get fullName => '$firstName $lastName';
