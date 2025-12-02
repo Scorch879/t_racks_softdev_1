@@ -1,21 +1,39 @@
 import 'package:flutter/material.dart';
+import 'package:t_racks_softdev_1/services/database_service.dart';
 
 class EducatorAddStudentScreen extends StatefulWidget {
   const EducatorAddStudentScreen({
     super.key,
+    required this.classId,
     required this.className,
     required this.availableStudents,
   });
 
+  final String classId;
   final String className;
   final List<Map<String, String>> availableStudents;
 
   @override
-  State<EducatorAddStudentScreen> createState() => _EducatorAddStudentScreenState();
+  State<EducatorAddStudentScreen> createState() =>
+      _EducatorAddStudentScreenState();
 }
 
 class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
+  final DatabaseService _dbService = DatabaseService();
   final TextEditingController _searchController = TextEditingController();
+
+  // 1. Master list (everyone available)
+  late List<Map<String, String>> _studentsList;
+  // 2. Filtered list (what is shown on screen)
+  late List<Map<String, String>> _filteredList;
+
+  @override
+  void initState() {
+    super.initState();
+    _studentsList = List.from(widget.availableStudents);
+    // Initially, the filtered list is the same as the master list
+    _filteredList = _studentsList;
+  }
 
   @override
   void dispose() {
@@ -23,10 +41,64 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
     super.dispose();
   }
 
+  // 3. THE SEARCH LOGIC
+  void _runFilter(String enteredKeyword) {
+    List<Map<String, String>> results = [];
+    if (enteredKeyword.isEmpty) {
+      // If the search field is empty, show everyone
+      results = _studentsList;
+    } else {
+      // Filter based on name (case-insensitive)
+      results = _studentsList
+          .where((user) =>
+              user["name"]!.toLowerCase().contains(enteredKeyword.toLowerCase()))
+          .toList();
+    }
+
+    // Refresh the UI
+    setState(() {
+      _filteredList = results;
+    });
+  }
+
+  Future<void> _handleAddStudent(String studentId) async {
+    try {
+      await _dbService.enrollStudent(
+        classId: widget.classId,
+        studentId: studentId,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Student added successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        setState(() {
+          // 4. IMPORTANT FIX: Remove by ID, not Index!
+          // Since the list might be filtered, "Index 0" might delete the wrong person.
+          _studentsList.removeWhere((student) => student['id'] == studentId);
+          
+          // Re-run the filter so the UI updates correctly
+          _runFilter(_searchController.text);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error adding student: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final students = widget.availableStudents;
-
     return Scaffold(
       body: Stack(
         children: [
@@ -70,20 +142,32 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  
+                  // 5. Connect the search field
                   _buildSearchField(),
+                  
                   const SizedBox(height: 16),
                   Expanded(
-                    child: ListView.separated(
-                      itemCount: students.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final student = students[index];
-                        return _buildStudentCard(
-                          name: student['name'] ?? '',
-                          subtitle: student['subtitle'] ?? '',
-                        );
-                      },
-                    ),
+                    child: _filteredList.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'No students found',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                          )
+                        : ListView.separated(
+                            itemCount: _filteredList.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 12),
+                            itemBuilder: (context, index) {
+                              final student = _filteredList[index];
+                              return _buildStudentCard(
+                                name: student['name'] ?? '',
+                                subtitle: student['subtitle'] ?? '',
+                                onAdd: () => _handleAddStudent(student['id']!),
+                              );
+                            },
+                          ),
                   ),
                 ],
               ),
@@ -119,6 +203,8 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
           Expanded(
             child: TextField(
               controller: _searchController,
+              // 7. Call _runFilter whenever text changes
+              onChanged: (value) => _runFilter(value),
               style: const TextStyle(color: Colors.white),
               decoration: const InputDecoration(
                 hintText: 'Search Student',
@@ -136,6 +222,7 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
   Widget _buildStudentCard({
     required String name,
     required String subtitle,
+    required VoidCallback onAdd,
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
@@ -174,16 +261,13 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                  ),
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
                 ),
               ],
             ),
           ),
           IconButton(
-            onPressed: () {},
+            onPressed: onAdd,
             icon: const Icon(Icons.add_circle_outline, color: Colors.white70),
           ),
         ],

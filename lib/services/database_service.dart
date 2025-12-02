@@ -3,7 +3,9 @@ import 'package:t_racks_softdev_1/services/models/educator_model.dart';
 import 'package:t_racks_softdev_1/services/models/profile_model.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:t_racks_softdev_1/services/models/student_model.dart';
+import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:collection/collection.dart';
+import 'dart:math';
 
 final _supabase = Supabase.instance.client;
 
@@ -178,26 +180,35 @@ class DatabaseService {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) throw 'User not logged in';
 
-      // Fetch classes owned by this educator
+      // 1. Updated Select Query: Added 'day' and 'time'
       final response = await _supabase
           .from('Classes_Table')
-          .select('id, class_name')
+          .select('id, class_name, subject, status, day, time')
           .eq('educator_id', userId);
 
       List<EducatorClassSummary> classes = [];
 
       for (var row in response) {
-        // Count students in this class using Enrollments_Table
         final countResponse = await _supabase
             .from('Enrollments_Table')
             .select('student_id')
             .eq('class_id', row['id']);
 
+        // 2. Combine Day and Time into one string
+        String day = row['day'] ?? '';
+        String time = row['time'] ?? '';
+        String fullSchedule = "$day $time".trim();
+
         classes.add(
           EducatorClassSummary(
             id: row['id'],
             className: row['class_name'] ?? 'Unnamed Class',
+            subject: row['subject'] ?? '',
+            status: row['status'] ?? 'Active',
+            schedule: fullSchedule, // Use the combined string
             studentCount: countResponse.length,
+            rawDay: day,
+            rawTime: time,
           ),
         );
       }
@@ -267,6 +278,96 @@ class DatabaseService {
       return [];
     }
   }
+
+  ///Classes related functions especially class code
+  String _generateClassCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final random = Random();
+    return String.fromCharCodes(
+      Iterable.generate(
+        6,
+        (_) => chars.codeUnitAt(random.nextInt(chars.length)),
+      ),
+    );
+  }
+
+  Future<void> createClass({
+    required String className,
+    required String subject,
+    required String day,
+    required String time,
+  }) async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw 'User not logged in';
+      String classCode = _generateClassCode();
+      final newClass = {
+        'educator_id': userId,
+        'class_name': className,
+        'subject': subject,
+        'day': day,
+        'time': time,
+        'status': 'Active', // Default status
+        'class_code': classCode,
+      };
+
+      await _supabase.from('Classes_Table').insert(newClass);
+    } catch (e) {
+      print('Error creating class: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<Map<String, String>>> getAvailableStudents(String classId) async {
+  try {
+    // 1. Get IDs of students ALREADY in the class
+    final enrolledRes = await _supabase
+        .from('Enrollments_Table')
+        .select('student_id')
+        .eq('class_id', classId);
+    
+    final enrolledIds = (enrolledRes as List).map((e) => e['student_id']).toList();
+
+    // 2. Fetch profiles using an INNER JOIN on Student_Table
+    // The '!inner' keyword ensures we ONLY get users who exist in Student_Table
+    var query = _supabase
+        .from('profiles')
+        .select('id, firstName, lastName, Student_Table!inner(id)'); // <--- CHANGED THIS LINE
+
+    if (enrolledIds.isNotEmpty) {
+      query = query.not('id', 'in', enrolledIds);
+    }
+
+    final res = await query;
+
+    return (res as List).map((profile) {
+      return {
+        'id': profile['id'].toString(), 
+        'name': "${profile['firstName']} ${profile['lastName']}",
+        'subtitle': 'Student', 
+      };
+    }).toList();
+  } catch (e) {
+    print('Error fetching available students: $e');
+    return [];
+  }
+}
+
+Future<void> enrollStudent({
+  required String classId,
+  required String studentId,
+}) async {
+  try {
+    await _supabase.from('Enrollments_Table').insert({
+      'class_id': classId,
+      'student_id': studentId,
+      'enrollment_date': DateTime.now().toIso8601String(),
+    });
+  } catch (e) {
+    print('Error enrolling student: $e');
+    rethrow;
+  }
+}
 }
 
 class AccountServices {
@@ -299,29 +400,4 @@ class ClassesServices {
       throw 'Error creating class: $e';
     }
   }
-}
-
-//helper models
-class EducatorClassSummary {
-  final String id;
-  final String className;
-  final int studentCount;
-
-  EducatorClassSummary({
-    required this.id,
-    required this.className,
-    required this.studentCount,
-  });
-}
-
-class StudentAttendanceItem {
-  final String id;
-  final String name;
-  final String status; // 'Present', 'Absent', or 'Mark Attendance'
-
-  StudentAttendanceItem({
-    required this.id,
-    required this.name,
-    required this.status,
-  });
 }
