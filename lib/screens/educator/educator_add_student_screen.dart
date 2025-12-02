@@ -11,7 +11,8 @@ class EducatorAddStudentScreen extends StatefulWidget {
   final List<Map<String, String>> availableStudents;
 
   @override
-  State<EducatorAddStudentScreen> createState() => _EducatorAddStudentScreenState();
+  State<EducatorAddStudentScreen> createState() =>
+      _EducatorAddStudentScreenState();
 }
 
 class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
@@ -133,10 +134,7 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
     );
   }
 
-  Widget _buildStudentCard({
-    required String name,
-    required String subtitle,
-  }) {
+  Widget _buildStudentCard({required String name, required String subtitle}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       decoration: BoxDecoration(
@@ -174,10 +172,7 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                  ),
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
                 ),
               ],
             ),
