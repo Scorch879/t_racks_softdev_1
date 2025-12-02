@@ -8,8 +8,11 @@ class EducatorHomeScreen extends StatefulWidget {
   State<EducatorHomeScreen> createState() => _EducatorHomeScreenState();
 }
 
-class _EducatorHomeContentState extends State<EducatorHomeContent> {
-  String selectedClass = 'All Classes';
+class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
+  final _dbService = DatabaseService();
+  EducatorClassSummary? selectedClass;
+  List<StudentAttendanceItem> studentList = [];
+  bool isLoadingStudents = false;
 
   @override
   Widget build(BuildContext context) {
@@ -136,6 +139,44 @@ class _EducatorHomeContentState extends State<EducatorHomeContent> {
         ],
       ),
     );
+
+  }
+
+  void _onAllClassesSelected() {
+    setState(() {
+      selectedClass = null;
+      studentList = [];
+    });
+  }
+
+  void _onClassSelected(EducatorClassSummary classData) {
+    setState(() {
+      selectedClass = classData;
+    });
+    _fetchStudentsForClass(classData.id);
+  }
+
+  Future<void> _fetchStudentsForClass(String classId) async {
+    setState(() {
+      isLoadingStudents = true;
+    });
+
+    try {
+      final students = await _dbService.getClassStudents(classId);
+      if (mounted) {
+        setState(() {
+          studentList = students;
+        });
+      }
+    } catch (e) {
+      print("Error loading students: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoadingStudents = false;
+        });
+      }
+    }
   }
 
   Widget _buildClassButton({

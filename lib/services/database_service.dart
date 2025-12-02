@@ -86,6 +86,75 @@ class DatabaseService {
     }
   }
 
+  /// Fetches the classes for the current student.
+  Future<List<StudentClass>> getStudentClasses() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw 'User not logged in';
+
+      // This query fetches all classes that the current user is enrolled in.
+      // It uses the 'Enrollments_Table' as the join table.
+      final data = await _supabase
+          .from('Classes_Table')
+          .select('*, Enrollments_Table!inner(*)')
+          .eq('Enrollments_Table.student_id', userId);
+
+      final classes = (data as List)
+          .map((item) => StudentClass.fromJson(item))
+          .toList();
+      return classes;
+    } catch (e) {
+      print('Error fetching student classes: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetches the details for a single class by its ID.
+  Future<StudentClass> getClassDetails(String classId) async {
+    try {
+      final data = await _supabase
+          .from('Classes_Table')
+          .select()
+          .eq('id', classId)
+          .single();
+
+      return StudentClass.fromJson(data);
+    } catch (e) {
+      print('Error fetching class details: $e');
+      rethrow;
+    }
+  }
+
+  /// Updates the data for a student user in the database.
+  Future<void> updateStudentData({
+    required String firstName,
+    required String lastName,
+    required String? institution,
+  }) async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw 'User not logged in';
+
+      // 1. Update the 'profiles' table
+      final profileUpdate = {
+        'firstName': firstName,
+        'lastName': lastName,
+      };
+      await _supabase.from('profiles').update(profileUpdate).eq('id', userId);
+
+      // 2. Update the 'Student_Table'
+      final studentUpdate = {'institution': institution};
+      await _supabase
+          .from('Student_Table')
+          .update(studentUpdate)
+          .eq('id', userId);
+    } catch (e) {
+      // Rethrow the error to be handled by the UI
+      print('Error updating student data: $e');
+      rethrow;
+    }
+  }
+
   /// Fetches the complete data for an educator user.
   Future<Educator?> getEducatorData() async {
     try {
@@ -107,7 +176,65 @@ class DatabaseService {
       return null;
     }
   }
-  
+  /// Fetches classes where the current user is the instructor.
+  Future<List<EducatorClassSummary>> getEducatorClasses() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw 'User not logged in';
+
+      final data = await _supabase
+          .from('Classes_Table')
+          .select('id, class_name')
+          .eq('instructor_id', userId);
+
+      List<EducatorClassSummary> summaries = [];
+
+      for (var cls in data) {
+        final count = await _supabase
+            .from('Enrollments_Table')
+            .count(CountOption.exact)
+            .eq('class_id', cls['id']);
+
+        summaries.add(EducatorClassSummary(
+          id: cls['id'],
+          className: cls['class_name'] ?? 'Unknown Class',
+          studentCount: count,
+        ));
+      }
+
+      return summaries;
+    } catch (e) {
+      print('Error fetching educator classes: $e');
+      return [];
+    }
+  }
+
+  /// Fetches students for a specific class.
+  Future<List<StudentAttendanceItem>> getClassStudents(String classId) async {
+    try {
+      final data = await _supabase
+          .from('Enrollments_Table')
+          .select('student_id, profiles:student_id(firstName, lastName)')
+          .eq('class_id', classId);
+
+      return (data as List).map((item) {
+        final profile = item['profiles'];
+        String name = 'Unknown';
+        if (profile != null) {
+          name = '${profile['firstName']} ${profile['lastName']}';
+        }
+
+        return StudentAttendanceItem(
+          id: item['student_id'],
+          name: name,
+          status: 'Mark Attendance', // Placeholder
+        );
+      }).toList();
+    } catch (e) {
+      print('Error fetching class students: $e');
+      return [];
+    }
+  }
 }
 
 class AccountServices {
@@ -165,21 +292,4 @@ class StudentAttendanceItem {
     required this.name,
     required this.status,
   });
-}
-
-class ClassesServices {
-  Future<void> createClass() async {
-    try {
-      final userId = _supabase.auth.currentUser?.id;
-
-      if (userId == null) {
-        throw 'User is not logged in';
-      }
-
-      // Class creation logic goes here
-
-    } catch (e) {
-      throw 'Error creating class: $e';
-    }
-  }
 }
