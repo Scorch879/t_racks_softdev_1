@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_add_student_screen.dart';
+import 'package:t_racks_softdev_1/services/models/class_model.dart';
 
 class EducatorClassroomScreen extends StatefulWidget {
   final String classId;
