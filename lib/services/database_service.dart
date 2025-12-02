@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:t_racks_softdev_1/services/models/educator_model.dart';
 import 'package:t_racks_softdev_1/services/models/profile_model.dart';
+import 'package:t_racks_softdev_1/services/models/attendance_model.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:t_racks_softdev_1/services/models/student_model.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
@@ -376,6 +377,28 @@ Future<void> enrollStudent({
     rethrow;
   }
 }
+
+  Future<List<AttendanceRecord>> getStudentAttendanceForClass(
+      String classId) async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw 'User not logged in';
+
+      final data = await _supabase
+          .from('Attendance_Record')
+          .select('id, student_id, class_id, date, isPresent, time')
+          .eq('class_id', classId)
+          .eq('student_id', userId)
+          .order('date', ascending: false); // Show most recent first
+
+      return (data as List)
+          .map((item) => AttendanceRecord.fromJson(item))
+          .toList();
+    } catch (e) {
+      print('Error fetching student attendance: $e');
+      return [];
+    }
+  }
 }
 
 class AccountServices {
