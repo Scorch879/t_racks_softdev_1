@@ -7,10 +7,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
-// FIX 1: Add 'as tflite' to avoid name conflict with Google's ModelManager
 import 'package:t_racks_softdev_1/services/tflite_service.dart' as tflite;
 
-// Enum for different challenges
 enum ChallengeType { smile, blink, turnLeft, turnRight }
 
 class AttendanceCameraScreen extends StatefulWidget {
@@ -27,26 +25,24 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
   Future<void>? _initializeControllerFuture;
   bool _isProcessing = false;
   late FaceDetector _faceDetector;
-
-  // FIX 2: Use 'tflite.ModelManager' to specify your custom class
   final tflite.ModelManager _tfliteManager = tflite.ModelManager();
 
-  // Liveness Logic Variables
+  // Liveness Variables
   List<ChallengeType> _challenges = [];
   int _currentChallengeIndex = 0;
   bool _isSessionActive = false;
   String _statusMessage = "Initializing...";
   Color _statusColor = Colors.white;
   bool _isVerified = false;
+  bool _hasFailed = false; // New flag for failure state
 
   // TFLite Variables
   bool _isTfliteLoaded = false;
-  double _fakeProbability = 0.0;
+  int _consecutiveFakeFrames = 0; // Buffer to prevent instant fail
 
   @override
   void initState() {
     super.initState();
-    // 1. Setup ML Kit
     final options = FaceDetectorOptions(
       enableClassification: true,
       enableLandmarks: true,
@@ -54,12 +50,9 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
     );
     _faceDetector = FaceDetector(options: options);
 
-    // 2. Setup TFLite (Your Custom Model)
     _tfliteManager.loadModel().then((_) {
       if (mounted) {
-        setState(() {
-          _isTfliteLoaded = true;
-        });
+        setState(() => _isTfliteLoaded = true);
       }
     });
 
@@ -79,8 +72,7 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
       ResolutionPreset.medium,
       enableAudio: false,
       imageFormatGroup: Platform.isAndroid
-          ? ImageFormatGroup
-                .nv21 // ML Kit prefers NV21
+          ? ImageFormatGroup.nv21
           : ImageFormatGroup.bgra8888,
     );
 
@@ -107,17 +99,17 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
       _isSessionActive = true;
       _currentChallengeIndex = 0;
       _isVerified = false;
-      _fakeProbability = 0.0;
+      _hasFailed = false;
+      _consecutiveFakeFrames = 0;
       _updateStatusMessage();
     });
   }
 
   void _updateStatusMessage() {
-    if (_isVerified) return;
+    if (_isVerified || _hasFailed) return;
 
     if (_currentChallengeIndex >= _challenges.length) {
-      // User passed challenges, now waiting for TFLite check...
-      _statusMessage = "Analyzing Texture...";
+      _statusMessage = "Verifying Texture...";
       _statusColor = Colors.blueAccent;
       return;
     }
@@ -147,15 +139,14 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
     int frameCount = 0;
 
     _controller!.startImageStream((CameraImage image) async {
-      if (_isProcessing || !_isSessionActive || _isVerified) return;
+      if (_isProcessing || !_isSessionActive || _isVerified || _hasFailed)
+        return;
       _isProcessing = true;
 
       try {
-        // Run ML Kit every frame for smoothness
         await _processMLKit(image);
 
-        // Run TFLite only every 10th frame (to save battery/lag)
-        // And ONLY if we haven't failed the fake check yet
+        // Run TFLite less frequently (every 10th frame)
         if (frameCount % 10 == 0 && _isTfliteLoaded) {
           await _processTFLite(image);
         }
@@ -168,7 +159,6 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
     });
   }
 
-  // --- STEP 1: ML KIT LIVENESS (Actions) ---
   Future<void> _processMLKit(CameraImage image) async {
     final inputImage = _inputImageFromCameraImage(image);
     if (inputImage == null) return;
@@ -222,26 +212,26 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
     }
   }
 
-  // --- STEP 2: TFLITE TEXTURE CHECK (Deepfake Detection) ---
   Future<void> _processTFLite(CameraImage image) async {
     try {
       final results = await _tfliteManager.runInferenceOnCameraImage(image);
       if (results.isEmpty) return;
 
-      // YOUR LABELS ORDER: [0: Real, 1: No Face, 2: Fake]
-
-      double realScore = results.length > 0 ? results[0] : 0.0;
-      double noFaceScore = results.length > 1 ? results[1] : 0.0;
+      // LABELS: [0: Real, 1: No Face, 2: Fake]
       double fakeScore = results.length > 2 ? results[2] : 0.0;
 
-      _fakeProbability = fakeScore;
+      // LOGIC UPDATE: Require 3 consecutive bad frames to fail
+      if (fakeScore > 0.85) {
+        // Stricter threshold (must be VERY fake)
+        _consecutiveFakeFrames++;
+      } else {
+        _consecutiveFakeFrames = 0; // Reset if we see a good frame
+      }
 
-      // DEBUG: Print scores to console
-      // print("TFLite Scores -> Real: ${(realScore*100).toInt()}% | Fake: ${(fakeScore*100).toInt()}% | NoFace: ${(noFaceScore*100).toInt()}%");
-
-      if (fakeScore > 0.8) {
+      if (_consecutiveFakeFrames >= 3) {
         if (mounted) {
           setState(() {
+            _hasFailed = true;
             _statusMessage = "⚠️ SPOOF DETECTED";
             _statusColor = Colors.red;
           });
@@ -253,10 +243,8 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
   }
 
   void _finalizeVerification() {
-    // Both Steps Must Pass:
-    // 1. All challenges passed (ML Kit)
-    // 2. Fake Probability low (TFLite)
-    if (_fakeProbability < 0.5) {
+    // If we made it here without TFLite flagging us, we are good.
+    if (!_hasFailed) {
       if (mounted) {
         setState(() {
           _isVerified = true;
@@ -265,17 +253,9 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
           // TODO: Mark Attendance Here
         });
       }
-    } else {
-      if (mounted) {
-        setState(() {
-          _statusMessage = "❌ Verification Failed (Fake)";
-          _statusColor = Colors.redAccent;
-        });
-      }
     }
   }
 
-  // --- HELPER METHODS ---
   InputImage? _inputImageFromCameraImage(CameraImage image) {
     if (_controller == null) return null;
     final camera = _controller!.description;
@@ -298,9 +278,8 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
     if (rotation == null) return null;
 
     final format = InputImageFormatValue.fromRawValue(image.format.raw);
-
-    // NEW API METADATA
     if (image.planes.isEmpty) return null;
+
     final metadata = InputImageMetadata(
       size: Size(image.width.toDouble(), image.height.toDouble()),
       rotation: rotation,
@@ -356,6 +335,11 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
                     child: CameraPreview(_controller!),
                   ),
                 ),
+
+                // Dim the screen if failed or verified
+                if (_hasFailed || _isVerified) Container(color: Colors.black54),
+
+                // Main UI Overlay
                 Align(
                   alignment: Alignment.bottomCenter,
                   child: Container(
@@ -374,17 +358,30 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 10),
-                        if (_isSessionActive && !_isVerified)
-                          Text(
-                            "Security Level: ${_fakeProbability > 0.5 ? '⚠️ Risk' : '🛡️ Safe'}",
-                            style: TextStyle(
-                              color: _fakeProbability > 0.5
-                                  ? Colors.red
-                                  : Colors.green,
-                              fontSize: 16,
+
+                        // TRY AGAIN BUTTON (Only shows on failure)
+                        if (_hasFailed) ...[
+                          const SizedBox(height: 20),
+                          const Text(
+                            "Security Check Failed.\nMake sure you are in good lighting.",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                          const SizedBox(height: 20),
+                          ElevatedButton.icon(
+                            onPressed: _startLivenessSession, // Restart Logic
+                            icon: const Icon(Icons.refresh),
+                            label: const Text("TRY AGAIN"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: Colors.black,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 30,
+                                vertical: 15,
+                              ),
                             ),
                           ),
+                        ],
                       ],
                     ),
                   ),
