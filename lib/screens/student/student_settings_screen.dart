@@ -208,6 +208,7 @@ class _SettingsCardState extends State<_SettingsCard> {
       radius: radius,
       scale: scale,
       borderColor: _borderTeal.withOpacity(0.45),
+      background: const _CardBackground(),
       child: Padding(
         padding: EdgeInsets.all(18 * scale),
         child: Column(
@@ -254,7 +255,6 @@ class _SettingsCardState extends State<_SettingsCard> {
           ],
         ),
       ),
-      background: const _CardBackground(),
     );
   }
 }

@@ -128,13 +128,6 @@ class DatabaseService {
     }
   }
 
-  ///
-  ///
-  ///
-  ///Update functions right here
-  ///
-  ///
-  ///
   /// Updates the data for a student user in the database.
   Future<void> updateStudentData({
     required String firstName,
@@ -183,7 +176,6 @@ class DatabaseService {
       return null;
     }
   }
-
   Future<List<EducatorClassSummary>> getEducatorClasses() async {
     try {
       final userId = _supabase.auth.currentUser?.id;

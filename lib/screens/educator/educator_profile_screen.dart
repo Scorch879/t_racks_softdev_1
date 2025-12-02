@@ -318,26 +318,18 @@ class _ProfileHeader extends StatelessWidget {
                     Positioned(
                       bottom: 4 * scale,
                       right: 4 * scale,
-                      child: GestureDetector(
-                        onTap: () {
-                          showDialog(
-                            context: context,
-                            builder: (context) => const _PermissionDialog(),
-                          );
-                        },
-                        child: Container(
-                          width: 36 * scale,
-                          height: 36 * scale,
-                          decoration: BoxDecoration(
-                            color: _textCyan,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2.5 * scale),
-                          ),
-                          child: Icon(
-                            Icons.camera_alt_outlined,
-                            color: Colors.white,
-                            size: 20 * scale,
-                          ),
+                      child: Container(
+                        width: 36 * scale,
+                        height: 36 * scale,
+                        decoration: BoxDecoration(
+                          color: _textCyan,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2.5 * scale),
+                        ),
+                        child: Icon(
+                          Icons.camera_alt_outlined,
+                          color: Colors.white,
+                          size: 20 * scale,
                         ),
                       ),
                     ),
@@ -530,100 +522,6 @@ class _UnsavedChangesDialog extends StatelessWidget {
                         'Leave',
                         style: TextStyle(
                           fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PermissionDialog extends StatelessWidget {
-  const _PermissionDialog();
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      backgroundColor: Colors.white,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Permission Required',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Color(0xFF2E7D57), // Greenish color from design
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'We need your permission to access\nthe camera.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Color(0xFF1A2B3C),
-                fontSize: 16,
-                height: 1.5,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 32),
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 52,
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: _borderGrey),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        foregroundColor: const Color(0xFF1A2B3C),
-                      ),
-                      child: const Text(
-                        'Allow',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: SizedBox(
-                    height: 52,
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: _borderGrey),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        foregroundColor: const Color(0xFF1A2B3C),
-                      ),
-                      child: const Text(
-                        'Do not allow',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
                       ),

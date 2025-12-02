@@ -49,6 +49,13 @@ class _StudentClassClassesContentState extends State<StudentClassClassesContent>
     );
   }
 
+  void _showJoinClassDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => const _JoinClassDialog(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -128,34 +135,19 @@ class _StudentClassClassesContentState extends State<StudentClassClassesContent>
                                 ),
                               ],
                             ),
-                            SizedBox(height: 16 * scale),
-
-                            // 2. Main 'My Classes' Container
-                            Container(
-                              padding: EdgeInsets.all(16 * scale),
-                              decoration: BoxDecoration(
-                                color: _darkBluePanel,
-                                borderRadius: BorderRadius.circular(16 * scale),
-                                border: Border.all(
-                                  color: const Color(0xFFBDBBBB), width: 0.75),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.25),
-                                    blurRadius: 10 * scale,
-                                    offset: Offset(0, 6 * scale),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  // Header
-                                  _MyClassesHeader(scale: scale),
-                                  SizedBox(height: 12 * scale),
-                                  
-                                  // Search
-                                  _SearchBar(scale: scale),
-                                  SizedBox(height: 12 * scale),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                // Header
+                                _MyClassesHeader(
+                                  scale: scale,
+                                  onAddClassPressed: _showJoinClassDialog,
+                                ),
+                                SizedBox(height: 12 * scale),
+                                
+                                // Search
+                                _SearchBar(scale: scale),
+                                SizedBox(height: 12 * scale),
 
                                   // Class List
                                   if (classes.isEmpty)
@@ -338,6 +330,139 @@ class _ClassDetailsDialogState extends State<ClassDetailsDialog> {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+// --- JOIN CLASS DIALOG ---
+class _JoinClassDialog extends StatefulWidget {
+  const _JoinClassDialog();
+
+  @override
+  State<_JoinClassDialog> createState() => _JoinClassDialogState();
+}
+
+class _JoinClassDialogState extends State<_JoinClassDialog> {
+  final _codeController = TextEditingController();
+
+  @override
+  void dispose() {
+    _codeController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      backgroundColor: Colors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Enter Class Code',
+              style: TextStyle(
+                color: Color(0xFF1A2B3C),
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 24),
+            TextField(
+              controller: _codeController,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1A2B3C),
+              ),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: const Color(0xFFEFF5F9),
+                contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFBFD5E3)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFBFD5E3)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: _bgTeal, width: 2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Request a class code from\nyour admin',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Color(0xFF1A2B3C),
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 32),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 52,
+                    child: OutlinedButton(
+                      onPressed: () {
+                        // TODO: Implement join logic
+                        Navigator.of(context).pop();
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFFBFD5E3)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        foregroundColor: const Color(0xFF1A2B3C),
+                      ),
+                      child: const Text(
+                        'Enter',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: SizedBox(
+                    height: 52,
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFFBFD5E3)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        foregroundColor: const Color(0xFF1A2B3C),
+                      ),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -553,8 +678,12 @@ class _SummaryCardState extends State<_SummaryCard> {
 }
 
 class _MyClassesHeader extends StatefulWidget {
-  const _MyClassesHeader({required this.scale});
+  const _MyClassesHeader({
+    required this.scale,
+    required this.onAddClassPressed,
+  });
   final double scale;
+  final VoidCallback onAddClassPressed;
 
   @override
   State<_MyClassesHeader> createState() => _MyClassesHeaderState();
@@ -582,7 +711,7 @@ class _MyClassesHeaderState extends State<_MyClassesHeader> {
           ),
         ),
         IconButton(
-          onPressed: () {},
+          onPressed: widget.onAddClassPressed,
           icon: Icon(
             Icons.add_circle_rounded,
             color: _chipGreen,
@@ -644,9 +773,9 @@ class _ClassCard extends StatefulWidget {
     required this.time,
     required this.status,
     required this.statusColor,
-    this.isUpcoming = false,
+    bool isUpcoming = false,
     this.cardColor,
-  });
+  }) : isUpcoming = isUpcoming;
 
   final double scale;
   final String title;
@@ -1026,7 +1155,7 @@ class _ScheduleItemWidgetState extends State<_ScheduleItemWidget> {
                 Icons.location_on_rounded,
                 color: Colors.white60,
                 size: 14 * widget.scale,
-              ),
+                ),
               SizedBox(width: 4 * widget.scale),
               Text(
                 widget.item.location,
