@@ -214,6 +214,8 @@ class DatabaseService {
             status: row['status'] ?? 'Active',
             schedule: fullSchedule, // Use the combined string
             studentCount: countResponse.length,
+            rawDay: day,
+            rawTime: time,
           ),
         );
       }
@@ -360,9 +362,11 @@ class EducatorClassSummary {
   final String id;
   final String className;
   final String subject;
-  final String schedule; // Derived from day + time
+  final String schedule;
   final String status;
   final int studentCount;
+  final String rawDay;
+  final String rawTime;
 
   EducatorClassSummary({
     required this.id,
@@ -371,6 +375,8 @@ class EducatorClassSummary {
     required this.schedule,
     required this.status,
     required this.studentCount,
+    required this.rawDay,
+    required this.rawTime,
   });
 }
 
