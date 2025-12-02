@@ -21,7 +21,7 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
     super.initState();
     _classesFuture = _dbService.getEducatorClasses();
 
-    // Refresh every minute to keep "Ongoing" status accurate
+    // Refresh every minute to keep statuses accurate
     _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
       if (mounted) setState(() {});
     });
@@ -42,7 +42,6 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
   bool _isClassToday(String days) {
     final now = DateTime.now();
     final weekday = now.weekday;
-    // M=1, T=2, W=3, Th=4, F=5, S=6, Su=7
 
     if (days.contains("Su") && weekday == 7) return true;
     if (days.contains("M") && weekday == 1) return true;
@@ -55,16 +54,10 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
     return false;
   }
 
-  // --- ROBUST TIME PARSER ---
   TimeOfDay _parseTime(String timeString) {
-    // Clean up input: " 10:30  AM " -> "10:30AM"
     String cleaned = timeString.toUpperCase().replaceAll(".", "").trim();
-
-    // Handle NN (Noon) and MN (Midnight)
     if (cleaned.contains("NN")) cleaned = cleaned.replaceAll("NN", "PM");
     if (cleaned.contains("MN")) cleaned = cleaned.replaceAll("MN", "AM");
-
-    // Add space between number and letter if missing: "10:30AM" -> "10:30 AM"
     cleaned = cleaned.replaceAllMapped(
       RegExp(r'(\d)([A-Z])'),
       (match) => '${match.group(1)} ${match.group(2)}',
@@ -77,14 +70,13 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
       final timeParts = parts[0].split(":");
       int hour = int.parse(timeParts[0]);
       int minute = int.parse(timeParts[1]);
-      String period = parts[1]; // AM or PM
+      String period = parts[1];
 
       if (period == "PM" && hour != 12) hour += 12;
       if (period == "AM" && hour == 12) hour = 0;
 
       return TimeOfDay(hour: hour, minute: minute);
     } catch (e) {
-      print("ERROR PARSING TIME: $timeString ($e)");
       return const TimeOfDay(hour: 0, minute: 0);
     }
   }
@@ -104,20 +96,12 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
 
         final classes = snapshot.data ?? [];
 
-        // --- DEBUGGING PRINTS ---
-        // Look at your "Run" or "Debug" tab in VS Code / Android Studio to see this!
         final nowTime = TimeOfDay.now();
         final nowDouble = _timeToDouble(nowTime);
-        print("--------------------------------------------------");
-        print(
-          "DEBUG: Current Device Time: ${nowTime.format(context)} (Value: $nowDouble)",
-        );
 
         var todaysClasses = classes
             .where((c) => _isClassToday(c.rawDay))
             .toList();
-
-        // Sort classes
         todaysClasses.sort((a, b) {
           String startA = a.rawTime.split("-")[0];
           String startB = b.rawTime.split("-")[0];
@@ -126,38 +110,29 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
           ).compareTo(_timeToDouble(_parseTime(startB)));
         });
 
-        EducatorClassSummary? ongoingClass;
+        List<EducatorClassSummary> ongoingClasses = [];
         List<EducatorClassSummary> upcomingClasses = [];
 
         for (var c in todaysClasses) {
-          // Assume format "10:30 AM - 1:30 PM"
           final parts = c.rawTime.split("-");
           if (parts.length < 2) continue;
 
           final startDouble = _timeToDouble(_parseTime(parts[0]));
           final endDouble = _timeToDouble(_parseTime(parts[1]));
 
-          print("DEBUG CHECK: ${c.className}");
-          print("   Start: $startDouble, End: $endDouble");
-
           if (nowDouble >= startDouble && nowDouble < endDouble) {
-            print("   -> STATUS: ONGOING");
-            ongoingClass = c;
+            ongoingClasses.add(c);
           } else if (startDouble > nowDouble) {
-            print("   -> STATUS: UPCOMING");
             upcomingClasses.add(c);
-          } else {
-            print("   -> STATUS: ENDED");
           }
         }
-        print("--------------------------------------------------");
 
         return SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
             children: [
               const SizedBox(height: 16),
-              _buildDynamicTopSection(ongoingClass, upcomingClasses),
+              _buildDynamicTopSection(ongoingClasses, upcomingClasses),
               const SizedBox(height: 24),
               _buildMyClassesSection(classes),
               const SizedBox(height: 100),
@@ -168,39 +143,21 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
     );
   }
 
-  // ... (Keep _buildDynamicTopSection, _buildSummaryCard, etc. exactly the same as before)
-  // Just make sure to COPY the buildDynamicTopSection from the previous response
-  // if you haven't pasted it into this file yet.
-
   Widget _buildDynamicTopSection(
-    EducatorClassSummary? ongoing,
-    List<EducatorClassSummary> upcoming,
+    List<EducatorClassSummary> ongoingList,
+    List<EducatorClassSummary> upcomingList,
   ) {
     List<Widget> stackedCards = [];
+    List<Map<String, dynamic>> combinedQueue = [];
 
-    // CARD 1
-    if (ongoing != null) {
-      stackedCards.add(
-        _buildSummaryCard(
-          icon: Icons.access_time_filled,
-          iconColor: const Color(0xFF7FE26B),
-          value: ongoing.className,
-          label: "Ongoing Class",
-          subLabel: ongoing.rawTime,
-          isOngoing: true,
-        ),
-      );
-    } else if (upcoming.isNotEmpty) {
-      stackedCards.add(
-        _buildSummaryCard(
-          icon: Icons.calendar_today,
-          iconColor: const Color(0xFF68D080),
-          value: upcoming[0].className,
-          label: "Up Next",
-          subLabel: upcoming[0].rawTime,
-        ),
-      );
-    } else {
+    for (var c in ongoingList) {
+      combinedQueue.add({'data': c, 'type': 'ongoing'});
+    }
+    for (var c in upcomingList) {
+      combinedQueue.add({'data': c, 'type': 'upcoming'});
+    }
+
+    if (combinedQueue.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: _buildSummaryCard(
@@ -212,33 +169,32 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
       );
     }
 
-    // CARD 2
-    if (ongoing != null) {
-      if (upcoming.isNotEmpty) {
-        stackedCards.add(const SizedBox(height: 12));
-        stackedCards.add(
-          _buildSummaryCard(
-            icon: Icons.next_plan_outlined,
-            iconColor: Colors.white70,
-            value: upcoming[0].className,
-            label: "Up Next",
-            subLabel: upcoming[0].rawTime,
-          ),
-        );
-      }
-    } else {
-      if (upcoming.length > 1) {
-        stackedCards.add(const SizedBox(height: 12));
-        stackedCards.add(
-          _buildSummaryCard(
-            icon: Icons.next_plan_outlined,
-            iconColor: Colors.white70,
-            value: upcoming[1].className,
-            label: "Later",
-            subLabel: upcoming[1].rawTime,
-          ),
-        );
-      }
+    int itemsToShow = combinedQueue.length > 2 ? 2 : combinedQueue.length;
+
+    for (int i = 0; i < itemsToShow; i++) {
+      final item = combinedQueue[i];
+      final EducatorClassSummary data = item['data'];
+      final String type = item['type'];
+      final bool isOngoing = type == 'ongoing';
+
+      if (i > 0) stackedCards.add(const SizedBox(height: 12));
+
+      stackedCards.add(
+        _buildSummaryCard(
+          icon: isOngoing
+              ? Icons.access_time_filled
+              : (i == 0 ? Icons.calendar_today : Icons.next_plan_outlined),
+          iconColor: isOngoing
+              ? const Color(0xFF7FE26B)
+              : (i == 0 ? const Color(0xFF68D080) : Colors.white70),
+          value: data.className,
+          label: isOngoing
+              ? "Ongoing Class"
+              : (i == 0 && ongoingList.isEmpty ? "Up Next" : "Later"),
+          subLabel: data.rawTime,
+          isOngoing: isOngoing,
+        ),
+      );
     }
 
     return Padding(
@@ -260,7 +216,7 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
         : const Color(0xFFBDBBBB).withValues(alpha: 1);
 
     return Container(
-      height: 120,
+      // Height is removed so it grows to fit the button
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
@@ -277,7 +233,6 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -304,6 +259,7 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
                 ),
             ],
           ),
+          const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -339,6 +295,34 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
                 ),
             ],
           ),
+
+          // --- THE BUTTON YOU REQUESTED ---
+          if (isOngoing) ...[
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  // TODO: LINK YOUR CAMERA LOGIC HERE
+                  print("Take Attendance Pressed");
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF7FE26B),
+                  foregroundColor: const Color(0xFF0C3343),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.camera_alt_rounded, size: 20),
+                label: const Text(
+                  "Take Attendance",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
