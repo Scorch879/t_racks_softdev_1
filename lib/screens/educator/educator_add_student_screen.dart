@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:t_racks_softdev_1/services/database_service.dart';
 
 class EducatorAddStudentScreen extends StatefulWidget {
   const EducatorAddStudentScreen({
     super.key,
+    required this.classId,
     required this.className,
     required this.availableStudents,
   });
 
+  final String classId;
   final String className;
   final List<Map<String, String>> availableStudents;
 
@@ -16,7 +19,18 @@ class EducatorAddStudentScreen extends StatefulWidget {
 }
 
 class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
+  final DatabaseService _dbService = DatabaseService();
   final TextEditingController _searchController = TextEditingController();
+
+  // 1. DEFINE THE LOCAL LIST
+  late List<Map<String, String>> _studentsList;
+
+  // 2. INITIALIZE IT HERE (This is what was likely missing!)
+  @override
+  void initState() {
+    super.initState();
+    _studentsList = List.from(widget.availableStudents);
+  }
 
   @override
   void dispose() {
@@ -24,9 +38,42 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
     super.dispose();
   }
 
+  Future<void> _handleAddStudent(String studentId, int index) async {
+    try {
+      await _dbService.enrollStudent(
+        classId: widget.classId,
+        studentId: studentId,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Student added successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // 3. REMOVE FROM LOCAL LIST
+        setState(() {
+          _studentsList.removeAt(index);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error adding student: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final students = widget.availableStudents;
+    // 4. USE THE LOCAL LIST HERE (Not widget.availableStudents)
+    final displayList = _studentsList;
 
     return Scaffold(
       body: Stack(
@@ -75,13 +122,16 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
                   const SizedBox(height: 16),
                   Expanded(
                     child: ListView.separated(
-                      itemCount: students.length,
+                      // Use displayList here
+                      itemCount: displayList.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
-                        final student = students[index];
+                        final student = displayList[index];
                         return _buildStudentCard(
                           name: student['name'] ?? '',
                           subtitle: student['subtitle'] ?? '',
+                          // Pass the specific ID and Index
+                          onAdd: () => _handleAddStudent(student['id']!, index),
                         );
                       },
                     ),
@@ -134,7 +184,11 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
     );
   }
 
-  Widget _buildStudentCard({required String name, required String subtitle}) {
+  Widget _buildStudentCard({
+    required String name,
+    required String subtitle,
+    required VoidCallback onAdd,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       decoration: BoxDecoration(
@@ -178,7 +232,7 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
             ),
           ),
           IconButton(
-            onPressed: () {},
+            onPressed: onAdd,
             icon: const Icon(Icons.add_circle_outline, color: Colors.white70),
           ),
         ],
