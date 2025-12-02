@@ -286,6 +286,7 @@ class DatabaseService {
     }
   }
 
+  ///Classes related functions especially class code
   String _generateClassCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     final random = Random();
