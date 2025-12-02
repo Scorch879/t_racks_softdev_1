@@ -3,6 +3,7 @@ import 'package:t_racks_softdev_1/services/models/educator_model.dart';
 import 'package:t_racks_softdev_1/services/models/profile_model.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:t_racks_softdev_1/services/models/student_model.dart';
+import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:collection/collection.dart';
 import 'dart:math';
 
@@ -286,6 +287,7 @@ class DatabaseService {
     }
   }
 
+  ///Classes related functions especially class code
   String _generateClassCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     final random = Random();
@@ -355,39 +357,4 @@ class ClassesServices {
       throw 'Error creating class: $e';
     }
   }
-}
-
-//helper models
-class EducatorClassSummary {
-  final String id;
-  final String className;
-  final String subject;
-  final String schedule;
-  final String status;
-  final int studentCount;
-  final String rawDay;
-  final String rawTime;
-
-  EducatorClassSummary({
-    required this.id,
-    required this.className,
-    required this.subject,
-    required this.schedule,
-    required this.status,
-    required this.studentCount,
-    required this.rawDay,
-    required this.rawTime,
-  });
-}
-
-class StudentAttendanceItem {
-  final String id;
-  final String name;
-  final String status; // 'Present', 'Absent', or 'Mark Attendance'
-
-  StudentAttendanceItem({
-    required this.id,
-    required this.name,
-    required this.status,
-  });
 }
