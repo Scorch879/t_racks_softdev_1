@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_classroom_screen.dart';
-import 'package:t_racks_softdev_1/screens/educator/educator_camera_screen.dart';
 import 'package:t_racks_softdev_1/screens/educator/create_class_modal.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
@@ -210,7 +209,6 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
               : (i == 0 && ongoingList.isEmpty ? "Up Next" : "Later"),
           subLabel: data.rawTime,
           isOngoing: isOngoing,
-          classData: isOngoing ? data : null,
         ),
       );
     }
@@ -228,7 +226,6 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
     required String label,
     String? subLabel,
     bool isOngoing = false,
-    EducatorClassSummary? classData,
   }) {
     final borderColor = isOngoing
         ? const Color(0xFF7FE26B)
@@ -321,17 +318,7 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
               height: 48,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  if (classData != null) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => EducatorCameraScreen(
-                          classId: classData.id,
-                          className: classData.className,
-                        ),
-                      ),
-                    );
-                  }
+                  print("Take Attendance Pressed");
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF7FE26B),

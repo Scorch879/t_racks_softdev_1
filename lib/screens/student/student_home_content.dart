@@ -4,7 +4,6 @@ import 'package:t_racks_softdev_1/screens/student/student_class_content.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:t_racks_softdev_1/services/models/student_model.dart';
-import 'package:t_racks_softdev_1/screens/student/student_camera_screen.dart';
 
 const _blueIcon = Color(0xFF57B0D7);
 const _cardSurface = Color(0xFF0C3343);
@@ -60,7 +59,7 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
   Future<Map<String, dynamic>> _fetchData() async {
     try {
       // Fetch student profile and classes concurrently
-      final results = await Future.wait<dynamic>([
+      final results = await Future.wait([
         _databaseService.getStudentData(),
         _databaseService.getStudentClasses(),
       ]);
