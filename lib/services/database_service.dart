@@ -325,6 +325,57 @@ class DatabaseService {
       rethrow;
     }
   }
+
+  Future<List<Map<String, String>>> getAvailableStudents(String classId) async {
+  try {
+    // 1. Get IDs of students ALREADY in the class
+    final enrolledRes = await _supabase
+        .from('Enrollments_Table')
+        .select('student_id')
+        .eq('class_id', classId);
+    
+    final enrolledIds = (enrolledRes as List).map((e) => e['student_id']).toList();
+
+    // 2. Fetch profiles using an INNER JOIN on Student_Table
+    // The '!inner' keyword ensures we ONLY get users who exist in Student_Table
+    var query = _supabase
+        .from('profiles')
+        .select('id, firstName, lastName, Student_Table!inner(id)'); // <--- CHANGED THIS LINE
+
+    if (enrolledIds.isNotEmpty) {
+      query = query.not('id', 'in', enrolledIds);
+    }
+
+    final res = await query;
+
+    return (res as List).map((profile) {
+      return {
+        'id': profile['id'].toString(), 
+        'name': "${profile['firstName']} ${profile['lastName']}",
+        'subtitle': 'Student', 
+      };
+    }).toList();
+  } catch (e) {
+    print('Error fetching available students: $e');
+    return [];
+  }
+}
+
+Future<void> enrollStudent({
+  required String classId,
+  required String studentId,
+}) async {
+  try {
+    await _supabase.from('Enrollments_Table').insert({
+      'class_id': classId,
+      'student_id': studentId,
+      'enrollment_date': DateTime.now().toIso8601String(),
+    });
+  } catch (e) {
+    print('Error enrolling student: $e');
+    rethrow;
+  }
+}
 }
 
 class AccountServices {
