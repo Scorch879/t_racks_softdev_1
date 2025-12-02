@@ -136,10 +136,7 @@ class DatabaseService {
       if (userId == null) throw 'User not logged in';
 
       // 1. Update the 'profiles' table
-      final profileUpdate = {
-        'firstName': firstName,
-        'lastName': lastName,
-      };
+      final profileUpdate = {'firstName': firstName, 'lastName': lastName};
       await _supabase.from('profiles').update(profileUpdate).eq('id', userId);
 
       // 2. Update the 'Student_Table'
@@ -176,60 +173,95 @@ class DatabaseService {
       return null;
     }
   }
-  /// Fetches classes where the current user is the instructor.
   Future<List<EducatorClassSummary>> getEducatorClasses() async {
     try {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) throw 'User not logged in';
 
-      final data = await _supabase
+      // Fetch classes owned by this educator
+      final response = await _supabase
           .from('Classes_Table')
           .select('id, class_name')
-          .eq('instructor_id', userId);
+          .eq('educator_id', userId);
 
-      List<EducatorClassSummary> summaries = [];
+      List<EducatorClassSummary> classes = [];
 
-      for (var cls in data) {
-        final count = await _supabase
+      for (var row in response) {
+        // Count students in this class using Enrollments_Table
+        final countResponse = await _supabase
             .from('Enrollments_Table')
-            .count(CountOption.exact)
-            .eq('class_id', cls['id']);
+            .select('student_id')
+            .eq('class_id', row['id']);
 
-        summaries.add(EducatorClassSummary(
-          id: cls['id'],
-          className: cls['class_name'] ?? 'Unknown Class',
-          studentCount: count,
-        ));
+        classes.add(
+          EducatorClassSummary(
+            id: row['id'],
+            className: row['class_name'] ?? 'Unnamed Class',
+            studentCount: countResponse.length,
+          ),
+        );
       }
-
-      return summaries;
+      return classes;
     } catch (e) {
       print('Error fetching educator classes: $e');
       return [];
     }
   }
 
-  /// Fetches students for a specific class.
+  /// 2. Fetch Students for a Class + Today's Attendance Status
   Future<List<StudentAttendanceItem>> getClassStudents(String classId) async {
     try {
-      final data = await _supabase
+      // A. Get IDs of enrolled students
+      final enrollmentRes = await _supabase
           .from('Enrollments_Table')
-          .select('student_id, profiles:student_id(firstName, lastName)')
+          .select('student_id')
           .eq('class_id', classId);
 
-      return (data as List).map((item) {
-        final profile = item['profiles'];
-        String name = 'Unknown';
-        if (profile != null) {
-          name = '${profile['firstName']} ${profile['lastName']}';
+      if (enrollmentRes.isEmpty) return [];
+      print(" Enrollment Count: ${enrollmentRes.length}"); // Is this > 0?
+      final studentIds = (enrollmentRes as List)
+          .map((e) => e['student_id'])
+          .toList();
+      print(" Student IDs: $studentIds");
+      // B. Get Names from Profiles
+      // Note: Make sure 'firstname' and 'lastname' match your DB columns exactly
+      final profilesRes = await _supabase
+          .from('profiles')
+          .select('id, firstName, lastName')
+          .inFilter('id', studentIds);
+      print(" Profiles Found: ${profilesRes.length}");
+      // C. Get Today's Attendance Records
+      final today = DateTime.now().toIso8601String().split(
+        'T',
+      )[0]; // YYYY-MM-DD
+      final attendanceRes = await _supabase
+          .from('Attendance_Record')
+          .select('student_id, isPresent')
+          .eq('class_id', classId)
+          .eq('date', today);
+
+      // D. Combine Data
+      List<StudentAttendanceItem> students = [];
+
+      for (var profile in profilesRes) {
+        final sId = profile['id'];
+        final fullName = "${profile['firstName']} ${profile['lastName']}";
+
+        // Check if there is an attendance record
+        final record = attendanceRes.firstWhereOrNull(
+          (r) => r['student_id'] == sId,
+        );
+
+        String status = 'Mark Attendance';
+        if (record != null) {
+          status = record['isPresent'] ? 'Present' : 'Absent';
         }
 
-        return StudentAttendanceItem(
-          id: item['student_id'],
-          name: name,
-          status: 'Mark Attendance', // Placeholder
+        students.add(
+          StudentAttendanceItem(id: sId, name: fullName, status: status),
         );
-      }).toList();
+      }
+      return students;
     } catch (e) {
       print('Error fetching class students: $e');
       return [];

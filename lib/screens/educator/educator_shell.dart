@@ -145,7 +145,9 @@ class _EducatorShellState extends State<EducatorShell> {
       borderRadius: BorderRadius.circular(16),
       onTap: () => _onItemTapped(index),
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(
+          16,
+        ), // Increased padding for larger hit area
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF93C0D3) : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
@@ -211,19 +213,22 @@ class _TopBar extends StatelessWidget {
                 Positioned(
                   right: 8,
                   top: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(2.5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF167C94),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 1.5),
-                    ),
-                    child: const Text(
-                      '1',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                  child: IgnorePointer(
+                    // Ensure the badge doesn't block touches
+                    child: Container(
+                      padding: const EdgeInsets.all(2.5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF167C94),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 1.5),
+                      ),
+                      child: const Text(
+                        '1',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),

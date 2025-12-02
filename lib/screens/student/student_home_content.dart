@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:t_racks_softdev_1/screens/student/student_camera_screen.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:t_racks_softdev_1/services/models/student_model.dart';
@@ -25,9 +26,6 @@ class StudentHomeContent extends StatefulWidget {
 }
 
 class _StudentHomeContentState extends State<StudentHomeContent> {
-  final _databaseService = DatabaseService();
-  late Future<Map<String, dynamic>> _dataFuture;
-
   void onOngoingClassStatusPressed() {
     Navigator.push(
       context,
@@ -36,6 +34,8 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
       ),
     );
   }
+  final _databaseService = DatabaseService();
+  late Future<Map<String, dynamic>> _dataFuture;
 
   void onFilterAllClasses() {}
 
@@ -50,7 +50,7 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
   Future<Map<String, dynamic>> _fetchData() async {
     try {
       // Fetch student profile and classes concurrently
-      final results = await Future.wait([
+      final results = await Future.wait<dynamic>([
         _databaseService.getStudentData(),
         _databaseService.getStudentClasses(),
       ]);

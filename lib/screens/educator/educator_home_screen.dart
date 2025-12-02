@@ -9,10 +9,50 @@ class EducatorHomeScreen extends StatefulWidget {
 }
 
 class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
-  final _dbService = DatabaseService();
-  EducatorClassSummary? selectedClass;
+  final DatabaseService _dbService = DatabaseService();
+
+  // State
+  EducatorClassSummary? selectedClass; // If null, "All Classes" is selected
   List<StudentAttendanceItem> studentList = [];
   bool isLoadingStudents = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Default to "All Classes" (null) on start
+    selectedClass = null;
+  }
+
+  // Handle "All Classes" tap
+  void _onAllClassesSelected() {
+    setState(() {
+      selectedClass = null;
+      studentList = []; // Clear the list
+    });
+  }
+
+  // Handle Specific Class tap
+  void _onClassSelected(EducatorClassSummary classData) async {
+    // If already selected, do nothing
+    if (selectedClass?.id == classData.id) return;
+
+    setState(() {
+      selectedClass = classData;
+      isLoadingStudents = true;
+    });
+
+    try {
+      final students = await _dbService.getClassStudents(classData.id);
+      if (mounted) {
+        setState(() {
+          studentList = students;
+          isLoadingStudents = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => isLoadingStudents = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -139,44 +179,6 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
         ],
       ),
     );
-
-  }
-
-  void _onAllClassesSelected() {
-    setState(() {
-      selectedClass = null;
-      studentList = [];
-    });
-  }
-
-  void _onClassSelected(EducatorClassSummary classData) {
-    setState(() {
-      selectedClass = classData;
-    });
-    _fetchStudentsForClass(classData.id);
-  }
-
-  Future<void> _fetchStudentsForClass(String classId) async {
-    setState(() {
-      isLoadingStudents = true;
-    });
-
-    try {
-      final students = await _dbService.getClassStudents(classId);
-      if (mounted) {
-        setState(() {
-          studentList = students;
-        });
-      }
-    } catch (e) {
-      print("Error loading students: $e");
-    } finally {
-      if (mounted) {
-        setState(() {
-          isLoadingStudents = false;
-        });
-      }
-    }
   }
 
   Widget _buildClassButton({
@@ -204,8 +206,10 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
             ),
           ],
         ),
-        transform: isSelected ? (Matrix4.identity()..scale(1.03)) : Matrix4.identity(),
-        transformAlignment: FractionalOffset.center,
+        transform: isSelected
+            ? Matrix4.diagonal3Values(1.02, 1.02, 1.0)
+            : Matrix4.identity(),
+        transformAlignment: Alignment.center,
         child: Row(
           children: [
             Expanded(
