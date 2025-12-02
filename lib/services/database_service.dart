@@ -358,3 +358,19 @@ class ClassesServices {
     }
   }
 }
+
+class AiServices {
+  Future<void> saveFace() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+
+      if (userId == null) {
+        throw 'User is not logged in';
+      }
+
+      // AI content generation logic goes here
+    } catch (e) {
+      throw 'Error generating content: $e';
+    }
+  }
+}
