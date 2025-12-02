@@ -399,8 +399,8 @@ class _ProfileTextField extends StatelessWidget {
     required this.hint,
     required this.controller,
     required this.scale,
-    int maxLines = 1,
-  }) : maxLines = maxLines;
+    this.maxLines = 1,
+  });
 
   final String label;
   final String hint;

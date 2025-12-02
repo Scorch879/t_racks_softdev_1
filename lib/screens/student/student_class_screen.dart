@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/student/student_class_content.dart';
-import 'package:t_racks_softdev_1/screens/student/student_shell_screen.dart';
 
 const _bgTeal = Color(0xFF167C94);
 const _accentCyan = Color(0xFF93C0D3);
@@ -8,12 +7,7 @@ const _accentCyan = Color(0xFF93C0D3);
 enum ClassNavTab { classes, schedule, settings }
 
 class StudentClassScreen extends StatefulWidget {
-  const StudentClassScreen({
-    super.key,
-    this.initialTab = ClassNavTab.classes,
-  });
-
-  final ClassNavTab initialTab;
+  const StudentClassScreen({super.key});
 
   @override
   State<StudentClassScreen> createState() => _StudentClassScreenState();
@@ -21,21 +15,11 @@ class StudentClassScreen extends StatefulWidget {
 
 class _StudentClassScreenState extends State<StudentClassScreen> {
   // State: Tracks which tab is active
-  late ClassNavTab _currentTab;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentTab = widget.initialTab;
-  }
+  ClassNavTab _currentTab = ClassNavTab.classes;
 
   void _onTabChanged(ClassNavTab tab) {
     if (tab == ClassNavTab.classes) {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const StudentShellScreen()),
-        (route) => false,
-      );
+      Navigator.of(context).pop();
       return;
     }
     if (_currentTab != tab) {
@@ -131,7 +115,6 @@ class _TopBarState extends State<_TopBar> {
       elevation: 0,
       centerTitle: false,
       titleSpacing: 0,
-      automaticallyImplyLeading: false, // Remove back button
       title: Padding(
         padding: EdgeInsets.symmetric(horizontal: 16 * scale),
         child: Row(

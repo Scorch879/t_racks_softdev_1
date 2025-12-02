@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
+import 'package:t_racks_softdev_1/services/models/attendance_model.dart';
 
 const _bgTeal = Color(0xFF167C94);
 // Summary/top-stat cards background (dark slate sampled from Figma)
@@ -24,26 +26,26 @@ class StudentClassClassesContent extends StatefulWidget {
 class _StudentClassClassesContentState extends State<StudentClassClassesContent> {
   final _databaseService = DatabaseService();
   late Future<List<StudentClass>> _classesFuture;
+  final Map<String, GlobalKey<__ClassCardState>> _cardKeys = {};
 
   @override
   void initState() {
     super.initState();
     _classesFuture = _databaseService.getStudentClasses();
   }
+  
+  void _handleCardTap(String classId) {
+    // Trigger the animation on the specific card that was tapped
+    _cardKeys[classId]?.currentState?.triggerTapAnimation();
+    _showClassDetails(classId);
+  }
 
   void _showClassDetails(String classId) {
     showDialog(
       context: context,
       builder: (context) {
-        return _ClassDetailsDialog(classId: classId);
+        return ClassDetailsDialog(classId: classId);
       },
-    );
-  }
-
-  void _showJoinClassDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => const _JoinClassDialog(),
     );
   }
 
@@ -120,64 +122,64 @@ class _StudentClassClassesContentState extends State<StudentClassClassesContent>
                                     scale: scale,
                                     icon: Icons.bar_chart_rounded,
                                     value: '1', // This can be calculated later
-                                    label: 'Absences This Week',
+                                    label: 'Absences This Week', //needs to be connected too
                                     iconColor: _chipGreen,
                                   ),
                                 ),
                               ],
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                // Header
-                                _MyClassesHeader(
-                                  scale: scale,
-                                  onAddClassPressed: _showJoinClassDialog,
-                                ),
-                                SizedBox(height: 12 * scale),
-                                
-                                // Search
-                                _SearchBar(scale: scale),
-                                SizedBox(height: 12 * scale),
+                            SizedBox(height: 16 * scale),
 
-                                // Class List
-                                if (classes.isEmpty)
-                                  Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 60 * scale),
-                                    child: Text(
-                                      'No classes yet',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 18 * scale,
-                                      ),
-                                    ),
-                                  )
-                                else
-                                  ...classes.map((sClass) {
-                                    return Padding(
-                                      padding: EdgeInsets.only(bottom: 12 * scale),
-                                      child: GestureDetector(
-                                        onTap: () => _showClassDetails(sClass.id),
-                                        child: _ClassCard(
-                                          scale: scale,
-                                          title: sClass.name ?? 'Unnamed Class',
-                                          students: 0, // This data would need another query
-                                          present: 0, // This data would need another query
-                                          time: sClass.schedule ?? 'No schedule',
-                                          status: sClass.status ?? 'Unknown',
-                                          statusColor: _getStatusColor(sClass.status),
-                                          cardColor: _myClassCardSurface,
+                            // 2. Main 'My Classes' Container
+                            Container(
+                              padding: EdgeInsets.all(16 * scale),
+                              decoration: BoxDecoration(
+                                color: _darkBluePanel,
+                                borderRadius: BorderRadius.circular(16 * scale),
+                                border: Border.all(
+                                  color: const Color(0xFFBDBBBB), width: 0.75),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.25),
+                                    blurRadius: 10 * scale,
+                                    offset: Offset(0, 6 * scale),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  // Header
+                                  _MyClassesHeader(scale: scale),
+                                  SizedBox(height: 12 * scale),
+                                  
+                                  // Search
+                                  _SearchBar(scale: scale),
+                                  SizedBox(height: 12 * scale),
+
+                                  // Class List
+                                  if (classes.isEmpty)
+                                    Padding(
+                                      padding: EdgeInsets.symmetric(vertical: 60 * scale),
+                                      child: Text(
+                                        'No classes yet',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 18 * scale,
                                         ),
                                       ),
                                     )
                                   else
                                     ...classes.map((sClass) {
+                                      // Ensure each card has a key
+                                      _cardKeys.putIfAbsent(sClass.id, () => GlobalKey<__ClassCardState>());
                                       return Padding(
                                         padding: EdgeInsets.only(bottom: 12 * scale),
                                         child: GestureDetector(
-                                          onTap: () => _showClassDetails(sClass.id),
+                                          onTap: () => _handleCardTap(sClass.id),
                                           child: _ClassCard(
+                                            key: _cardKeys[sClass.id]!,
                                             scale: scale,
                                             title: sClass.name ?? 'Unnamed Class',
                                             students: 0, // This data would need another query
@@ -221,22 +223,31 @@ class _StudentClassClassesContentState extends State<StudentClassClassesContent>
   }
 }
 
-class _ClassDetailsDialog extends StatefulWidget {
+class ClassDetailsDialog extends StatefulWidget {
   final String classId;
-  const _ClassDetailsDialog({required this.classId});
+  const ClassDetailsDialog({super.key, required this.classId});
 
   @override
-  State<_ClassDetailsDialog> createState() => _ClassDetailsDialogState();
+  State<ClassDetailsDialog> createState() => _ClassDetailsDialogState();
 }
 
-class _ClassDetailsDialogState extends State<_ClassDetailsDialog> {
+class _ClassDetailsDialogState extends State<ClassDetailsDialog> {
   final _databaseService = DatabaseService();
-  late final Future<StudentClass> _classDetailsFuture;
+  late final Future<
+      (StudentClass, List<AttendanceRecord>)> _detailsAndAttendanceFuture;
 
   @override
   void initState() {
     super.initState();
-    _classDetailsFuture = _databaseService.getClassDetails(widget.classId);
+    _detailsAndAttendanceFuture = _fetchDetailsAndAttendance();
+  }
+
+  Future<(StudentClass, List<AttendanceRecord>)>
+      _fetchDetailsAndAttendance() async {
+    return await Future.wait([
+      _databaseService.getClassDetails(widget.classId),
+      _databaseService.getStudentAttendanceForClass(widget.classId),
+    ]).then((results) => (results[0] as StudentClass, results[1] as List<AttendanceRecord>));
   }
 
   @override
@@ -244,8 +255,8 @@ class _ClassDetailsDialogState extends State<_ClassDetailsDialog> {
     return Dialog(
       backgroundColor: _darkBluePanel,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: FutureBuilder<StudentClass>(
-        future: _classDetailsFuture,
+      child: FutureBuilder<(StudentClass, List<AttendanceRecord>)>(
+        future: _detailsAndAttendanceFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const SizedBox(
@@ -261,33 +272,69 @@ class _ClassDetailsDialogState extends State<_ClassDetailsDialog> {
             );
           }
 
-          final sClass = snapshot.data!;
+          final sClass = snapshot.data!.$1;
+          final attendanceHistory = snapshot.data!.$2;
 
           return Padding(
             padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  sClass.name ?? 'Class Details',
-                  style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 24),
-                _DetailItem(label: 'Subject', value: sClass.subject),
-                const Divider(color: Colors.white24),
-                _DetailItem(label: 'Schedule', value: sClass.schedule),
-                const Divider(color: Colors.white24),
-                _DetailItem(label: 'Status', value: sClass.status),
-                const SizedBox(height: 24),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Close', style: TextStyle(color: _accentCyan)),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 600),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    sClass.name ?? 'Class Details',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold),
                   ),
-                )
-              ],
+                  const SizedBox(height: 24),
+                  _DetailItem(label: 'Subject', value: sClass.subject),
+                  const Divider(color: Colors.white24),
+                  _DetailItem(label: 'Schedule', value: sClass.schedule),
+                  const Divider(color: Colors.white24),
+                  _DetailItem(label: 'Status', value: sClass.status),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'My Attendance History',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: attendanceHistory.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'No attendance records yet.',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                          )
+                        : ListView.separated(
+                            shrinkWrap: true,
+                            itemCount: attendanceHistory.length,
+                            separatorBuilder: (context, index) =>
+                                const Divider(color: Colors.white12, height: 1),
+                            itemBuilder: (context, index) {
+                              final record = attendanceHistory[index];
+                              return _AttendanceHistoryItem(record: record);
+                            },
+                          ),
+                  ),
+                  const SizedBox(height: 24),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Close',
+                          style: TextStyle(color: _accentCyan)),
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -296,138 +343,42 @@ class _ClassDetailsDialogState extends State<_ClassDetailsDialog> {
   }
 }
 
-// --- JOIN CLASS DIALOG ---
-class _JoinClassDialog extends StatefulWidget {
-  const _JoinClassDialog();
-
-  @override
-  State<_JoinClassDialog> createState() => _JoinClassDialogState();
-}
-
-class _JoinClassDialogState extends State<_JoinClassDialog> {
-  final _codeController = TextEditingController();
-
-  @override
-  void dispose() {
-    _codeController.dispose();
-    super.dispose();
-  }
+class _AttendanceHistoryItem extends StatelessWidget {
+  final AttendanceRecord record;
+  const _AttendanceHistoryItem({required this.record});
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      backgroundColor: Colors.white,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Enter Class Code',
-              style: TextStyle(
-                color: Color(0xFF1A2B3C),
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: _codeController,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1A2B3C),
-              ),
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: const Color(0xFFEFF5F9),
-                contentPadding: const EdgeInsets.symmetric(vertical: 16),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFBFD5E3)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFBFD5E3)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: _bgTeal, width: 2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Request a class code from\nyour admin',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Color(0xFF1A2B3C),
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 32),
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 52,
-                    child: OutlinedButton(
-                      onPressed: () {
-                        // TODO: Implement join logic
-                        Navigator.of(context).pop();
-                      },
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFFBFD5E3)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        foregroundColor: const Color(0xFF1A2B3C),
-                      ),
-                      child: const Text(
-                        'Enter',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: SizedBox(
-                    height: 52,
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFFBFD5E3)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        foregroundColor: const Color(0xFF1A2B3C),
-                      ),
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
+    final formattedDate = DateFormat.yMMMMd().format(record.date);
+    final statusText = record.isPresent ? 'Present' : 'Absent';
+    final statusColor = record.isPresent ? _chipGreen : _statusRed;
+
+    return ListTile(
+      dense: true,
+      contentPadding: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
+      title: Text(
+        formattedDate,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      trailing: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: statusColor,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Text(
+          statusText,
+          style: const TextStyle(
+              color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
         ),
       ),
     );
   }
 }
+
 
 // --- SCHEDULE CONTENT VIEW (Now Stateful) ---
 class StudentClassScheduleContent extends StatefulWidget {
@@ -602,12 +553,8 @@ class _SummaryCardState extends State<_SummaryCard> {
 }
 
 class _MyClassesHeader extends StatefulWidget {
-  const _MyClassesHeader({
-    required this.scale,
-    required this.onAddClassPressed,
-  });
+  const _MyClassesHeader({required this.scale});
   final double scale;
-  final VoidCallback onAddClassPressed;
 
   @override
   State<_MyClassesHeader> createState() => _MyClassesHeaderState();
@@ -635,7 +582,7 @@ class _MyClassesHeaderState extends State<_MyClassesHeader> {
           ),
         ),
         IconButton(
-          onPressed: widget.onAddClassPressed,
+          onPressed: () {},
           icon: Icon(
             Icons.add_circle_rounded,
             color: _chipGreen,
@@ -689,6 +636,7 @@ class _SearchBarState extends State<_SearchBar> {
 
 class _ClassCard extends StatefulWidget {
   const _ClassCard({
+    super.key,
     required this.scale,
     required this.title,
     required this.students,
@@ -696,9 +644,9 @@ class _ClassCard extends StatefulWidget {
     required this.time,
     required this.status,
     required this.statusColor,
-    bool isUpcoming = false,
+    this.isUpcoming = false,
     this.cardColor,
-  }) : isUpcoming = isUpcoming;
+  });
 
   final double scale;
   final String title;
@@ -736,9 +684,8 @@ class __ClassCardState extends State<_ClassCard> with SingleTickerProviderStateM
     super.dispose();
   }
 
-  Future<void> _handleTap() async {
-    // This assumes the parent widget has a GestureDetector with an onTap.
-    // We'll just animate here.
+  // Public method to be called from the parent
+  Future<void> triggerTapAnimation() async {
     await _controller.forward();
     await Future.delayed(const Duration(milliseconds: 50));
     await _controller.reverse();
@@ -746,88 +693,83 @@ class __ClassCardState extends State<_ClassCard> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    // The parent GestureDetector will call _handleTap if needed,
-    // but we add it here to make the card itself interactive.
-    return GestureDetector(
-      onTap: _handleTap,
-      child: ScaleTransition(
-        scale: _scaleAnimation,
-        child: Container(
-          padding: EdgeInsets.all(16 * widget.scale),
-          decoration: BoxDecoration(
-            color: widget.cardColor ?? _cardSurface,
-            borderRadius: BorderRadius.circular(16 * widget.scale),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.25),
-                blurRadius: 10 * widget.scale,
-                offset: Offset(0, 6 * widget.scale),
+    return ScaleTransition(
+      scale: _scaleAnimation,
+      child: Container(
+        padding: EdgeInsets.all(16 * widget.scale),
+        decoration: BoxDecoration(
+          color: widget.cardColor ?? _cardSurface,
+          borderRadius: BorderRadius.circular(16 * widget.scale),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 10 * widget.scale,
+              offset: Offset(0, 6 * widget.scale),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.title,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20 * widget.scale,
+                fontWeight: FontWeight.w800,
               ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                widget.title,
+            ),
+            SizedBox(height: 8 * widget.scale),
+            Row(
+              children: [
+                Text(
+                  'Students ${widget.students}',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14 * widget.scale,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(width: 16 * widget.scale),
+                Text(
+                  widget.isUpcoming ? 'Present Upcoming' : 'Present ${widget.present}',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14 * widget.scale,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 8 * widget.scale),
+            Text(
+              widget.time,
+              style: TextStyle(
+                color: Colors.white60,
+                fontSize: 12 * widget.scale,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(height: 12 * widget.scale),
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: 16 * widget.scale,
+                vertical: 8 * widget.scale,
+              ),
+              decoration: BoxDecoration(
+                color: widget.statusColor,
+                borderRadius: BorderRadius.circular(20 * widget.scale),
+              ),
+              child: Text(
+                widget.status,
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 20 * widget.scale,
+                  fontSize: 14 * widget.scale,
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              SizedBox(height: 8 * widget.scale),
-              Row(
-                children: [
-                  Text(
-                    'Students ${widget.students}',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14 * widget.scale,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  SizedBox(width: 16 * widget.scale),
-                  Text(
-                    widget.isUpcoming ? 'Present Upcoming' : 'Present ${widget.present}',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14 * widget.scale,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 8 * widget.scale),
-              Text(
-                widget.time,
-                style: TextStyle(
-                  color: Colors.white60,
-                  fontSize: 12 * widget.scale,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              SizedBox(height: 12 * widget.scale),
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: 16 * widget.scale,
-                  vertical: 8 * widget.scale,
-                ),
-                decoration: BoxDecoration(
-                  color: widget.statusColor,
-                  borderRadius: BorderRadius.circular(20 * widget.scale),
-                ),
-                child: Text(
-                  widget.status,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14 * widget.scale,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -1084,7 +1026,7 @@ class _ScheduleItemWidgetState extends State<_ScheduleItemWidget> {
                 Icons.location_on_rounded,
                 color: Colors.white60,
                 size: 14 * widget.scale,
-                ),
+              ),
               SizedBox(width: 4 * widget.scale),
               Text(
                 widget.item.location,
