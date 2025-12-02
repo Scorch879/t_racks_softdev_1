@@ -7,6 +7,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+// FIX 1: Add 'as tflite' to avoid name conflict with Google's ModelManager
+import 'package:t_racks_softdev_1/services/tflite_service.dart' as tflite;
 
 // Enum for different challenges
 enum ChallengeType { smile, blink, turnLeft, turnRight }
@@ -26,6 +28,9 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
   bool _isProcessing = false;
   late FaceDetector _faceDetector;
 
+  // FIX 2: Use 'tflite.ModelManager' to specify your custom class
+  final tflite.ModelManager _tfliteManager = tflite.ModelManager();
+
   // Liveness Logic Variables
   List<ChallengeType> _challenges = [];
   int _currentChallengeIndex = 0;
@@ -34,15 +39,30 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
   Color _statusColor = Colors.white;
   bool _isVerified = false;
 
+  // TFLite Variables
+  bool _isTfliteLoaded = false;
+  double _fakeProbability = 0.0;
+
   @override
   void initState() {
     super.initState();
+    // 1. Setup ML Kit
     final options = FaceDetectorOptions(
-      enableClassification: true, // Needed for Smile/Eyes
-      enableLandmarks: true, // Needed for Head Rotation
+      enableClassification: true,
+      enableLandmarks: true,
       performanceMode: FaceDetectorMode.fast,
     );
     _faceDetector = FaceDetector(options: options);
+
+    // 2. Setup TFLite (Your Custom Model)
+    _tfliteManager.loadModel().then((_) {
+      if (mounted) {
+        setState(() {
+          _isTfliteLoaded = true;
+        });
+      }
+    });
+
     _initializeCamera();
   }
 
@@ -59,26 +79,25 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
       ResolutionPreset.medium,
       enableAudio: false,
       imageFormatGroup: Platform.isAndroid
-          ? ImageFormatGroup.nv21
+          ? ImageFormatGroup
+                .nv21 // ML Kit prefers NV21
           : ImageFormatGroup.bgra8888,
     );
 
     _initializeControllerFuture = _controller!.initialize().then((_) {
       if (mounted) {
         setState(() {});
-        _startLivenessSession(); // Start the challenge immediately
+        _startLivenessSession();
         _startImageStream();
       }
     });
   }
 
-  // Generate a random list of 2 challenges
   void _startLivenessSession() {
     final random = Random();
-    // Possible challenges
     List<ChallengeType> allTypes = ChallengeType.values.toList();
-
     _challenges = [];
+
     // Pick 2 random challenges
     for (int i = 0; i < 2; i++) {
       _challenges.add(allTypes[random.nextInt(allTypes.length)]);
@@ -88,22 +107,18 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
       _isSessionActive = true;
       _currentChallengeIndex = 0;
       _isVerified = false;
+      _fakeProbability = 0.0;
       _updateStatusMessage();
     });
   }
 
   void _updateStatusMessage() {
-    if (_isVerified) {
-      _statusMessage = "✅ VERIFIED: REAL HUMAN";
-      _statusColor = Colors.greenAccent;
-      return;
-    }
+    if (_isVerified) return;
 
     if (_currentChallengeIndex >= _challenges.length) {
-      // All done!
-      _isVerified = true;
-      _statusMessage = "✅ VERIFIED!";
-      // TODO: Save Attendance Here
+      // User passed challenges, now waiting for TFLite check...
+      _statusMessage = "Analyzing Texture...";
+      _statusColor = Colors.blueAccent;
       return;
     }
 
@@ -129,20 +144,32 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
 
   void _startImageStream() {
     if (_controller == null) return;
+    int frameCount = 0;
+
     _controller!.startImageStream((CameraImage image) async {
       if (_isProcessing || !_isSessionActive || _isVerified) return;
       _isProcessing = true;
+
       try {
-        await _processCameraImage(image);
+        // Run ML Kit every frame for smoothness
+        await _processMLKit(image);
+
+        // Run TFLite only every 10th frame (to save battery/lag)
+        // And ONLY if we haven't failed the fake check yet
+        if (frameCount % 10 == 0 && _isTfliteLoaded) {
+          await _processTFLite(image);
+        }
+        frameCount++;
       } catch (e) {
-        print("Error processing image: $e");
+        print("Error processing: $e");
       } finally {
         _isProcessing = false;
       }
     });
   }
 
-  Future<void> _processCameraImage(CameraImage image) async {
+  // --- STEP 1: ML KIT LIVENESS (Actions) ---
+  Future<void> _processMLKit(CameraImage image) async {
     final inputImage = _inputImageFromCameraImage(image);
     if (inputImage == null) return;
 
@@ -154,31 +181,30 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
   }
 
   void _checkChallenge(Face face) {
-    if (_isVerified) return;
+    if (_currentChallengeIndex >= _challenges.length) {
+      _finalizeVerification();
+      return;
+    }
 
     ChallengeType current = _challenges[_currentChallengeIndex];
     bool passed = false;
 
     // Thresholds
     double smileThreshold = 0.8;
-    double blinkThreshold =
-        0.1; // Probability of eyes being OPEN (low = closed)
-    double headRotationThreshold = 15.0; // Degrees
+    double blinkThreshold = 0.1;
+    double headRotationThreshold = 15.0;
 
     switch (current) {
       case ChallengeType.smile:
         if ((face.smilingProbability ?? 0) > smileThreshold) passed = true;
         break;
       case ChallengeType.blink:
-        // Check if either eye is closed
         if ((face.leftEyeOpenProbability ?? 1) < blinkThreshold ||
             (face.rightEyeOpenProbability ?? 1) < blinkThreshold) {
           passed = true;
         }
         break;
       case ChallengeType.turnLeft:
-        // HeadEulerAngleY: Negative is right, Positive is left (depending on camera mirror)
-        // Adjust logic based on your specific camera (front cameras are often mirrored)
         if ((face.headEulerAngleY ?? 0) > headRotationThreshold) passed = true;
         break;
       case ChallengeType.turnRight:
@@ -187,30 +213,70 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
     }
 
     if (passed) {
-      // Delay slightly so the user sees the success
       if (mounted) {
         setState(() {
           _currentChallengeIndex++;
           _updateStatusMessage();
         });
-
-        // If finished
-        if (_currentChallengeIndex >= _challenges.length) {
-          setState(() {
-            _isVerified = true;
-            _statusMessage = "✅ IDENTITY CONFIRMED";
-            _statusColor = Colors.green;
-          });
-          // TODO: Navigate away or save data
-        }
       }
     }
   }
 
-  // ... (Keep the exact same _inputImageFromCameraImage helper method from previous response)
+  // --- STEP 2: TFLITE TEXTURE CHECK (Deepfake Detection) ---
+  Future<void> _processTFLite(CameraImage image) async {
+    try {
+      final results = await _tfliteManager.runInferenceOnCameraImage(image);
+      if (results.isEmpty) return;
+
+      // YOUR LABELS ORDER: [0: Real, 1: No Face, 2: Fake]
+
+      double realScore = results.length > 0 ? results[0] : 0.0;
+      double noFaceScore = results.length > 1 ? results[1] : 0.0;
+      double fakeScore = results.length > 2 ? results[2] : 0.0;
+
+      _fakeProbability = fakeScore;
+
+      // DEBUG: Print scores to console
+      // print("TFLite Scores -> Real: ${(realScore*100).toInt()}% | Fake: ${(fakeScore*100).toInt()}% | NoFace: ${(noFaceScore*100).toInt()}%");
+
+      if (fakeScore > 0.8) {
+        if (mounted) {
+          setState(() {
+            _statusMessage = "⚠️ SPOOF DETECTED";
+            _statusColor = Colors.red;
+          });
+        }
+      }
+    } catch (e) {
+      print("TFLite Error: $e");
+    }
+  }
+
+  void _finalizeVerification() {
+    // Both Steps Must Pass:
+    // 1. All challenges passed (ML Kit)
+    // 2. Fake Probability low (TFLite)
+    if (_fakeProbability < 0.5) {
+      if (mounted) {
+        setState(() {
+          _isVerified = true;
+          _statusMessage = "✅ IDENTITY CONFIRMED";
+          _statusColor = Colors.green;
+          // TODO: Mark Attendance Here
+        });
+      }
+    } else {
+      if (mounted) {
+        setState(() {
+          _statusMessage = "❌ Verification Failed (Fake)";
+          _statusColor = Colors.redAccent;
+        });
+      }
+    }
+  }
+
+  // --- HELPER METHODS ---
   InputImage? _inputImageFromCameraImage(CameraImage image) {
-    // Paste the helper function from my previous reply here
-    // (Omitted for brevity, but it is required!)
     if (_controller == null) return null;
     final camera = _controller!.description;
     final sensorOrientation = camera.sensorOrientation;
@@ -230,21 +296,16 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
       rotation = InputImageRotationValue.fromRawValue(rotationCompensation);
     }
     if (rotation == null) return null;
+
     final format = InputImageFormatValue.fromRawValue(image.format.raw);
 
-    final planeData = image.planes.map((Plane plane) {
-      return InputImagePlaneMetadata(
-        bytesPerRow: plane.bytesPerRow,
-        height: plane.height,
-        width: plane.width,
-      );
-    }).toList();
-
-    final inputImageData = InputImageData(
+    // NEW API METADATA
+    if (image.planes.isEmpty) return null;
+    final metadata = InputImageMetadata(
       size: Size(image.width.toDouble(), image.height.toDouble()),
-      imageRotation: rotation,
-      inputImageFormat: format ?? InputImageFormat.nv21,
-      planeData: planeData,
+      rotation: rotation,
+      format: format ?? InputImageFormat.nv21,
+      bytesPerRow: image.planes[0].bytesPerRow,
     );
 
     final WriteBuffer allBytes = WriteBuffer();
@@ -253,7 +314,7 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
     }
     final bytes = allBytes.done().buffer.asUint8List();
 
-    return InputImage.fromBytes(bytes: bytes, inputImageData: inputImageData);
+    return InputImage.fromBytes(bytes: bytes, metadata: metadata);
   }
 
   final _orientations = {
@@ -266,6 +327,7 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
   @override
   void dispose() {
     _faceDetector.close();
+    _tfliteManager.close();
     _controller?.stopImageStream();
     _controller?.dispose();
     super.dispose();
@@ -275,7 +337,7 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(title: const Text('Active Liveness Check')),
+      appBar: AppBar(title: const Text('Secure Attendance')),
       body: FutureBuilder<void>(
         future: _initializeControllerFuture,
         builder: (context, snapshot) {
@@ -313,10 +375,16 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
                           ),
                         ),
                         const SizedBox(height: 10),
-                        Text(
-                          "Challenge ${_currentChallengeIndex + 1} of ${_challenges.length}",
-                          style: const TextStyle(color: Colors.white54),
-                        ),
+                        if (_isSessionActive && !_isVerified)
+                          Text(
+                            "Security Level: ${_fakeProbability > 0.5 ? '⚠️ Risk' : '🛡️ Safe'}",
+                            style: TextStyle(
+                              color: _fakeProbability > 0.5
+                                  ? Colors.red
+                                  : Colors.green,
+                              fontSize: 16,
+                            ),
+                          ),
                       ],
                     ),
                   ),
