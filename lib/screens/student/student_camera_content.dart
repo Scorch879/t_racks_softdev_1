@@ -21,14 +21,13 @@ class StudentCameraContent extends StatefulWidget {
 }
 
 class _StudentCameraContentState extends State<StudentCameraContent> {
-  // --- CAMERA & AI CONTROLLERS ---
   CameraController? _controller;
   Future<void>? _initializeControllerFuture;
   bool _isProcessing = false;
   late FaceDetector _faceDetector;
   final tflite.ModelManager _tfliteManager = tflite.ModelManager();
 
-  // --- LIVENESS STATE ---
+  // Liveness Variables
   List<ChallengeType> _challenges = [];
   int _currentChallengeIndex = 0;
   bool _isSessionActive = false;
@@ -37,15 +36,13 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
   bool _isVerified = false;
   bool _hasFailed = false;
 
-  // --- TFLITE STATE ---
+  // TFLite Variables
   bool _isTfliteLoaded = false;
   int _consecutiveFakeFrames = 0;
 
   @override
   void initState() {
     super.initState();
-
-    // 1. Setup ML Kit
     final options = FaceDetectorOptions(
       enableClassification: true,
       enableLandmarks: true,
@@ -53,14 +50,12 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
     );
     _faceDetector = FaceDetector(options: options);
 
-    // 2. Setup TFLite
     _tfliteManager.loadModel().then((_) {
       if (mounted) {
         setState(() => _isTfliteLoaded = true);
       }
     });
 
-    // 3. Start Camera
     _initializeCamera();
   }
 
@@ -94,8 +89,6 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
     final random = Random();
     List<ChallengeType> allTypes = ChallengeType.values.toList();
     _challenges = [];
-
-    // Pick 2 random challenges
     for (int i = 0; i < 2; i++) {
       _challenges.add(allTypes[random.nextInt(allTypes.length)]);
     }
@@ -115,7 +108,7 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
 
     if (_currentChallengeIndex >= _challenges.length) {
       _statusMessage = "Verifying Texture...";
-      _statusColor = const Color(0xFF93C0D3); // Match your UI accent
+      _statusColor = const Color(0xFF93C0D3);
       return;
     }
 
@@ -148,8 +141,6 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
 
       try {
         await _processMLKit(image);
-
-        // Run TFLite less frequently (every 10th frame)
         if (frameCount % 10 == 0 && _isTfliteLoaded) {
           await _processTFLite(image);
         }
@@ -181,8 +172,6 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
 
     ChallengeType current = _challenges[_currentChallengeIndex];
     bool passed = false;
-
-    // Thresholds
     double smileThreshold = 0.8;
     double blinkThreshold = 0.1;
     double headRotationThreshold = 15.0;
@@ -220,7 +209,6 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
       final results = await _tfliteManager.runInferenceOnCameraImage(image);
       if (results.isEmpty) return;
 
-      // LABELS: [0: Real, 1: No Face, 2: Fake]
       double fakeScore = results.length > 2 ? results[2] : 0.0;
 
       if (fakeScore > 0.85) {
@@ -234,7 +222,7 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
           setState(() {
             _hasFailed = true;
             _statusMessage = "⚠️ SPOOF DETECTED";
-            _statusColor = const Color(0xFFDA6A6A); // Match your Red
+            _statusColor = const Color(0xFFDA6A6A);
           });
         }
       }
@@ -244,19 +232,24 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
   }
 
   void _finalizeVerification() {
-    if (!_hasFailed) {
+    if (!_hasFailed && !_isVerified) {
       if (mounted) {
         setState(() {
           _isVerified = true;
           _statusMessage = "✅ VERIFIED";
-          _statusColor = const Color(0xFF4DBD88); // Match your Green
-          // TODO: Mark Attendance
+          _statusColor = const Color(0xFF4DBD88);
+        });
+
+        // 2-Second Delay before closing
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) {
+            Navigator.of(context).pop();
+          }
         });
       }
     }
   }
 
-  // --- HELPER METHODS ---
   InputImage? _inputImageFromCameraImage(CameraImage image) {
     if (_controller == null) return null;
     final camera = _controller!.description;
@@ -318,15 +311,13 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black, // Ensure background is black for camera
+      backgroundColor: Colors.black,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // 1. CAMERA LAYER (Replaces Placeholder)
           if (_controller != null && _controller!.value.isInitialized)
             LayoutBuilder(
               builder: (context, constraints) {
-                // Handle aspect ratio to fill screen
                 final size = constraints.biggest;
                 var scale = size.aspectRatio * _controller!.value.aspectRatio;
                 if (scale < 1) scale = 1 / scale;
@@ -337,12 +328,11 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
               },
             )
           else
-            const Center(child: CircularProgressIndicator()), // Loading state
-          // 2. DIMMER LAYER (If Failed or Verified)
+            const Center(child: CircularProgressIndicator()),
+
           if (_hasFailed || _isVerified)
             Container(color: Colors.black.withOpacity(0.7)),
 
-          // 3. GRADIENT OVERLAY (Your original UI)
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -359,7 +349,6 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
             ),
           ),
 
-          // 4. TOP UI (Back arrow & Notification)
           SafeArea(
             child: Column(
               children: [
@@ -411,14 +400,12 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
             ),
           ),
 
-          // 5. CENTER VIEWFINDER & STATUS TEXT
           Center(
             child: SizedBox(
               width: 300,
               height: 450,
               child: Stack(
                 children: [
-                  // Corner Brackets
                   Positioned(
                     top: 0,
                     left: 0,
@@ -440,7 +427,6 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
                     child: _CornerBracket(isTop: false, isLeft: false),
                   ),
 
-                  // REC Indicator
                   const Positioned(
                     top: 20,
                     right: 20,
@@ -464,7 +450,6 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
                     ),
                   ),
 
-                  // Technical Text
                   const Positioned(
                     top: 100,
                     left: 10,
@@ -511,12 +496,10 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
                     ),
                   ),
 
-                  // LIVENESS STATUS MESSAGE (Centered in Viewfinder)
                   Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Focus Box
                         Container(
                           width: 80,
                           height: 80,
@@ -525,7 +508,6 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
                           ),
                         ),
                         const SizedBox(height: 20),
-                        // THE STATUS TEXT
                         if (!_hasFailed && !_isVerified)
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -550,7 +532,6 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
                     ),
                   ),
 
-                  // FAILURE / SUCCESS OVERLAY
                   if (_hasFailed)
                     Center(
                       child: Column(
@@ -624,7 +605,6 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
             ),
           ),
 
-          // 6. BOTTOM CONTROLS (Your original UI)
           Positioned(
             bottom: 20,
             left: 0,
@@ -636,7 +616,7 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
                   icon: Icons.cameraswitch_outlined,
                   color: const Color(0xFF173C45),
                   iconColor: Colors.white,
-                  onTap: () {}, // Optional: Add camera switch logic if needed
+                  onTap: () {},
                 ),
                 const SizedBox(width: 24),
                 _CircleButton(
@@ -662,7 +642,6 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
   }
 }
 
-// --- KEEPING YOUR EXISTING WIDGETS ---
 class _CornerBracket extends StatelessWidget {
   final bool isTop;
   final bool isLeft;

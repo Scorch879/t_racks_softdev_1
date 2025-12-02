@@ -75,8 +75,7 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
 
         return Scaffold(
           // Remove the solid background color
-          // backgroundColor: _bgTeal, 
-
+          // backgroundColor: _bgTeal,
           appBar: PreferredSize(
             preferredSize: Size.fromHeight(64 * scale),
             child: _TopBar(
@@ -84,7 +83,7 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
               onNotificationsPressed: _onNotificationsPressed,
             ),
           ),
-          
+
           // Use a Stack to layer the Gradient behind your content
           body: Stack(
             children: [
@@ -118,10 +117,7 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
 }
 
 class _TopBar extends StatefulWidget {
-  const _TopBar({
-    required this.scale,
-    required this.onNotificationsPressed,
-  });
+  const _TopBar({required this.scale, required this.onNotificationsPressed});
 
   final double scale;
   final VoidCallback onNotificationsPressed;
@@ -478,11 +474,7 @@ class _NotificationTile extends StatelessWidget {
               color: indicator.backgroundColor,
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              indicator.icon,
-              color: indicator.iconColor,
-              size: 18,
-            ),
+            child: Icon(indicator.icon, color: indicator.iconColor, size: 18),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -563,4 +555,3 @@ class _Indicator {
   final Color backgroundColor;
   final Color borderColor;
 }
-

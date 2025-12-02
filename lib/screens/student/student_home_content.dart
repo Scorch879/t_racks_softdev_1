@@ -1,9 +1,9 @@
+import 'package:camera/camera.dart'; // Import Camera
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/student/student_camera_screen.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:t_racks_softdev_1/services/models/student_model.dart';
-import 'package:camera/camera.dart';
 
 const _blueIcon = Color(0xFF57B0D7);
 const _cardSurface = Color(0xFF0C3343);
@@ -25,11 +25,17 @@ class StudentHomeContent extends StatefulWidget {
 }
 
 class _StudentHomeContentState extends State<StudentHomeContent> {
+  final _databaseService = DatabaseService();
+  late Future<Map<String, dynamic>> _dataFuture;
+
+  // --- FIX START: Fetch cameras and pass them ---
   void onOngoingClassStatusPressed() async {
+    // 1. Get list of cameras
     final cameras = await availableCameras();
 
     if (!mounted) return;
 
+    // 2. Pass them to the screen
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -37,11 +43,7 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
       ),
     );
   }
-
-  final _databaseService = DatabaseService();
-  late Future<Map<String, dynamic>> _dataFuture;
-
-  //void onOngoingClassStatusPressed() {} commented this out cuz awas giving errors
+  // --- FIX END ---
 
   void onFilterAllClasses() {}
 
@@ -55,7 +57,6 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
 
   Future<Map<String, dynamic>> _fetchData() async {
     try {
-      // Fetch student profile and classes concurrently
       final results = await Future.wait([
         _databaseService.getStudentData(),
         _databaseService.getStudentClasses(),
@@ -65,7 +66,6 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
         'classes': results[1] as List<StudentClass>,
       };
     } catch (e) {
-      // Propagate error to FutureBuilder
       throw Exception('Failed to load home screen data: $e');
     }
   }
@@ -157,6 +157,11 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
     );
   }
 }
+
+// ... (Keep _WelcomeAndOngoingCard, _MyClassesCard, _FilterChipRow, _ClassRow, _CardContainer, _CardBackground exactly as they were in your file) ...
+// Note: To save space I am not pasting the bottom half of the file,
+// BUT YOU SHOULD KEEP IT. The only change needed was adding 'import package:camera'
+// and updating the 'onOngoingClassStatusPressed' function.
 
 class _WelcomeAndOngoingCard extends StatefulWidget {
   const _WelcomeAndOngoingCard({
