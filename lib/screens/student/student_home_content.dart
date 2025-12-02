@@ -3,6 +3,7 @@ import 'package:t_racks_softdev_1/screens/student/student_camera_screen.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:t_racks_softdev_1/services/models/student_model.dart';
+import 'package:camera/camera.dart';
 
 const _blueIcon = Color(0xFF57B0D7);
 const _cardSurface = Color(0xFF0C3343);
@@ -15,10 +16,7 @@ const _statusRed = Color(0xFFE26B6B);
 const _titleRed = Color(0xFFE57373);
 
 class StudentHomeContent extends StatefulWidget {
-  const StudentHomeContent({
-    super.key,
-    required this.onNotificationsPressed,
-  });
+  const StudentHomeContent({super.key, required this.onNotificationsPressed});
 
   final VoidCallback onNotificationsPressed;
 
@@ -27,14 +25,19 @@ class StudentHomeContent extends StatefulWidget {
 }
 
 class _StudentHomeContentState extends State<StudentHomeContent> {
-  void onOngoingClassStatusPressed() {
+  void onOngoingClassStatusPressed() async {
+    final cameras = await availableCameras();
+
+    if (!mounted) return;
+
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const StudentCameraScreen(),
+        builder: (context) => StudentCameraScreen(cameras: cameras),
       ),
     );
   }
+
   final _databaseService = DatabaseService();
   late Future<Map<String, dynamic>> _dataFuture;
 
@@ -80,15 +83,23 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
           future: _dataFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator(color: Colors.white));
+              return const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              );
             }
 
             if (snapshot.hasError) {
-              return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white)));
+              return Center(
+                child: Text(
+                  'Error: ${snapshot.error}',
+                  style: const TextStyle(color: Colors.white),
+                ),
+              );
             }
 
             final student = snapshot.data?['student'] as Student?;
-            final classes = snapshot.data?['classes'] as List<StudentClass>? ?? [];
+            final classes =
+                snapshot.data?['classes'] as List<StudentClass>? ?? [];
 
             return SizedBox.expand(
               child: Stack(
@@ -121,7 +132,8 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
                               student: student,
                               scale: scale,
                               radius: cardRadius,
-                              onOngoingClassStatusPressed: onOngoingClassStatusPressed,
+                              onOngoingClassStatusPressed:
+                                  onOngoingClassStatusPressed,
                             ),
                             SizedBox(height: 16 * scale),
                             _MyClassesCard(
@@ -198,8 +210,11 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                 SizedBox(height: 12 * scale),
                 Row(
                   children: [
-                    Icon(Icons.access_time_filled_rounded,
-                        color: _chipGreen, size: 28 * scale),
+                    Icon(
+                      Icons.access_time_filled_rounded,
+                      color: _chipGreen,
+                      size: 28 * scale,
+                    ),
                     SizedBox(width: 8 * scale),
                     Text(
                       'Ongoing',
@@ -228,7 +243,10 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
           ),
           Container(
             width: double.infinity,
-            padding: EdgeInsets.symmetric(horizontal: 16 * scale, vertical: 10 * scale),
+            padding: EdgeInsets.symmetric(
+              horizontal: 16 * scale,
+              vertical: 10 * scale,
+            ),
             decoration: const BoxDecoration(color: _cardHeader),
             child: Text(
               'Ongoing Class',
@@ -361,11 +379,7 @@ class _MyClassesCardState extends State<_MyClassesCard> {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.menu_rounded,
-                  color: _blueIcon,
-                  size: 24 * scale,
-                ),
+                Icon(Icons.menu_rounded, color: _blueIcon, size: 24 * scale),
                 SizedBox(width: 10 * scale),
                 Expanded(
                   child: Text(
@@ -380,7 +394,7 @@ class _MyClassesCardState extends State<_MyClassesCard> {
               ],
             ),
             SizedBox(height: 16 * scale),
-            
+
             _FilterChipRow(
               scale: scale,
               onTap: widget.onFilterAllClasses,
@@ -394,10 +408,7 @@ class _MyClassesCardState extends State<_MyClassesCard> {
                 child: Text(
                   'No classes yet',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 16 * scale,
-                  ),
+                  style: TextStyle(color: Colors.white70, fontSize: 16 * scale),
                 ),
               )
             else
@@ -508,7 +519,8 @@ class _ClassRow extends StatefulWidget {
   State<_ClassRow> createState() => __ClassRowState();
 }
 
-class __ClassRowState extends State<_ClassRow> with SingleTickerProviderStateMixin {
+class __ClassRowState extends State<_ClassRow>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
@@ -519,9 +531,10 @@ class __ClassRowState extends State<_ClassRow> with SingleTickerProviderStateMix
       vsync: this,
       duration: const Duration(milliseconds: 150),
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -548,7 +561,10 @@ class __ClassRowState extends State<_ClassRow> with SingleTickerProviderStateMix
       child: ScaleTransition(
         scale: _scaleAnimation,
         child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 16 * scale, vertical: 16 * scale),
+          padding: EdgeInsets.symmetric(
+            horizontal: 16 * scale,
+            vertical: 16 * scale,
+          ),
           decoration: BoxDecoration(
             color: widget.statusColor,
             borderRadius: BorderRadius.circular(22 * scale),
@@ -614,7 +630,9 @@ class _CardContainerState extends State<_CardContainer> {
       decoration: BoxDecoration(
         color: _cardSurface,
         borderRadius: BorderRadius.circular(widget.radius),
-        border: widget.borderColor != null ? Border.all(color: const Color(0xFFC8C8C8), width: 0.75) : null,
+        border: widget.borderColor != null
+            ? Border.all(color: const Color(0xFFC8C8C8), width: 0.75)
+            : null,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.25),

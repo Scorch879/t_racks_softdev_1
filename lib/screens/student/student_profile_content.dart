@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/models/student_model.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
+import 'package:camera/camera.dart';
 
 const _bgTeal = Color(0xFF167C94);
 //const _headerTeal = Color(0xFF1B4A55);
@@ -26,7 +27,7 @@ class StudentProfileContent extends StatefulWidget {
 class _StudentProfileContentState extends State<StudentProfileContent> {
   //final _formKey = GlobalKey<FormState>();
   final _databaseService = DatabaseService();
-  
+
   // Controllers
   late TextEditingController _firstNameController;
   late TextEditingController _lastNameController;
@@ -82,7 +83,8 @@ class _StudentProfileContentState extends State<StudentProfileContent> {
   }
 
   void _checkForChanges() {
-    final hasChanges = _firstNameController.text != _initialFirstName ||
+    final hasChanges =
+        _firstNameController.text != _initialFirstName ||
         _lastNameController.text != _initialLastName ||
         _emailController.text != _initialEmail ||
         _institutionController.text != _initialInstitution;
@@ -131,19 +133,22 @@ class _StudentProfileContentState extends State<StudentProfileContent> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving changes: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error saving changes: $e')));
       }
     } finally {
-      setState(() { _isSaving = false; _hasChanges = false; });
+      setState(() {
+        _isSaving = false;
+        _hasChanges = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final scale = widget.scale;
-    
+
     // Using PopScope to intercept back button
     return PopScope(
       canPop: !_hasChanges,
@@ -162,7 +167,9 @@ class _StudentProfileContentState extends State<StudentProfileContent> {
               padding: EdgeInsets.symmetric(horizontal: 24 * scale),
               child: Column(
                 children: [
-                  SizedBox(height: 10 * scale), // Reduced space for tighter layout
+                  SizedBox(
+                    height: 10 * scale,
+                  ), // Reduced space for tighter layout
                   Text(
                     widget.student.fullName,
                     style: TextStyle(
@@ -225,7 +232,9 @@ class _StudentProfileContentState extends State<StudentProfileContent> {
                       ),
                       child: _isSaving
                           ? const CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(_textTeal),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                _textTeal,
+                              ),
                             )
                           : Text(
                               'Save Changes',
@@ -312,7 +321,10 @@ class _ProfileHeader extends StatelessWidget {
                     Container(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 4 * scale),
+                        border: Border.all(
+                          color: Colors.white,
+                          width: 4 * scale,
+                        ),
                         image: const DecorationImage(
                           image: AssetImage('assets/images/placeholder.png'),
                           fit: BoxFit.cover,
@@ -335,7 +347,10 @@ class _ProfileHeader extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: const Color(0xFF93C0D3),
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2.5 * scale),
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 2.5 * scale,
+                          ),
                         ),
                         child: Icon(
                           Icons.camera_alt_outlined,
@@ -361,22 +376,22 @@ class _HeaderClipper extends CustomClipper<Path> {
     final path = Path();
     // Start slightly higher on the left
     path.lineTo(0, size.height - 50);
-    
+
     // First curve: Convex (Hill) on the left
     final firstControlPoint = Offset(size.width * 0.25, size.height + 10);
     final firstEndPoint = Offset(size.width * 0.5, size.height - 30);
-    
+
     path.quadraticBezierTo(
       firstControlPoint.dx,
       firstControlPoint.dy,
       firstEndPoint.dx,
       firstEndPoint.dy,
     );
-    
+
     // Second curve: Concave (Scoop) underneath/towards the right
     final secondControlPoint = Offset(size.width * 0.78, size.height - 80);
     final secondEndPoint = Offset(size.width, size.height - 30);
-    
+
     path.quadraticBezierTo(
       secondControlPoint.dx,
       secondControlPoint.dy,
@@ -498,7 +513,8 @@ class _UnsavedChangesDialog extends StatelessWidget {
                   child: SizedBox(
                     height: 52,
                     child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(false), // Continue editing
+                      onPressed: () =>
+                          Navigator.of(context).pop(false), // Continue editing
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Color(0xFFBFD5E3)),
                         shape: RoundedRectangleBorder(
