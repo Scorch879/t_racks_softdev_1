@@ -22,14 +22,17 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
   final DatabaseService _dbService = DatabaseService();
   final TextEditingController _searchController = TextEditingController();
 
-  // 1. DEFINE THE LOCAL LIST
+  // 1. Master list (everyone available)
   late List<Map<String, String>> _studentsList;
+  // 2. Filtered list (what is shown on screen)
+  late List<Map<String, String>> _filteredList;
 
-  // 2. INITIALIZE IT HERE (This is what was likely missing!)
   @override
   void initState() {
     super.initState();
     _studentsList = List.from(widget.availableStudents);
+    // Initially, the filtered list is the same as the master list
+    _filteredList = _studentsList;
   }
 
   @override
@@ -38,7 +41,27 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
     super.dispose();
   }
 
-  Future<void> _handleAddStudent(String studentId, int index) async {
+  // 3. THE SEARCH LOGIC
+  void _runFilter(String enteredKeyword) {
+    List<Map<String, String>> results = [];
+    if (enteredKeyword.isEmpty) {
+      // If the search field is empty, show everyone
+      results = _studentsList;
+    } else {
+      // Filter based on name (case-insensitive)
+      results = _studentsList
+          .where((user) =>
+              user["name"]!.toLowerCase().contains(enteredKeyword.toLowerCase()))
+          .toList();
+    }
+
+    // Refresh the UI
+    setState(() {
+      _filteredList = results;
+    });
+  }
+
+  Future<void> _handleAddStudent(String studentId) async {
     try {
       await _dbService.enrollStudent(
         classId: widget.classId,
@@ -53,9 +76,13 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
           ),
         );
 
-        // 3. REMOVE FROM LOCAL LIST
         setState(() {
-          _studentsList.removeAt(index);
+          // 4. IMPORTANT FIX: Remove by ID, not Index!
+          // Since the list might be filtered, "Index 0" might delete the wrong person.
+          _studentsList.removeWhere((student) => student['id'] == studentId);
+          
+          // Re-run the filter so the UI updates correctly
+          _runFilter(_searchController.text);
         });
       }
     } catch (e) {
@@ -72,9 +99,6 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 4. USE THE LOCAL LIST HERE (Not widget.availableStudents)
-    final displayList = _studentsList;
-
     return Scaffold(
       body: Stack(
         children: [
@@ -118,23 +142,32 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  
+                  // 5. Connect the search field
                   _buildSearchField(),
+                  
                   const SizedBox(height: 16),
                   Expanded(
-                    child: ListView.separated(
-                      // Use displayList here
-                      itemCount: displayList.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final student = displayList[index];
-                        return _buildStudentCard(
-                          name: student['name'] ?? '',
-                          subtitle: student['subtitle'] ?? '',
-                          // Pass the specific ID and Index
-                          onAdd: () => _handleAddStudent(student['id']!, index),
-                        );
-                      },
-                    ),
+                    child: _filteredList.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'No students found',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                          )
+                        : ListView.separated(
+                            itemCount: _filteredList.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 12),
+                            itemBuilder: (context, index) {
+                              final student = _filteredList[index];
+                              return _buildStudentCard(
+                                name: student['name'] ?? '',
+                                subtitle: student['subtitle'] ?? '',
+                                onAdd: () => _handleAddStudent(student['id']!),
+                              );
+                            },
+                          ),
                   ),
                 ],
               ),
@@ -170,6 +203,8 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
           Expanded(
             child: TextField(
               controller: _searchController,
+              // 7. Call _runFilter whenever text changes
+              onChanged: (value) => _runFilter(value),
               style: const TextStyle(color: Colors.white),
               decoration: const InputDecoration(
                 hintText: 'Search Student',
