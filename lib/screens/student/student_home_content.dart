@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/student/student_camera_screen.dart';
+import 'package:t_racks_softdev_1/screens/student/student_class_content.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:t_racks_softdev_1/services/models/student_model.dart';
 
-const _bgTeal = Color(0xFF167C94);
-const _cardSurface = Color(0xFF173C45);
-const _cardHeader = Color(0xFF1B4A55);
-const _accentCyan = Color(0xFF93C0D3);
-const _chipGreen = Color(0xFF4DBD88);
-const _statusRed = Color(0xFFDA6A6A);
+const _blueIcon = Color(0xFF57B0D7);
+const _cardSurface = Color(0xFF0C3343);
+const _cardHeader = Color(0xFF0D3B4E);
+const _statusYellow = Color(0xFFDAE26B);
+const _chipGreen = Color(0xFF37AA82);
+const _statusGreen = Color(0xFF7FE26B);
+const _statusOrange = Color(0xFFFF8442);
+const _statusRed = Color(0xFFE26B6B);
 const _titleRed = Color(0xFFE57373);
 
 class StudentHomeContent extends StatefulWidget {
@@ -36,16 +39,21 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
   final _databaseService = DatabaseService();
   late Future<Map<String, dynamic>> _dataFuture;
 
-  void onOngoingClassStatusPressed() {}
-
-  void onFilterAllClasses() {}
-
-  void onClassPressed() {}
+  //void onOngoingClassStatusPressed() {} commented this out cuz awas giving errors
 
   @override
   void initState() {
     super.initState();
     _dataFuture = _fetchData();
+  }
+
+  void _showClassDetails(String classId) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return ClassDetailsDialog(classId: classId);
+      },
+    );
   }
 
   Future<Map<String, dynamic>> _fetchData() async {
@@ -88,50 +96,53 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
             final student = snapshot.data?['student'] as Student?;
             final classes = snapshot.data?['classes'] as List<StudentClass>? ?? [];
 
-            return Stack(
-              children: [
-                Positioned.fill(
-                  child: Opacity(
-                    opacity: 0.12,
-                    child: Image.asset(
-                      'assets/images/squigglytexture.png',
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-                SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(
-                    horizontalPadding,
-                    12 * scale,
-                    horizontalPadding,
-                    100 * scale,
-                  ),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 980),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _WelcomeAndOngoingCard(
-                            student: student,
-                            scale: scale,
-                            radius: cardRadius,
-                            onOngoingClassStatusPressed: onOngoingClassStatusPressed,
-                          ),
-                          SizedBox(height: 16 * scale),
-                          _MyClassesCard(
-                            classes: classes,
-                            scale: scale,
-                            radius: cardRadius,
-                            onFilterAllClasses: onFilterAllClasses,
-                            onClassPressed: onClassPressed,
-                          ),
-                        ],
+            return SizedBox.expand(
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: Opacity(
+                      opacity: 0.12,
+                      child: Image.asset(
+                        'assets/images/squigglytexture.png',
+                        width: double.infinity,
+                        height: double.infinity,
+                        fit: BoxFit.cover,
                       ),
                     ),
                   ),
-                ),
-              ],
+                  SingleChildScrollView(
+                    padding: EdgeInsets.fromLTRB(
+                      horizontalPadding,
+                      12 * scale,
+                      horizontalPadding,
+                      100 * scale,
+                    ),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 980),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _WelcomeAndOngoingCard(
+                              student: student,
+                              scale: scale,
+                              radius: cardRadius,
+                              onOngoingClassStatusPressed: onOngoingClassStatusPressed,
+                            ),
+                            SizedBox(height: 16 * scale),
+                            _MyClassesCard(
+                              classes: classes,
+                              scale: scale,
+                              radius: cardRadius,
+                              onClassPressed: _showClassDetails,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             );
           },
         );
@@ -163,7 +174,6 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
     return _CardContainer(
       radius: widget.radius,
       scale: scale,
-      borderColor: const Color(0xFF6AAFBF).withOpacity(0.35),
       background: const _CardBackground(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -177,7 +187,7 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                   'Welcome! ${widget.student?.profile?.firstName ?? 'user'}',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 18 * scale,
+                    fontSize: 22 * scale,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -185,8 +195,9 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                 Text(
                   "Today's Status",
                   style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12 * scale,
+                    color: Colors.white.withValues(alpha: 0.75),
+                    fontSize: 17 * scale,
+                    fontWeight: FontWeight.w100,
                   ),
                 ),
                 SizedBox(height: 12 * scale),
@@ -213,7 +224,7 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
             decoration: BoxDecoration(
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.35),
+                  color: Colors.black.withValues(alpha: 0.35),
                   blurRadius: 12 * scale,
                   offset: Offset(0, 6 * scale),
                 ),
@@ -279,7 +290,7 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                   ),
                 ),
                 Material(
-                  color: _chipGreen,
+                  color: const Color(0xFF37AA82),
                   borderRadius: BorderRadius.circular(20 * scale),
                   child: InkWell(
                     onTap: widget.onOngoingClassStatusPressed,
@@ -314,14 +325,12 @@ class _MyClassesCard extends StatefulWidget {
     required this.classes,
     required this.scale,
     required this.radius,
-    required this.onFilterAllClasses,
     required this.onClassPressed,
   });
   final double scale;
   final List<StudentClass> classes;
   final double radius;
-  final VoidCallback onFilterAllClasses;
-  final VoidCallback onClassPressed;
+  final ValueChanged<String> onClassPressed;
 
   @override
   State<_MyClassesCard> createState() => _MyClassesCardState();
@@ -335,7 +344,7 @@ class _MyClassesCardState extends State<_MyClassesCard> {
       case 'absent':
         return _statusRed;
       case 'upcoming':
-        return _accentCyan.withOpacity(0.7);
+        return _statusYellow;
       default:
         return Colors.grey;
     }
@@ -347,7 +356,7 @@ class _MyClassesCardState extends State<_MyClassesCard> {
     return _CardContainer(
       radius: widget.radius,
       scale: scale,
-      borderColor: const Color(0xFF6AAFBF).withOpacity(0.55),
+      borderColor: const Color(0xFF6AAFBF).withValues(alpha: 0.55),
       background: const _CardBackground(),
       child: Padding(
         padding: EdgeInsets.all(16 * scale),
@@ -357,7 +366,7 @@ class _MyClassesCardState extends State<_MyClassesCard> {
               children: [
                 Icon(
                   Icons.menu_rounded,
-                  color: _accentCyan,
+                  color: _blueIcon,
                   size: 24 * scale,
                 ),
                 SizedBox(width: 10 * scale),
@@ -374,9 +383,10 @@ class _MyClassesCardState extends State<_MyClassesCard> {
               ],
             ),
             SizedBox(height: 16 * scale),
+            
             _FilterChipRow(
               scale: scale,
-              onTap: widget.onFilterAllClasses,
+              onTap: () {}, // Can be implemented later
               title: 'All Classes',
               trailingText: 'Total: ${widget.classes.length}',
               backgroundColor: _chipGreen,
@@ -403,7 +413,7 @@ class _MyClassesCardState extends State<_MyClassesCard> {
                     // Status logic can be implemented later
                     statusText: sClass.status ?? 'Unknown',
                     statusColor: _getStatusColor(sClass.status),
-                    onTap: widget.onClassPressed,
+                    onTap: () => widget.onClassPressed(sClass.id),
                   ),
                 );
               }).toList(),
@@ -446,12 +456,12 @@ class _FilterChipRowState extends State<_FilterChipRow> {
         ),
         decoration: BoxDecoration(
           color: widget.backgroundColor,
-          borderRadius: BorderRadius.circular(22 * scale),
+          borderRadius: BorderRadius.circular(15),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.25),
-              blurRadius: 10 * scale,
-              offset: Offset(0, 6 * scale),
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 4 * scale,
+              offset: Offset(0, 6),
             ),
           ],
         ),
@@ -495,52 +505,86 @@ class _ClassRow extends StatefulWidget {
   final String title;
   final String statusText;
   final Color statusColor;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
-  State<_ClassRow> createState() => _ClassRowState();
+  State<_ClassRow> createState() => __ClassRowState();
 }
 
-class _ClassRowState extends State<_ClassRow> {
+class __ClassRowState extends State<_ClassRow> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleTap() async {
+    // Start the animation
+    await _controller.forward();
+    // After a short delay, call the original onTap to show the dialog
+    await Future.delayed(const Duration(milliseconds: 50));
+    widget.onTap?.call();
+    // Reverse the animation to return to the original state
+    await _controller.reverse();
+  }
+
   @override
   Widget build(BuildContext context) {
     final scale = widget.scale;
     return GestureDetector(
-      onTap: widget.onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 16 * scale, vertical: 16 * scale),
-        decoration: BoxDecoration(
-          color: widget.statusColor,
-          borderRadius: BorderRadius.circular(22 * scale),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.25),
-              blurRadius: 10 * scale,
-              offset: Offset(0, 6 * scale),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                widget.title,
+      onTap: _handleTap,
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 16 * scale, vertical: 16 * scale),
+          decoration: BoxDecoration(
+            color: widget.statusColor,
+            borderRadius: BorderRadius.circular(22 * scale),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.25),
+                blurRadius: 10 * scale,
+                offset: Offset(0, 6 * scale),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  widget.title,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18 * scale,
+                  ),
+                ),
+              ),
+              Text(
+                widget.statusText,
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
                   fontSize: 18 * scale,
                 ),
               ),
-            ),
-            Text(
-              widget.statusText,
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 18 * scale,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -573,10 +617,10 @@ class _CardContainerState extends State<_CardContainer> {
       decoration: BoxDecoration(
         color: _cardSurface,
         borderRadius: BorderRadius.circular(widget.radius),
-        border: widget.borderColor != null ? Border.all(color: widget.borderColor!) : null,
+        border: widget.borderColor != null ? Border.all(color: const Color(0xFFC8C8C8), width: 0.75) : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.25),
+            color: Colors.black.withValues(alpha: 0.25),
             blurRadius: 10 * widget.scale,
             offset: Offset(0, 6 * widget.scale),
           ),
@@ -605,9 +649,11 @@ class _CardBackgroundState extends State<_CardBackground> {
   Widget build(BuildContext context) {
     return Positioned.fill(
       child: Opacity(
-        opacity: 0.0,
+        opacity: 0,
         child: Image.asset(
           'assets/images/squigglytexture.png',
+          width: double.infinity,
+          height: double.infinity,
           fit: BoxFit.cover,
         ),
       ),

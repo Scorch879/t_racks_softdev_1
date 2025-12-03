@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/student/student_home_content.dart';
 import 'package:t_racks_softdev_1/screens/student/student_settings_content.dart';
 import 'package:t_racks_softdev_1/screens/student/student_class_content.dart';
+import 'package:t_racks_softdev_1/services/database_service.dart';
 
 const _bgTeal = Color(0xFF167C94);
 const _accentCyan = Color(0xFF93C0D3);
@@ -17,7 +18,24 @@ class StudentShellScreen extends StatefulWidget {
 
 class _StudentShellScreenState extends State<StudentShellScreen> {
   StudentNavTab _currentTab = StudentNavTab.home;
-
+  String _studentName = "Loading...";
+  @override
+  void initState() {
+    super.initState();
+    // 2. Call the fetch function
+    _loadProfile(); 
+  }
+  Future<void> _loadProfile() async {
+    final dbService = DatabaseService();
+    // Assuming you have getProfile() or getStudentData()
+    final profile = await dbService.getProfile(); 
+    
+    if (mounted && profile != null) {
+      setState(() {
+        _studentName = "${profile.firstName} ${profile.lastName}";
+      });
+    }
+  }
   void _onTabChanged(StudentNavTab tab) {
     if (_currentTab != tab) {
       setState(() {
@@ -74,15 +92,39 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
         final scale = (width / 430).clamp(0.8, 1.6);
 
         return Scaffold(
-          backgroundColor: _bgTeal,
+          // Remove the solid background color
+          // backgroundColor: _bgTeal, 
+
           appBar: PreferredSize(
             preferredSize: Size.fromHeight(64 * scale),
             child: _TopBar(
               scale: scale,
               onNotificationsPressed: _onNotificationsPressed,
+              studentName: _studentName,
             ),
           ),
-          body: _buildContent(),
+          
+          // Use a Stack to layer the Gradient behind your content
+          body: Stack(
+            children: [
+              // 1. The Gradient Background
+              Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Color(0xFF194B61),
+                      Color(0xFF2A7FA3),
+                      Color(0xFF267394),
+                      Color(0xFF349BC7),
+                    ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+              ),
+              _buildContent(),
+            ],
+          ),
           bottomNavigationBar: _BottomNav(
             scale: scale,
             currentTab: _currentTab,
@@ -98,10 +140,12 @@ class _TopBar extends StatefulWidget {
   const _TopBar({
     required this.scale,
     required this.onNotificationsPressed,
+    required this.studentName,
   });
 
   final double scale;
   final VoidCallback onNotificationsPressed;
+  final String studentName;
 
   @override
   State<_TopBar> createState() => _TopBarState();
@@ -132,7 +176,7 @@ class _TopBarState extends State<_TopBar> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Student',
+                    widget.studentName,
                     style: TextStyle(
                       color: Colors.black87,
                       fontSize: 16 * scale,

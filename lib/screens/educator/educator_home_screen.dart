@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
+import 'package:t_racks_softdev_1/services/models/class_model.dart';
 
 class EducatorHomeScreen extends StatefulWidget {
   const EducatorHomeScreen({super.key});
@@ -103,6 +104,7 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min, // Use minimum space
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -124,57 +126,67 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
           const SizedBox(height: 12),
 
           // --- FETCH CLASSES ---
-          FutureBuilder<List<EducatorClassSummary>>(
-            future: _dbService.getEducatorClasses(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: CircularProgressIndicator(color: Colors.white),
-                );
-              }
+          // Wrap in ConstrainedBox to fix height and SingleChildScrollView to scroll
+          ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxHeight: 200, // Adjust this height as needed
+            ),
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: FutureBuilder<List<EducatorClassSummary>>(
+                future: _dbService.getEducatorClasses(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    );
+                  }
 
-              // Prepare the list of buttons
-              List<Widget> classButtons = [];
+                  // Prepare the list of buttons
+                  List<Widget> classButtons = [];
 
-              // 1. Always add "All Classes" button first
-              // We calculate total students for "All Classes" if data exists
-              int totalStudents = 0;
-              if (snapshot.hasData) {
-                for (var c in snapshot.data!) totalStudents += c.studentCount;
-              }
+                  // 1. Always add "All Classes" button first
+                  int totalStudents = 0;
+                  if (snapshot.hasData) {
+                    for (var c in snapshot.data!) {
+                      totalStudents += c.studentCount;
+                    }
+                  }
 
-              classButtons.add(
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0),
-                  child: _buildClassButton(
-                    title: "All Classes",
-                    count: totalStudents,
-                    isSelected: selectedClass == null, // Selected if null
-                    onTap: _onAllClassesSelected,
-                  ),
-                ),
-              );
-
-              // 2. Add real classes from DB
-              if (snapshot.hasData) {
-                final classes = snapshot.data!;
-                for (var classData in classes) {
                   classButtons.add(
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8.0),
                       child: _buildClassButton(
-                        title: classData.className,
-                        count: classData.studentCount,
-                        isSelected: selectedClass?.id == classData.id,
-                        onTap: () => _onClassSelected(classData),
+                        title: "All Classes",
+                        count: totalStudents,
+                        isSelected: selectedClass == null,
+                        onTap: _onAllClassesSelected,
                       ),
                     ),
                   );
-                }
-              }
 
-              return Column(children: classButtons);
-            },
+                  // 2. Add real classes from DB
+                  if (snapshot.hasData) {
+                    final classes = snapshot.data!;
+                    for (var classData in classes) {
+                      classButtons.add(
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          child: _buildClassButton(
+                            title: classData.className,
+                            count: classData.studentCount,
+                            isSelected: selectedClass?.id == classData.id,
+                            onTap: () => _onClassSelected(classData),
+                          ),
+                        ),
+                      );
+                    }
+                  }
+
+                  return Column(children: classButtons);
+                },
+              ),
+            ),
           ),
         ],
       ),
@@ -192,7 +204,8 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeInOut,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        // Reduced padding for smaller buttons
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
               ? const Color(0xFF3AB389)
