@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:t_racks_softdev_1/services/models/educator_model.dart';
 import 'package:t_racks_softdev_1/services/models/profile_model.dart';
@@ -95,42 +96,21 @@ class DatabaseService {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) throw 'User not logged in';
 
-      // 1. Fetch all classes the student is enrolled in.
-      final classData = await _supabase
-          .from('Enrollments_Table')
-          .select('*, class:Classes_Table!inner(*, student_count:Enrollments_Table(count))')
-          .eq('student_id', userId);
+      // Call the RPC function to get all class data, student counts,
+      // and today's attendance in a single, efficient database call.
+      final response = await _supabase.rpc(
+        'get_student_classes_with_details',
+        params: {'p_student_id': userId},
+      );
 
-      if (classData.isEmpty) return [];
+      if (response == null || response.isEmpty) {
+        return [];
+      }
 
-      // 2. Get today's attendance records for this student for all their classes.
-      final today = DateTime.now().toIso8601String().split('T')[0]; // YYYY-MM-DD
-      final classIds = classData.map((c) => c['class']['id']).toList();
-
-      final attendanceData = await _supabase
-          .from('Attendance_Record')
-          .select('class_id, isPresent')
-          .eq('student_id', userId)
-          .eq('date', today)
-          .inFilter('class_id', classIds);
-
-      // 3. Combine the data.
-      final classesWithAttendance = (classData as List).map((enrollmentJson) {
-        // The class data is now nested under the 'class' key.
-        final classJson = enrollmentJson['class'];
-        if (classJson == null) return null; // Skip if class data is missing
-
-        final attendanceRecord = attendanceData.firstWhereOrNull(
-          (att) => att['class_id'] == classJson['id'],
-        );
-        // Add the attendance status to the JSON before parsing.
-        classJson['todays_attendance'] = attendanceRecord?['isPresent']; // will be true, false, or null
-        
-        // The student count is now nested inside the class data.
-        final countList = classJson['student_count'] as List?;
-        classJson['student_count'] = countList?.firstOrNull?['count'] ?? 0;
-        return StudentClass.fromJson(classJson);
-      }).whereType<StudentClass>().toList(); // Filter out any nulls
+      // The RPC returns a list of flat JSON objects, ready for parsing.
+      final classesWithAttendance = (response as List)
+          .map((classJson) => StudentClass.fromJson(classJson))
+          .toList();
 
       return classesWithAttendance;
     } catch (e) {
@@ -543,6 +523,58 @@ class AccountServices {
   }
 }
 
+/// A helper class to hold the calculated status and its corresponding color.
+class DynamicStatus {
+  final String text;
+  final Color color;
+  DynamicStatus(this.text, this.color);
+}
+
+/// This function is now the single source of truth for determining class status.
+DynamicStatus getDynamicStatus(StudentClass sClass, Color green, Color red, Color yellow, Color grey) {
+  // Attendance for today has been recorded
+  if (sClass.todaysAttendance != null) {
+    return sClass.todaysAttendance == true || sClass.todaysAttendance == 'true'
+        ? DynamicStatus('Present', green)
+        : DynamicStatus('Absent', red);
+  }
+
+  // No attendance yet, determine status based on time
+  final now = DateTime.now();
+  final todayWeekday = now.weekday; // Monday=1, Sunday=7
+
+  final scheduleDay = sClass.day?.toLowerCase().replaceAll(' ', '');
+  if (scheduleDay == null || scheduleDay.isEmpty) {
+    return DynamicStatus('No Schedule', grey);
+  }
+
+  // Use the robust day checking logic
+  bool isToday = _isClassScheduledForToday(scheduleDay, todayWeekday);
+
+  if (!isToday) {
+    return DynamicStatus('Upcoming', yellow);
+  }
+
+  // It is today, let's check the time
+  if (sClass.time == null || !sClass.time!.contains('-')) {
+    return DynamicStatus('Invalid Time', grey);
+  }
+
+  try {
+    final timeRange = sClass.time!.split('-');
+    final classStartTime = _parseTimeHelper(timeRange[0].trim(), now);
+    final classEndTime = _parseTimeHelper(timeRange[1].trim(), now);
+
+    if (classStartTime == null || classEndTime == null) return DynamicStatus('Invalid Time', grey);
+    if (now.isBefore(classStartTime)) return DynamicStatus('Upcoming', yellow);
+    if (now.isAfter(classEndTime)) return DynamicStatus('Done', grey);
+    if (now.difference(classStartTime).inMinutes > 15) return DynamicStatus('Late', red);
+    return DynamicStatus('Ongoing', green);
+  } catch (e) {
+    return DynamicStatus('Upcoming', yellow);
+  }
+}
+
 // Helper function to parse time strings (e.g., "10:00 AM") into DateTime objects.
 DateTime? _parseTimeHelper(String timeStr, DateTime now) {
   try {
@@ -570,13 +602,29 @@ DateTime? _parseTimeHelper(String timeStr, DateTime now) {
   }
 }
 
+/// Helper function to robustly check if a class is scheduled for a given weekday.
+bool _isClassScheduledForToday(String scheduleDay, int todayWeekday) {
+  const dayMappings = {'m': 1, 't': 2, 'w': 3, 'th': 4, 'f': 5, 's': 6, 'su': 7};
+  const fullDayMappings = {'monday': 1, 'tuesday': 2, 'wednesday': 3, 'thursday': 4, 'friday': 5, 'saturday': 6, 'sunday': 7};
+
+  if (fullDayMappings.containsKey(scheduleDay)) {
+    return fullDayMappings[scheduleDay] == todayWeekday;
+  }
+
+  // Handle abbreviations like "th" and "su" first to avoid ambiguity
+  if (scheduleDay.contains('th') && todayWeekday == 4) return true;
+  if (scheduleDay.contains('su') && todayWeekday == 7) return true;
+
+  // Handle single-letter abbreviations, ignoring 'h' and 'u' from 'th'/'su'
+  return scheduleDay.split('').any((char) => dayMappings[char] == todayWeekday && char != 'h' && char != 'u');
+}
+
 /// Helper function to determine if a class has finished for today.
 bool _isClassDoneForToday(String scheduleDay, String timeRangeStr, DateTime now) {
-  const dayMappings = {'m': 1, 't': 2, 'w': 3, 'th': 4, 'f': 5, 's': 6, 'su': 7};
   final todayWeekday = now.weekday;
 
   // Check if the class is scheduled for today
-  bool isToday = scheduleDay.split('').any((char) => dayMappings[char] == todayWeekday);
+  bool isToday = _isClassScheduledForToday(scheduleDay, todayWeekday);
   if (!isToday) return false;
 
   // Check if the class time has passed
