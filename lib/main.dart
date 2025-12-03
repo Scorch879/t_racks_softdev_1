@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:t_racks_softdev_1/screens/splash_screen.dart';
+import 'package:t_racks_softdev_1/services/camera_service.dart';
+import 'package:camera/camera.dart';
 import 'package:t_racks_softdev_1/screens/student/student_home_screen.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_shell.dart';
 
 Future<void> main() async {
   // Ensure Flutter bindings are initialized before any async operations.
   WidgetsFlutterBinding.ensureInitialized();
+
+  await CameraService.instance.initialize();
 
   await dotenv.load(fileName: ".env");
 
@@ -18,10 +22,7 @@ Future<void> main() async {
     throw Exception('Supabase URL or Anon Key not found in .env file');
   }
 
-  await Supabase.initialize(
-    url: supabaseUrl,
-    anonKey: supabaseAnonKey,
-  );
+  await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
   runApp(const MyApp());
 }
 

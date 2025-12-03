@@ -23,19 +23,21 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
   void initState() {
     super.initState();
     // 2. Call the fetch function
-    _loadProfile(); 
+    _loadProfile();
   }
+
   Future<void> _loadProfile() async {
     final dbService = DatabaseService();
     // Assuming you have getProfile() or getStudentData()
-    final profile = await dbService.getProfile(); 
-    
+    final profile = await dbService.getProfile();
+
     if (mounted && profile != null) {
       setState(() {
         _studentName = "${profile.firstName} ${profile.lastName}";
       });
     }
   }
+
   void _onTabChanged(StudentNavTab tab) {
     if (_currentTab != tab) {
       setState(() {
@@ -93,8 +95,7 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
 
         return Scaffold(
           // Remove the solid background color
-          // backgroundColor: _bgTeal, 
-
+          // backgroundColor: _bgTeal,
           appBar: PreferredSize(
             preferredSize: Size.fromHeight(64 * scale),
             child: _TopBar(
@@ -103,7 +104,7 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
               studentName: _studentName,
             ),
           ),
-          
+
           // Use a Stack to layer the Gradient behind your content
           body: Stack(
             children: [
@@ -499,11 +500,7 @@ class _NotificationTile extends StatelessWidget {
               color: indicator.backgroundColor,
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              indicator.icon,
-              color: indicator.iconColor,
-              size: 18,
-            ),
+            child: Icon(indicator.icon, color: indicator.iconColor, size: 18),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -584,4 +581,3 @@ class _Indicator {
   final Color backgroundColor;
   final Color borderColor;
 }
-

@@ -304,8 +304,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                   TextButton(
                                     onPressed: () {
                                       Navigator.push(
-                                        context,MaterialPageRoute(
-                                          builder: (context) =>const ForgotPasswordScreen(),
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              const ForgotPasswordScreen(),
                                         ),
                                       );
                                     },

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:camera/camera.dart'; // Import Camera
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/student/student_camera_screen.dart';
 import 'package:t_racks_softdev_1/screens/student/student_class_content.dart';
@@ -23,10 +24,7 @@ class _DynamicStatus {
 }
 
 class StudentHomeContent extends StatefulWidget {
-  const StudentHomeContent({
-    super.key,
-    required this.onNotificationsPressed,
-  });
+  const StudentHomeContent({super.key, required this.onNotificationsPressed});
 
   final VoidCallback onNotificationsPressed;
 
@@ -35,16 +33,25 @@ class StudentHomeContent extends StatefulWidget {
 }
 
 class _StudentHomeContentState extends State<StudentHomeContent> {
-  void onOngoingClassStatusPressed() {
+  final _databaseService = DatabaseService();
+  late Future<Map<String, dynamic>> _dataFuture;
+
+  // --- FIX START: Fetch cameras and pass them ---
+  void onOngoingClassStatusPressed() async {
+    // 1. Get list of cameras
+    final cameras = await availableCameras();
+
+    if (!mounted) return;
+
+    // 2. Pass them to the screen
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const StudentCameraScreen(),
+        builder: (context) => StudentCameraScreen(cameras: cameras),
       ),
     );
   }
-  final _databaseService = DatabaseService();
-  late Future<Map<String, dynamic>> _dataFuture;
+  
   Timer? _timer;
 
   //void onOngoingClassStatusPressed() {} commented this out cuz awas giving errors
@@ -92,7 +99,6 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
         'classes': results[1] as List<StudentClass>,
       };
     } catch (e) {
-      // Propagate error to FutureBuilder
       throw Exception('Failed to load home screen data: $e');
     }
   }
@@ -180,11 +186,18 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
           future: _dataFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator(color: Colors.white));
+              return const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              );
             }
 
             if (snapshot.hasError) {
-              return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white)));
+              return Center(
+                child: Text(
+                  'Error: ${snapshot.error}',
+                  style: const TextStyle(color: Colors.white),
+                ),
+              );
             }
 
             final student = snapshot.data?['student'] as Student?;
@@ -232,7 +245,8 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
                               ongoingClass: ongoingClass,
                               scale: scale,
                               radius: cardRadius,
-                              onOngoingClassStatusPressed: onOngoingClassStatusPressed,
+                              onOngoingClassStatusPressed:
+                                  onOngoingClassStatusPressed,
                             ),
                             SizedBox(height: 16 * scale),
                             _MyClassesCard(
@@ -495,11 +509,7 @@ class _MyClassesCardState extends State<_MyClassesCard> {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.menu_rounded,
-                  color: _blueIcon,
-                  size: 24 * scale,
-                ),
+                Icon(Icons.menu_rounded, color: _blueIcon, size: 24 * scale),
                 SizedBox(width: 10 * scale),
                 Expanded(
                   child: Text(
@@ -514,7 +524,7 @@ class _MyClassesCardState extends State<_MyClassesCard> {
               ],
             ),
             SizedBox(height: 16 * scale),
-            
+
             _FilterChipRow(
               scale: scale,
               onTap: () {}, // Can be implemented later
@@ -528,10 +538,7 @@ class _MyClassesCardState extends State<_MyClassesCard> {
                 child: Text(
                   'No classes yet',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 16 * scale,
-                  ),
+                  style: TextStyle(color: Colors.white70, fontSize: 16 * scale),
                 ),
               )
             else
@@ -768,7 +775,8 @@ class _ClassRow extends StatefulWidget {
   State<_ClassRow> createState() => __ClassRowState();
 }
 
-class __ClassRowState extends State<_ClassRow> with SingleTickerProviderStateMixin {
+class __ClassRowState extends State<_ClassRow>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
@@ -779,9 +787,10 @@ class __ClassRowState extends State<_ClassRow> with SingleTickerProviderStateMix
       vsync: this,
       duration: const Duration(milliseconds: 150),
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -808,7 +817,10 @@ class __ClassRowState extends State<_ClassRow> with SingleTickerProviderStateMix
       child: ScaleTransition(
         scale: _scaleAnimation,
         child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 16 * scale, vertical: 16 * scale),
+          padding: EdgeInsets.symmetric(
+            horizontal: 16 * scale,
+            vertical: 16 * scale,
+          ),
           decoration: BoxDecoration(
             color: widget.statusColor,
             borderRadius: BorderRadius.circular(22 * scale),
