@@ -76,7 +76,7 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
           onNotificationsPressed: _onNotificationsPressed,
         );
       case StudentNavTab.schedule:
-        return const StudentClassScheduleContent();
+        return const StudentClassClassesContent();
       case StudentNavTab.settings:
         return StudentSettingsContent(
           onNotificationsPressed: _onNotificationsPressed,

@@ -13,6 +13,7 @@ const _cardSurface = Color(0xFF0C3343);
 const _accentCyan = Color(0xFF32657D);
 const _chipGreen = Color(0xFF37AA82);
 const _statusRed = Color(0xFFE26B6B);
+const _statusGreen = Color(0xFF7FE26B);
 const _statusYellow = Color(0xFFDAE26B);
 
 // --- MAIN CLASSES CONTENT VIEW ---
@@ -21,6 +22,13 @@ class StudentClassClassesContent extends StatefulWidget {
 
   @override
   State<StudentClassClassesContent> createState() => _StudentClassClassesContentState();
+}
+
+/// A helper class to hold the calculated status and its corresponding color.
+class _DynamicStatus {
+  final String text;
+  final Color color;
+  _DynamicStatus(this.text, this.color);
 }
 
 class _StudentClassClassesContentState extends State<StudentClassClassesContent> {
@@ -47,6 +55,86 @@ class _StudentClassClassesContentState extends State<StudentClassClassesContent>
         return ClassDetailsDialog(classId: classId);
       },
     );
+  }
+
+  _DynamicStatus _getDynamicStatus(StudentClass sClass) {
+    // Attendance for today has been recorded
+    if (sClass.todaysAttendance != null) {
+      return sClass.todaysAttendance == 'true'
+          ? _DynamicStatus('Present', _statusGreen)
+          : _DynamicStatus('Absent', _statusRed);
+    }
+
+    // No attendance yet, determine status based on time
+    final now = DateTime.now();
+    final todayWeekday = now.weekday; // Monday=1, Sunday=7
+
+    // Map for full day names and abbreviations
+    const dayMappings = {
+      'monday': 1, 'm': 1,
+      'tuesday': 2, 't': 2,
+      'wednesday': 3, 'w': 3,
+      'thursday': 4, 'th': 4,
+      'friday': 5, 'f': 5,
+      'saturday': 6, 's': 6,
+      'sunday': 7, 'su': 7,
+    };
+
+    final scheduleDay = sClass.day?.toLowerCase().replaceAll(' ', ''); // "tf" or "tuesday"
+    if (scheduleDay == null || scheduleDay.isEmpty) {
+      return _DynamicStatus('No Schedule', Colors.grey);
+    }
+
+    // Check if any part of the schedule string matches today's weekday
+    bool isToday = false;
+    if (dayMappings.containsKey(scheduleDay)) { // Handles full day names like "tuesday"
+      isToday = dayMappings[scheduleDay] == todayWeekday;
+    } else { // Handles abbreviations like "tf"
+      isToday = scheduleDay.split('').any((char) => dayMappings[char] == todayWeekday);
+    }
+
+    if (!isToday) {
+      return _DynamicStatus('Upcoming', _statusYellow);
+    }
+
+    // It is today, let's check the time
+    if (sClass.time == null || !sClass.time!.contains('-')) {
+      return _DynamicStatus('Invalid Time', Colors.grey); // Cannot parse time range
+    }
+
+    try {
+      final timeRange = sClass.time!.split('-');
+      final startTimeStr = timeRange[0].trim();
+      final endTimeStr = timeRange[1].trim();
+
+      DateTime? parseTime(String timeStr) {
+        final isPM = timeStr.toLowerCase().contains('pm');
+        final timeOnly = timeStr.replaceAll(RegExp(r'(am|pm)', caseSensitive: false), '').trim();
+        final parts = timeOnly.split(':');
+        if (parts.length < 2) return null;
+
+        var hour = int.tryParse(parts[0]);
+        final minute = int.tryParse(parts[1]);
+
+        if (hour == null || minute == null) return null;
+
+        if (isPM && hour < 12) hour += 12;
+        else if (!isPM && hour == 12) hour = 0;
+        
+        return DateTime(now.year, now.month, now.day, hour, minute);
+      }
+
+      final classStartTime = parseTime(startTimeStr);
+      final classEndTime = parseTime(endTimeStr);
+
+      if (classStartTime == null || classEndTime == null) return _DynamicStatus('Invalid Time', Colors.grey);
+      if (now.isBefore(classStartTime)) return _DynamicStatus('Upcoming', _statusYellow);
+      if (now.isAfter(classEndTime)) return _DynamicStatus('Done', Colors.grey.shade600);
+      if (now.difference(classStartTime).inMinutes > 15) return _DynamicStatus('Late', _statusRed);
+      return _DynamicStatus('Ongoing', _chipGreen);
+    } catch (e) {
+      return _DynamicStatus('Upcoming', _statusYellow); // Error parsing time
+    }
   }
 
   @override
@@ -118,12 +206,28 @@ class _StudentClassClassesContentState extends State<StudentClassClassesContent>
                                 ),
                                 SizedBox(width: 12 * scale),
                                 Expanded(
-                                  child: _SummaryCard(
-                                    scale: scale,
-                                    icon: Icons.bar_chart_rounded,
-                                    value: '1', // This can be calculated later
-                                    label: 'Absences This Week', //needs to be connected too
-                                    iconColor: _chipGreen,
+                                  child: FutureBuilder<int>(
+                                    future: _databaseService.getAbsencesThisWeek(),
+                                    builder: (context, snapshot) {
+                                      String value = '...';
+                                      if (snapshot.connectionState == ConnectionState.done) {
+                                        if (snapshot.hasData) {
+                                          value = snapshot.data!.toString();
+                                        } else {
+                                          value = '0'; // Show 0 on error
+                                        }
+                                      }
+                                      return _SummaryCard(
+                                        scale: scale,
+                                        icon: Icons.bar_chart_rounded,
+                                        value: value,
+                                        label: 'Absences This Week',
+                                        // Change icon color based on absences
+                                        iconColor: (snapshot.data ?? 0) > 0
+                                            ? _statusRed
+                                            : _chipGreen,
+                                      );
+                                    },
                                   ),
                                 ),
                               ],
@@ -174,6 +278,7 @@ class _StudentClassClassesContentState extends State<StudentClassClassesContent>
                                     ...classes.map((sClass) {
                                       // Ensure each card has a key
                                       _cardKeys.putIfAbsent(sClass.id, () => GlobalKey<__ClassCardState>());
+                                      final dynamicStatus = _getDynamicStatus(sClass);
                                       return Padding(
                                         padding: EdgeInsets.only(bottom: 12 * scale),
                                         child: GestureDetector(
@@ -181,12 +286,11 @@ class _StudentClassClassesContentState extends State<StudentClassClassesContent>
                                           child: _ClassCard(
                                             key: _cardKeys[sClass.id]!,
                                             scale: scale,
-                                            title: sClass.name ?? 'Unnamed Class',
-                                            students: 0, // This data would need another query
-                                            present: 0, // This data would need another query
+                                            title: sClass.name ?? 'Unnamed Class', 
+                                            students: sClass.studentCount,
                                             time: sClass.schedule ?? 'No schedule',
-                                            status: sClass.status ?? 'Unknown',
-                                            statusColor: _getStatusColor(sClass.status),
+                                            status: dynamicStatus.text,
+                                            statusColor: dynamicStatus.color,
                                             cardColor: _myClassCardSurface,
                                           ),
                                         ),
@@ -207,19 +311,6 @@ class _StudentClassClassesContentState extends State<StudentClassClassesContent>
         );
       },
     );
-  }
-
-  Color _getStatusColor(String? status) {
-    switch (status?.toLowerCase()) {
-      case 'ongoing':
-        return _chipGreen;
-      case 'absent':
-        return _statusRed;
-      case 'upcoming':
-        return _statusYellow;
-      default:
-        return Colors.grey;
-    }
   }
 }
 
@@ -293,7 +384,7 @@ class _ClassDetailsDialogState extends State<ClassDetailsDialog> {
                   const SizedBox(height: 24),
                   _DetailItem(label: 'Subject', value: sClass.subject),
                   const Divider(color: Colors.white24),
-                  _DetailItem(label: 'Schedule', value: sClass.schedule),
+                  _DetailItem(label: 'Schedule', value: '${sClass.day} ${sClass.time}'),
                   const Divider(color: Colors.white24),
                   _DetailItem(label: 'Status', value: sClass.status),
                   const SizedBox(height: 24),
@@ -640,7 +731,6 @@ class _ClassCard extends StatefulWidget {
     required this.scale,
     required this.title,
     required this.students,
-    required this.present,
     required this.time,
     required this.status,
     required this.statusColor,
@@ -651,7 +741,6 @@ class _ClassCard extends StatefulWidget {
   final double scale;
   final String title;
   final int students;
-  final int present;
   final String time;
   final String status;
   final Color statusColor;
@@ -722,17 +811,10 @@ class __ClassCardState extends State<_ClassCard> with SingleTickerProviderStateM
             SizedBox(height: 8 * widget.scale),
             Row(
               children: [
+                Icon(Icons.group, color: Colors.white70, size: 16 * widget.scale),
+                SizedBox(width: 6 * widget.scale),
                 Text(
-                  'Students ${widget.students}',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14 * widget.scale,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(width: 16 * widget.scale),
-                Text(
-                  widget.isUpcoming ? 'Present Upcoming' : 'Present ${widget.present}',
+                  '${widget.students} Students',
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 14 * widget.scale,

@@ -4,7 +4,6 @@ import 'package:t_racks_softdev_1/services/models/profile_model.dart';
 import 'package:t_racks_softdev_1/services/models/attendance_model.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:t_racks_softdev_1/services/models/student_model.dart';
-import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:collection/collection.dart';
 import 'dart:math';
 
@@ -95,17 +94,44 @@ class DatabaseService {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) throw 'User not logged in';
 
-      // This query fetches all classes that the current user is enrolled in.
-      // It uses the 'Enrollments_Table' as the join table.
-      final data = await _supabase
-          .from('Classes_Table')
-          .select('*, Enrollments_Table!inner(*)')
-          .eq('Enrollments_Table.student_id', userId);
+      // 1. Fetch all classes the student is enrolled in.
+      final classData = await _supabase
+          .from('Enrollments_Table')
+          .select('*, class:Classes_Table!inner(*, student_count:Enrollments_Table(count))')
+          .eq('student_id', userId);
 
-      final classes = (data as List)
-          .map((item) => StudentClass.fromJson(item))
-          .toList();
-      return classes;
+      if (classData.isEmpty) return [];
+
+      // 2. Get today's attendance records for this student for all their classes.
+      final today = DateTime.now().toIso8601String().split('T')[0]; // YYYY-MM-DD
+      final classIds = classData.map((c) => c['class']['id']).toList();
+
+      final attendanceData = await _supabase
+          .from('Attendance_Record')
+          .select('class_id, isPresent')
+          .eq('student_id', userId)
+          .eq('date', today)
+          .inFilter('class_id', classIds);
+
+      // 3. Combine the data.
+      final classesWithAttendance = (classData as List).map((enrollmentJson) {
+        // The class data is now nested under the 'class' key.
+        final classJson = enrollmentJson['class'];
+        if (classJson == null) return null; // Skip if class data is missing
+
+        final attendanceRecord = attendanceData.firstWhereOrNull(
+          (att) => att['class_id'] == classJson['id'],
+        );
+        // Add the attendance status to the JSON before parsing.
+        classJson['todays_attendance'] = attendanceRecord?['isPresent']; // will be true, false, or null
+        
+        // The student count is now nested inside the class data.
+        final countList = classJson['student_count'] as List?;
+        classJson['student_count'] = countList?.firstOrNull?['count'] ?? 0;
+        return StudentClass.fromJson(classJson);
+      }).whereType<StudentClass>().toList(); // Filter out any nulls
+
+      return classesWithAttendance;
     } catch (e) {
       print('Error fetching student classes: $e');
       rethrow;
@@ -397,6 +423,38 @@ Future<void> enrollStudent({
     } catch (e) {
       print('Error fetching student attendance: $e');
       return [];
+    }
+  }
+
+  /// Fetches the number of absences for the current student for the current week.
+  Future<int> getAbsencesThisWeek() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw 'User not logged in';
+
+      // Calculate the start and end of the current week (assuming Monday is the first day)
+      final now = DateTime.now();
+      final daysToSubtract = now.weekday - 1; // Monday is 1, so subtract 0. Sunday is 7, so subtract 6.
+      final startOfWeek = now.subtract(Duration(days: daysToSubtract));
+      final endOfWeek = startOfWeek.add(const Duration(days: 6)); // Monday + 6 days = Sunday
+
+      // Format dates to 'YYYY-MM-DD' for the query
+      final startDateString = startOfWeek.toIso8601String().split('T')[0];
+      final endDateString = endOfWeek.toIso8601String().split('T')[0];
+
+      // Query for absences within the date range
+      final count = await _supabase
+          .from('Attendance_Record')
+          .count(CountOption.exact)
+          .eq('student_id', userId)
+          .eq('isPresent', false)
+          .gte('date', startDateString)
+          .lte('date', endDateString);
+
+      return count;
+    } catch (e) {
+      print('Error fetching absences this week: $e');
+      return 0; // Return 0 on error to prevent UI from breaking
     }
   }
 }
