@@ -1,5 +1,4 @@
 import 'package:intl/intl.dart';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:t_racks_softdev_1/services/models/educator_model.dart';
@@ -634,43 +633,4 @@ bool _isClassDoneForToday(String scheduleDay, String timeRangeStr, DateTime now)
   final classEndTime = _parseTimeHelper(timeParts[1].trim(), now);
 
   return classEndTime != null && now.isAfter(classEndTime);
-}
-
-class AiServices {
-  /// Saves the user's face image to storage and the vector to the database.
-  ///
-  /// [imageFile]: The captured image file from the camera.
-  /// [faceVector]: The List<double> representing the face embedding.
-  Future<void> saveFaceData({
-    required File imageFile,
-    required List<double> faceVector,
-  }) async {
-    try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) throw 'User not logged in';
-
-      // 1. Upload the face image to Supabase Storage.
-      // You must create a bucket named 'face_images' in your Supabase dashboard
-      // with public access turned OFF for security.
-      final imagePath = '$userId/face.jpg';
-      await _supabase.storage.from('face_images').upload(
-            imagePath,
-            imageFile,
-            fileOptions: const FileOptions(
-              cacheControl: '3600', // Optional: cache for 1 hour
-              upsert: true, // Overwrite if the user re-registers their face
-            ),
-          );
-
-      // 2. Save the face vector to the 'Face_Table'.
-      // Using upsert is a good practice here to handle cases where the user
-      // might re-register their face. It will update the existing record.
-      await _supabase
-          .from('Face_Table')
-          .upsert({'student_id': userId, 'face_id': faceVector});
-    } catch (e) {
-      print('Error saving face data: $e');
-      rethrow;
-    }
-  }
 }
