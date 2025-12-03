@@ -147,11 +147,10 @@ class AiServices {
 
       // 2. Save the face vector to the 'Face_Table'.
       // Using upsert is a good practice here to handle cases where the user
-      // might re-register their face. We must encode the List to a JSON string
-      // for a text-based column.
+      // might re-register their face. For pgvector, we convert the List to a string.
       await _supabase
           .from('Face_Table')
-          .upsert({'student_id': userId, 'face_id': jsonEncode(faceVector)});
+          .upsert({'student_id': userId, 'face_id': faceVector.toString()});
     } catch (e) {
       print('Error saving face data: $e');
       rethrow;
