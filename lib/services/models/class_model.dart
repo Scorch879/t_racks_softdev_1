@@ -1,3 +1,4 @@
+// 1. The main model for Students viewing their classes
 class StudentClass {
   final String id;
   final String? name;
@@ -22,14 +23,12 @@ class StudentClass {
     final time = json['time'] as String?;
     String? scheduleString;
 
-    // Combine day and time into a single schedule string for display.
     if (day != null && time != null) {
       scheduleString = '$day $time';
     }
 
     return StudentClass(
       id: json['id'] as String,
-      // Use the column names from your database schema
       name: json['class_name'] as String?,
       subject: json['subject'] as String?,
       day: day,
@@ -38,4 +37,40 @@ class StudentClass {
       status: json['status'] as String?,
     );
   }
+}
+
+// 2. The summary model for Educators viewing their list of classes
+class EducatorClassSummary {
+  final String id;
+  final String className;
+  final String subject;
+  final String schedule;
+  final String status;
+  final int studentCount;
+  final String rawDay;
+  final String rawTime;
+
+  EducatorClassSummary({
+    required this.id,
+    required this.className,
+    required this.subject,
+    required this.schedule,
+    required this.status,
+    required this.studentCount,
+    required this.rawDay,
+    required this.rawTime,
+  });
+}
+
+// 3. The model for a student inside a specific class (for Attendance)
+class StudentAttendanceItem {
+  final String id;
+  final String name;
+  final String status; // 'Present', 'Absent', or 'Mark Attendance'
+
+  StudentAttendanceItem({
+    required this.id,
+    required this.name,
+    required this.status,
+  });
 }

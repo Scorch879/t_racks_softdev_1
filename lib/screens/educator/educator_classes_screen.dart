@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_classroom_screen.dart';
 import 'package:t_racks_softdev_1/screens/educator/create_class_modal.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
+import 'package:t_racks_softdev_1/services/models/class_model.dart';
 
 class EducatorClassesScreen extends StatefulWidget {
   const EducatorClassesScreen({super.key});
@@ -85,59 +86,74 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<EducatorClassSummary>>(
-      future: _classesFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(color: Colors.white),
-          );
-        }
+    // 1. Wrap everything in LayoutBuilder to get the screen height
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return FutureBuilder<List<EducatorClassSummary>>(
+          future: _classesFuture,
+          builder: (context, snapshot) {
+            
+            // 2. FIX: Force the loading state to fill the screen height
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return SizedBox(
+                height: constraints.maxHeight,
+                child: const Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                ),
+              );
+            }
 
-        final classes = snapshot.data ?? [];
+            final classes = snapshot.data ?? [];
 
-        final nowTime = TimeOfDay.now();
-        final nowDouble = _timeToDouble(nowTime);
+            final nowTime = TimeOfDay.now();
+            final nowDouble = _timeToDouble(nowTime);
 
-        var todaysClasses = classes
-            .where((c) => _isClassToday(c.rawDay))
-            .toList();
-        todaysClasses.sort((a, b) {
-          String startA = a.rawTime.split("-")[0];
-          String startB = b.rawTime.split("-")[0];
-          return _timeToDouble(
-            _parseTime(startA),
-          ).compareTo(_timeToDouble(_parseTime(startB)));
-        });
+            var todaysClasses = classes
+                .where((c) => _isClassToday(c.rawDay))
+                .toList();
+            todaysClasses.sort((a, b) {
+              String startA = a.rawTime.split("-")[0];
+              String startB = b.rawTime.split("-")[0];
+              return _timeToDouble(
+                _parseTime(startA),
+              ).compareTo(_timeToDouble(_parseTime(startB)));
+            });
 
-        List<EducatorClassSummary> ongoingClasses = [];
-        List<EducatorClassSummary> upcomingClasses = [];
+            List<EducatorClassSummary> ongoingClasses = [];
+            List<EducatorClassSummary> upcomingClasses = [];
 
-        for (var c in todaysClasses) {
-          final parts = c.rawTime.split("-");
-          if (parts.length < 2) continue;
+            for (var c in todaysClasses) {
+              final parts = c.rawTime.split("-");
+              if (parts.length < 2) continue;
 
-          final startDouble = _timeToDouble(_parseTime(parts[0]));
-          final endDouble = _timeToDouble(_parseTime(parts[1]));
+              final startDouble = _timeToDouble(_parseTime(parts[0]));
+              final endDouble = _timeToDouble(_parseTime(parts[1]));
 
-          if (nowDouble >= startDouble && nowDouble < endDouble) {
-            ongoingClasses.add(c);
-          } else if (startDouble > nowDouble) {
-            upcomingClasses.add(c);
-          }
-        }
+              if (nowDouble >= startDouble && nowDouble < endDouble) {
+                ongoingClasses.add(c);
+              } else if (startDouble > nowDouble) {
+                upcomingClasses.add(c);
+              }
+            }
 
-        return SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Column(
-            children: [
-              const SizedBox(height: 16),
-              _buildDynamicTopSection(ongoingClasses, upcomingClasses),
-              const SizedBox(height: 24),
-              _buildMyClassesSection(classes),
-              const SizedBox(height: 100),
-            ],
-          ),
+            // 3. FIX: Ensure the scroll view takes at least the full height
+            // This prevents clipping when you have few (or zero) classes.
+            return SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 16),
+                    _buildDynamicTopSection(ongoingClasses, upcomingClasses),
+                    const SizedBox(height: 24),
+                    _buildMyClassesSection(classes),
+                    const SizedBox(height: 100),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );
@@ -216,7 +232,6 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
         : const Color(0xFFBDBBBB).withValues(alpha: 1);
 
     return Container(
-      // Height is removed so it grows to fit the button
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
@@ -296,7 +311,6 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
             ],
           ),
 
-          // --- THE BUTTON YOU REQUESTED ---
           if (isOngoing) ...[
             const SizedBox(height: 20),
             SizedBox(
@@ -304,7 +318,6 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
               height: 48,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  // TODO: LINK YOUR CAMERA LOGIC HERE
                   print("Take Attendance Pressed");
                 },
                 style: ElevatedButton.styleFrom(

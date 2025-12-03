@@ -1,8 +1,10 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:t_racks_softdev_1/services/models/educator_model.dart';
 import 'package:t_racks_softdev_1/services/models/profile_model.dart';
+import 'package:t_racks_softdev_1/services/models/attendance_model.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:t_racks_softdev_1/services/models/student_model.dart';
+import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:collection/collection.dart';
 import 'dart:math';
 import 'dart:io';
@@ -287,6 +289,7 @@ class DatabaseService {
     }
   }
 
+  ///Classes related functions especially class code
   String _generateClassCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     final random = Random();
@@ -324,6 +327,79 @@ class DatabaseService {
       rethrow;
     }
   }
+
+  Future<List<Map<String, String>>> getAvailableStudents(String classId) async {
+  try {
+    // 1. Get IDs of students ALREADY in the class
+    final enrolledRes = await _supabase
+        .from('Enrollments_Table')
+        .select('student_id')
+        .eq('class_id', classId);
+    
+    final enrolledIds = (enrolledRes as List).map((e) => e['student_id']).toList();
+
+    // 2. Fetch profiles using an INNER JOIN on Student_Table
+    // The '!inner' keyword ensures we ONLY get users who exist in Student_Table
+    var query = _supabase
+        .from('profiles')
+        .select('id, firstName, lastName, Student_Table!inner(id)'); // <--- CHANGED THIS LINE
+
+    if (enrolledIds.isNotEmpty) {
+      query = query.not('id', 'in', enrolledIds);
+    }
+
+    final res = await query;
+
+    return (res as List).map((profile) {
+      return {
+        'id': profile['id'].toString(), 
+        'name': "${profile['firstName']} ${profile['lastName']}",
+        'subtitle': 'Student', 
+      };
+    }).toList();
+  } catch (e) {
+    print('Error fetching available students: $e');
+    return [];
+  }
+}
+
+Future<void> enrollStudent({
+  required String classId,
+  required String studentId,
+}) async {
+  try {
+    await _supabase.from('Enrollments_Table').insert({
+      'class_id': classId,
+      'student_id': studentId,
+      'enrollment_date': DateTime.now().toIso8601String(),
+    });
+  } catch (e) {
+    print('Error enrolling student: $e');
+    rethrow;
+  }
+}
+
+  Future<List<AttendanceRecord>> getStudentAttendanceForClass(
+      String classId) async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw 'User not logged in';
+
+      final data = await _supabase
+          .from('Attendance_Record')
+          .select('id, student_id, class_id, date, isPresent, time')
+          .eq('class_id', classId)
+          .eq('student_id', userId)
+          .order('date', ascending: false); // Show most recent first
+
+      return (data as List)
+          .map((item) => AttendanceRecord.fromJson(item))
+          .toList();
+    } catch (e) {
+      print('Error fetching student attendance: $e');
+      return [];
+    }
+  }
 }
 
 class AccountServices {
@@ -358,37 +434,18 @@ class ClassesServices {
   }
 }
 
-//helper models
-class EducatorClassSummary {
-  final String id;
-  final String className;
-  final String subject;
-  final String schedule;
-  final String status;
-  final int studentCount;
-  final String rawDay;
-  final String rawTime;
+class AiServices {
+  Future<void> saveFace() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
 
-  EducatorClassSummary({
-    required this.id,
-    required this.className,
-    required this.subject,
-    required this.schedule,
-    required this.status,
-    required this.studentCount,
-    required this.rawDay,
-    required this.rawTime,
-  });
-}
+      if (userId == null) {
+        throw 'User is not logged in';
+      }
 
-class StudentAttendanceItem {
-  final String id;
-  final String name;
-  final String status; // 'Present', 'Absent', or 'Mark Attendance'
-
-  StudentAttendanceItem({
-    required this.id,
-    required this.name,
-    required this.status,
-  });
+      // AI content generation logic goes here
+    } catch (e) {
+      throw 'Error generating content: $e';
+    }
+  }
 }

@@ -1,6 +1,7 @@
 import 'package:camera/camera.dart'; // Import Camera
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/student/student_camera_screen.dart';
+import 'package:t_racks_softdev_1/screens/student/student_class_content.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:t_racks_softdev_1/services/models/student_model.dart';
@@ -45,14 +46,19 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
   }
   // --- FIX END ---
 
-  void onFilterAllClasses() {}
-
-  void onClassPressed() {}
-
   @override
   void initState() {
     super.initState();
     _dataFuture = _fetchData();
+  }
+
+  void _showClassDetails(String classId) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return ClassDetailsDialog(classId: classId);
+      },
+    );
   }
 
   Future<Map<String, dynamic>> _fetchData() async {
@@ -140,8 +146,7 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
                               classes: classes,
                               scale: scale,
                               radius: cardRadius,
-                              onFilterAllClasses: onFilterAllClasses,
-                              onClassPressed: onClassPressed,
+                              onClassPressed: _showClassDetails,
                             ),
                           ],
                         ),
@@ -343,14 +348,12 @@ class _MyClassesCard extends StatefulWidget {
     required this.classes,
     required this.scale,
     required this.radius,
-    required this.onFilterAllClasses,
     required this.onClassPressed,
   });
   final double scale;
   final List<StudentClass> classes;
   final double radius;
-  final VoidCallback onFilterAllClasses;
-  final VoidCallback onClassPressed;
+  final ValueChanged<String> onClassPressed;
 
   @override
   State<_MyClassesCard> createState() => _MyClassesCardState();
@@ -402,7 +405,7 @@ class _MyClassesCardState extends State<_MyClassesCard> {
 
             _FilterChipRow(
               scale: scale,
-              onTap: widget.onFilterAllClasses,
+              onTap: () {}, // Can be implemented later
               title: 'All Classes',
               trailingText: 'Total: ${widget.classes.length}',
               backgroundColor: _chipGreen,
@@ -426,7 +429,7 @@ class _MyClassesCardState extends State<_MyClassesCard> {
                     // Status logic can be implemented later
                     statusText: sClass.status ?? 'Unknown',
                     statusColor: _getStatusColor(sClass.status),
-                    onTap: widget.onClassPressed,
+                    onTap: () => widget.onClassPressed(sClass.id),
                   ),
                 );
               }).toList(),
@@ -518,7 +521,7 @@ class _ClassRow extends StatefulWidget {
   final String title;
   final String statusText;
   final Color statusColor;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   State<_ClassRow> createState() => __ClassRowState();
@@ -553,7 +556,7 @@ class __ClassRowState extends State<_ClassRow>
     await _controller.forward();
     // After a short delay, call the original onTap to show the dialog
     await Future.delayed(const Duration(milliseconds: 50));
-    widget.onTap();
+    widget.onTap?.call();
     // Reverse the animation to return to the original state
     await _controller.reverse();
   }
