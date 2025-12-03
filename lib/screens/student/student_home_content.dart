@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/student/student_camera_screen.dart';
 import 'package:t_racks_softdev_1/screens/student/student_class_content.dart';
@@ -44,6 +45,7 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
   }
   final _databaseService = DatabaseService();
   late Future<Map<String, dynamic>> _dataFuture;
+  Timer? _timer;
 
   //void onOngoingClassStatusPressed() {} commented this out cuz awas giving errors
 
@@ -51,6 +53,19 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
   void initState() {
     super.initState();
     _dataFuture = _fetchData();
+    // Set up a timer to rebuild the widget every minute to update time-sensitive UI
+    _timer = Timer.periodic(const Duration(minutes: 1), (Timer t) {
+      // Calling setState will trigger a rebuild, which re-evaluates _getDynamicStatus
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel(); // Cancel the timer when the widget is disposed
+    super.dispose();
   }
 
   void _showClassDetails(String classId) {
@@ -113,10 +128,15 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
 
     // Check if any part of the schedule string matches today's weekday
     bool isToday = false;
-    if (dayMappings.containsKey(scheduleDay)) { // Handles full day names like "tuesday"
+    // Handles full day names like "tuesday" or single-letter days like "t"
+    if (dayMappings.containsKey(scheduleDay)) { 
       isToday = dayMappings[scheduleDay] == todayWeekday;
-    } else { // Handles abbreviations like "tf"
-      isToday = scheduleDay.split('').any((char) => dayMappings[char] == todayWeekday);
+    } else { 
+      // Handles multi-day abbreviations like "tf". We need to be careful with 't' and 's'.
+      // This logic assumes 'th' for Thursday and 'su' for Sunday if present.
+      if (scheduleDay.contains('th') && todayWeekday == 4) isToday = true;
+      else if (scheduleDay.contains('su') && todayWeekday == 7) isToday = true;
+      else isToday = scheduleDay.split('').any((char) => dayMappings[char] == todayWeekday && char != 'h' && char != 'u');
     }
 
     if (!isToday) {
@@ -239,7 +259,7 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
 
 DateTime? _parseTime(String timeStr, DateTime now) {
   final isPM = timeStr.toLowerCase().contains('pm');
-  final timeOnly = timeStr.replaceAll(RegExp(r'(am|pm)', caseSensitive: false), '').trim();
+  final timeOnly = timeStr.replaceAll(RegExp(r'\s*(am|pm)', caseSensitive: false), '').trim();
   final parts = timeOnly.split(':');
   if (parts.length < 2) return null;
 
@@ -248,7 +268,7 @@ DateTime? _parseTime(String timeStr, DateTime now) {
 
   if (hour == null || minute == null) return null;
 
-  if (isPM && hour < 12) {
+  if (isPM && hour != 12) { // Convert 1 PM to 11 PM to 24-hour format
     hour += 12;
   } else if (!isPM && hour == 12) { // Handle 12 AM (midnight)
     hour = 0;
