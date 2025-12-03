@@ -1,10 +1,11 @@
+import 'package:intl/intl.dart';
+import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:t_racks_softdev_1/services/models/educator_model.dart';
 import 'package:t_racks_softdev_1/services/models/profile_model.dart';
 import 'package:t_racks_softdev_1/services/models/attendance_model.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:t_racks_softdev_1/services/models/student_model.dart';
-import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:collection/collection.dart';
 import 'dart:math';
 import 'dart:io';
@@ -96,17 +97,23 @@ class DatabaseService {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) throw 'User not logged in';
 
-      // This query fetches all classes that the current user is enrolled in.
-      // It uses the 'Enrollments_Table' as the join table.
-      final data = await _supabase
-          .from('Classes_Table')
-          .select('*, Enrollments_Table!inner(*)')
-          .eq('Enrollments_Table.student_id', userId);
+      // Call the RPC function to get all class data, student counts,
+      // and today's attendance in a single, efficient database call.
+      final response = await _supabase.rpc(
+        'get_student_classes_with_details',
+        params: {'p_student_id': userId},
+      );
 
-      final classes = (data as List)
-          .map((item) => StudentClass.fromJson(item))
+      if (response == null || response.isEmpty) {
+        return [];
+      }
+
+      // The RPC returns a list of flat JSON objects, ready for parsing.
+      final classesWithAttendance = (response as List)
+          .map((classJson) => StudentClass.fromJson(classJson))
           .toList();
-      return classes;
+
+      return classesWithAttendance;
     } catch (e) {
       print('Error fetching student classes: $e');
       rethrow;
@@ -400,6 +407,105 @@ Future<void> enrollStudent({
       return [];
     }
   }
+
+  /// Fetches the number of absences for the current student for the current week.
+  Future<int> getAbsencesThisWeek() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw 'User not logged in';
+
+      // Calculate the start and end of the current week (assuming Monday is the first day)
+      final now = DateTime.now();
+      final daysToSubtract = now.weekday - 1; // Monday is 1, so subtract 0. Sunday is 7, so subtract 6.
+      final startOfWeek = now.subtract(Duration(days: daysToSubtract));
+      final endOfWeek = startOfWeek.add(const Duration(days: 6)); // Monday + 6 days = Sunday
+
+      // Format dates to 'YYYY-MM-DD' for the query
+      final startDateString = startOfWeek.toIso8601String().split('T')[0];
+      final endDateString = endOfWeek.toIso8601String().split('T')[0];
+
+      // Query for absences within the date range
+      final count = await _supabase
+          .from('Attendance_Record')
+          .count(CountOption.exact)
+          .eq('student_id', userId)
+          .eq('isPresent', false)
+          .gte('date', startDateString)
+          .lte('date', endDateString);
+
+      return count;
+    } catch (e) {
+      print('Error fetching absences this week: $e');
+      return 0; // Return 0 on error to prevent UI from breaking
+    }
+  }
+
+  /// Checks for classes that have ended today where attendance was not marked,
+  /// and marks the student as absent.
+  Future<void> markMissedClassesAsAbsent() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return;
+
+      final now = DateTime.now();
+      final today = now.toIso8601String().split('T')[0];
+
+      // 1. Get all of today's attendance records for the user.
+      final attendanceData = await _supabase
+          .from('Attendance_Record')
+          .select('class_id')
+          .eq('student_id', userId)
+          .eq('date', today);
+
+      final attendedClassIds =
+          (attendanceData as List).map((e) => e['class_id']).toList();
+
+      // 2. Get all classes the user is enrolled in.
+      final enrolledClassesData = await _supabase
+          .from('Enrollments_Table')
+          .select('class:Classes_Table!inner(id, day, time)')
+          .eq('student_id', userId);
+
+      final classesToInsert = <Map<String, dynamic>>[];
+
+      for (final enrollment in enrolledClassesData) {
+        final sClass = enrollment['class'];
+        if (sClass == null) continue;
+
+        final classId = sClass['id'];
+        final scheduleDay = sClass['day']?.toString().toLowerCase();
+        final timeRangeStr = sClass['time']?.toString();
+
+        // Skip if already attended or if schedule is invalid
+        if (attendedClassIds.contains(classId) ||
+            scheduleDay == null ||
+            timeRangeStr == null) {
+          continue;
+        }
+
+        // Check if the class was scheduled for today and has ended
+        if (_isClassDoneForToday(scheduleDay, timeRangeStr, now)) {
+          classesToInsert.add({
+            'student_id': userId,
+            'class_id': classId,
+            'date': today,
+            'isPresent': false,
+            'time': DateFormat.Hms().format(now), // Record time of auto-marking
+          });
+        }
+      }
+
+      // 3. Batch insert all absence records.
+      if (classesToInsert.isNotEmpty) {
+        print('Auto-marking ${classesToInsert.length} classes as absent.');
+        await _supabase.from('Attendance_Record').insert(classesToInsert);
+      }
+    } catch (e) {
+      // We don't rethrow here to avoid crashing the UI.
+      // The main data fetch will proceed, and this can try again next time.
+      print('Error during auto-marking absences: $e');
+    }
+  }
 }
 
 class AccountServices {
@@ -416,6 +522,118 @@ class AccountServices {
       throw 'Error deleting profile: $e';
     }
   }
+}
+
+/// A helper class to hold the calculated status and its corresponding color.
+class DynamicStatus {
+  final String text;
+  final Color color;
+  DynamicStatus(this.text, this.color);
+}
+
+/// This function is now the single source of truth for determining class status.
+DynamicStatus getDynamicStatus(StudentClass sClass, Color green, Color red, Color yellow, Color grey) {
+  // Attendance for today has been recorded
+  if (sClass.todaysAttendance != null) {
+    return sClass.todaysAttendance == true || sClass.todaysAttendance == 'true'
+        ? DynamicStatus('Present', green)
+        : DynamicStatus('Absent', red);
+  }
+
+  // No attendance yet, determine status based on time
+  final now = DateTime.now();
+  final todayWeekday = now.weekday; // Monday=1, Sunday=7
+
+  final scheduleDay = sClass.day?.toLowerCase().replaceAll(' ', '');
+  if (scheduleDay == null || scheduleDay.isEmpty) {
+    return DynamicStatus('No Schedule', grey);
+  }
+
+  // Use the robust day checking logic
+  bool isToday = _isClassScheduledForToday(scheduleDay, todayWeekday);
+
+  if (!isToday) {
+    return DynamicStatus('Upcoming', yellow);
+  }
+
+  // It is today, let's check the time
+  if (sClass.time == null || !sClass.time!.contains('-')) {
+    return DynamicStatus('Invalid Time', grey);
+  }
+
+  try {
+    final timeRange = sClass.time!.split('-');
+    final classStartTime = _parseTimeHelper(timeRange[0].trim(), now);
+    final classEndTime = _parseTimeHelper(timeRange[1].trim(), now);
+
+    if (classStartTime == null || classEndTime == null) return DynamicStatus('Invalid Time', grey);
+    if (now.isBefore(classStartTime)) return DynamicStatus('Upcoming', yellow);
+    if (now.isAfter(classEndTime)) return DynamicStatus('Done', grey);
+    if (now.difference(classStartTime).inMinutes > 15) return DynamicStatus('Late', red);
+    return DynamicStatus('Ongoing', green);
+  } catch (e) {
+    return DynamicStatus('Upcoming', yellow);
+  }
+}
+
+// Helper function to parse time strings (e.g., "10:00 AM") into DateTime objects.
+DateTime? _parseTimeHelper(String timeStr, DateTime now) {
+  try {
+    final isPM = timeStr.toLowerCase().contains('pm');
+    final timeOnly =
+        timeStr.replaceAll(RegExp(r'(am|pm)', caseSensitive: false), '').trim();
+    final parts = timeOnly.split(':');
+    if (parts.length < 2) return null;
+
+    var hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+
+    if (hour == null || minute == null) return null;
+
+    if (isPM && hour < 12) {
+      hour += 12;
+    } else if (!isPM && hour == 12) {
+      // Handle 12 AM (midnight)
+      hour = 0;
+    }
+
+    return DateTime(now.year, now.month, now.day, hour, minute);
+  } catch (e) {
+    return null;
+  }
+}
+
+/// Helper function to robustly check if a class is scheduled for a given weekday.
+bool _isClassScheduledForToday(String scheduleDay, int todayWeekday) {
+  const dayMappings = {'m': 1, 't': 2, 'w': 3, 'th': 4, 'f': 5, 's': 6, 'su': 7};
+  const fullDayMappings = {'monday': 1, 'tuesday': 2, 'wednesday': 3, 'thursday': 4, 'friday': 5, 'saturday': 6, 'sunday': 7};
+
+  if (fullDayMappings.containsKey(scheduleDay)) {
+    return fullDayMappings[scheduleDay] == todayWeekday;
+  }
+
+  // Handle abbreviations like "th" and "su" first to avoid ambiguity
+  if (scheduleDay.contains('th') && todayWeekday == 4) return true;
+  if (scheduleDay.contains('su') && todayWeekday == 7) return true;
+
+  // Handle single-letter abbreviations, ignoring 'h' and 'u' from 'th'/'su'
+  return scheduleDay.split('').any((char) => dayMappings[char] == todayWeekday && char != 'h' && char != 'u');
+}
+
+/// Helper function to determine if a class has finished for today.
+bool _isClassDoneForToday(String scheduleDay, String timeRangeStr, DateTime now) {
+  final todayWeekday = now.weekday;
+
+  // Check if the class is scheduled for today
+  bool isToday = _isClassScheduledForToday(scheduleDay, todayWeekday);
+  if (!isToday) return false;
+
+  // Check if the class time has passed
+  final timeParts = timeRangeStr.split('-');
+  if (timeParts.length < 2) return false;
+  final classEndTime = _parseTimeHelper(timeParts[1].trim(), now);
+
+  return classEndTime != null && now.isAfter(classEndTime);
 }
 
 class ClassesServices {
