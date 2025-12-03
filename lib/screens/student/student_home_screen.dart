@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/student/student_settings_screen.dart';
 import 'package:t_racks_softdev_1/screens/student/student_class_screen.dart';
 import 'package:t_racks_softdev_1/screens/student/student_camera_screen.dart';
+import 'package:camera/camera.dart';
 
 const _bgTeal = Color(0xFF167C94);
 const _cardSurface = Color(0xFF173C45);
@@ -22,11 +23,17 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   DateTime? _lastNavTime;
   static const _navDebounceMs = 300;
 
-  void onOngoingClassStatusPressed() {
+  void onOngoingClassStatusPressed() async {
+    // Fetch the list of available cameras
+    final cameras = await availableCameras();
+
+    if (!mounted) return;
+
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const StudentCameraScreen(),
+        // Pass the cameras list to the screen
+        builder: (context) => StudentCameraScreen(cameras: cameras),
       ),
     );
   }
@@ -39,16 +46,16 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
   void onNavHome() {
     if (_isNavigating()) return;
-    
+
     try {
       final navigator = Navigator.of(context);
       final currentRoute = ModalRoute.of(context);
       final routeName = currentRoute?.settings.name;
-      
+
       if (routeName == '/home' || (routeName == null && !navigator.canPop())) {
         return;
       }
-      
+
       if (navigator.canPop()) {
         navigator.popUntil((route) {
           return route.isFirst || route.settings.name == '/home';
@@ -56,7 +63,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       }
     } catch (e) {}
   }
-  
+
   void onNavSchedule() {
     if (_isNavigating()) return;
 
@@ -65,7 +72,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       // ignore: avoid_print
       print('onNavSchedule called');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Navigating to Classes...'), duration: Duration(milliseconds: 600)),
+        const SnackBar(
+          content: Text('Navigating to Classes...'),
+          duration: Duration(milliseconds: 600),
+        ),
       );
       final navigator = Navigator.of(context);
       final currentRoute = ModalRoute.of(context);
@@ -81,19 +91,19 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       );
     } catch (e) {}
   }
-  
+
   void onNavSettings() {
     if (_isNavigating()) return;
-    
+
     try {
       final navigator = Navigator.of(context);
       final currentRoute = ModalRoute.of(context);
       final routeName = currentRoute?.settings.name;
-      
+
       if (routeName == '/settings') {
         return;
       }
-      
+
       navigator.push(
         MaterialPageRoute(
           builder: (context) {
@@ -104,7 +114,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       );
     } catch (e) {}
   }
-  
+
   bool _isNavigating() {
     final now = DateTime.now();
     if (_lastNavTime != null) {
@@ -153,7 +163,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           backgroundColor: _bgTeal,
           appBar: PreferredSize(
             preferredSize: Size.fromHeight(64 * scale),
-            child: _TopBar(scale: scale, onNotificationsPressed: onNotificationsPressed),
+            child: _TopBar(
+              scale: scale,
+              onNotificationsPressed: onNotificationsPressed,
+            ),
           ),
           body: Stack(
             children: [
@@ -182,7 +195,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                         _WelcomeAndOngoingCard(
                           scale: scale,
                           radius: cardRadius,
-                          onOngoingClassStatusPressed: onOngoingClassStatusPressed,
+                          onOngoingClassStatusPressed:
+                              onOngoingClassStatusPressed,
                         ),
                         SizedBox(height: 16 * scale),
                         _MyClassesCard(
@@ -253,16 +267,16 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                 SizedBox(height: 4 * scale),
                 Text(
                   "Today's Status",
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12 * scale,
-                  ),
+                  style: TextStyle(color: Colors.white70, fontSize: 12 * scale),
                 ),
                 SizedBox(height: 12 * scale),
                 Row(
                   children: [
-                    Icon(Icons.person_off_outlined,
-                        color: _titleRed, size: 28 * scale),
+                    Icon(
+                      Icons.person_off_outlined,
+                      color: _titleRed,
+                      size: 28 * scale,
+                    ),
                     SizedBox(width: 8 * scale),
                     Text(
                       'Absent',
@@ -291,7 +305,10 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
           ),
           Container(
             width: double.infinity,
-            padding: EdgeInsets.symmetric(horizontal: 16 * scale, vertical: 10 * scale),
+            padding: EdgeInsets.symmetric(
+              horizontal: 16 * scale,
+              vertical: 10 * scale,
+            ),
             decoration: const BoxDecoration(color: _cardHeader),
             child: Text(
               'Ongoing Class',
@@ -420,7 +437,11 @@ class _MyClassesCardState extends State<_MyClassesCard> {
                 ),
                 GestureDetector(
                   onTap: widget.onFilterAllClasses,
-                  child: Icon(Icons.filter_list_rounded, color: Colors.white, size: 24 * scale),
+                  child: Icon(
+                    Icons.filter_list_rounded,
+                    color: Colors.white,
+                    size: 24 * scale,
+                  ),
                 ),
               ],
             ),
@@ -637,7 +658,10 @@ class _ClassRowState extends State<_ClassRow> {
     return GestureDetector(
       onTap: widget.onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 16 * scale, vertical: 16 * scale),
+        padding: EdgeInsets.symmetric(
+          horizontal: 16 * scale,
+          vertical: 16 * scale,
+        ),
         decoration: BoxDecoration(
           color: widget.statusColor,
           borderRadius: BorderRadius.circular(22 * scale),
@@ -717,10 +741,7 @@ class _CardContainerState extends State<_CardContainer> {
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
-        children: [
-          if (background != null) background,
-          widget.child,
-        ],
+        children: [if (background != null) background, widget.child],
       ),
     );
   }
@@ -924,7 +945,9 @@ class _NotificationDialogState extends State<_NotificationDialog> {
   @override
   Widget build(BuildContext context) {
     final double maxHeight = widget.isFull ? 520 : 360;
-    final String toggleLabel = widget.isFull ? 'See Less' : 'View All Notifications';
+    final String toggleLabel = widget.isFull
+        ? 'See Less'
+        : 'View All Notifications';
 
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
@@ -1039,11 +1062,7 @@ class _NotificationTileState extends State<_NotificationTile> {
               color: indicator.backgroundColor,
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              indicator.icon,
-              color: indicator.iconColor,
-              size: 18,
-            ),
+            child: Icon(indicator.icon, color: indicator.iconColor, size: 18),
           ),
           const SizedBox(width: 14),
           Expanded(

@@ -1,9 +1,11 @@
+import 'dart:io'; // Import for File
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_shell.dart';
 import 'package:t_racks_softdev_1/screens/onBoarding_screen/boarding_screens.dart';
+import 'package:t_racks_softdev_1/screens/onBoarding_screen/face_registration_page.dart';
 import 'package:t_racks_softdev_1/screens/student/student_shell_screen.dart';
 import 'package:t_racks_softdev_1/services/onboarding_service.dart';
 
@@ -16,18 +18,16 @@ class OnBoardingScreen extends StatefulWidget {
 }
 
 class _OnBoardingScreenState extends State<OnBoardingScreen> {
+  final OnboardingService _onboardingService = OnboardingService();
 
-final OnboardingService _onboardingService = OnboardingService();
-
-//Loading State
-bool _isLoading = false;
-
+  //Loading State
+  bool _isLoading = false;
 
   final _pageController = PageController();
   final _lastNameController = TextEditingController();
   final _firstNameController = TextEditingController();
   final _middleNameController = TextEditingController();
-  final _birthDateController = TextEditingController(); 
+  final _birthDateController = TextEditingController();
   final _ageController = TextEditingController();
   final _institutionController = TextEditingController();
   final _programController = TextEditingController();
@@ -37,6 +37,10 @@ bool _isLoading = false;
   List<Widget> _pagesToShow = [];
   String? _educationalLevel = 'primary';
   String? _gradeYearLevel;
+
+  // New Variables for Face Data
+  File? _capturedFaceImage;
+  List<double>? _capturedFaceVector;
 
   void _onEducationalLevelChanged(String? value) {
     setState(() {
@@ -79,6 +83,16 @@ bool _isLoading = false;
     });
   }
 
+  // --- Callback from FaceRegistrationPage ---
+  void _handleFaceCaptured(File image, List<double> vector) {
+    setState(() {
+      _capturedFaceImage = image;
+      _capturedFaceVector = vector;
+    });
+    // Optional: Automatically move to next step or just enable the "Save and Finish" button
+    print("Face Captured. Vector length: ${vector.length}");
+  }
+
   //validations
   bool _validateStudentPage1() {
     if (_lastNameController.text.isEmpty ||
@@ -86,10 +100,9 @@ bool _isLoading = false;
         _birthDateController.text.isEmpty ||
         _gender == null) {
       showCustomSnackBar(context, "Please fill in all fields.");
-      return false; // Validation failed
+      return false;
     }
-    
-    return true; // Validation passed
+    return true;
   }
 
   bool _validateStudentPage2() {
@@ -100,7 +113,6 @@ bool _isLoading = false;
       );
       return false;
     }
-    // Program is only required if they are tertiary
     if (_educationalLevel == 'tertiary' && _programController.text.isEmpty) {
       showCustomSnackBar(context, "Please enter your program.");
       return false;
@@ -146,6 +158,16 @@ bool _isLoading = false;
         isCurrentPageValid = _validateStudentPage1();
       } else if (currentPage == 1) {
         isCurrentPageValid = _validateStudentPage2();
+      } else if (currentPage == 2) {
+        // Validation for Face Registration Page
+        if (_capturedFaceImage == null || _capturedFaceVector == null) {
+          showCustomSnackBar(
+            context,
+            "Please capture your face before finishing.",
+          );
+          return;
+        }
+        isCurrentPageValid = true;
       }
     } else {
       if (currentPage == 0) {
@@ -154,6 +176,7 @@ bool _isLoading = false;
         isCurrentPageValid = _validateTeacherPage2();
       }
     }
+
     if (!isCurrentPageValid) {
       return;
     }
@@ -165,23 +188,27 @@ bool _isLoading = false;
       );
     } else {
       // All fields are filled
-      print("Button tapped on LAST page. (All fields are filled)");
-      //database saving logic here
+      print("Button tapped on LAST page. Saving data...");
 
-
-      setState (() {_isLoading = true; });
+      setState(() {
+        _isLoading = true;
+      });
 
       try {
-
         if (widget.role == 'student') {
+          // --- TEMP: Saving Face Data Locally (Console/Log) ---
+          print("--- SAVING FACE DATA ---");
+          print("Image Path: ${_capturedFaceImage!.path}");
+          print("Vector: $_capturedFaceVector");
+          // You can upload _capturedFaceImage to Supabase Storage here
+          // You can save _capturedFaceVector to Supabase Database (as array/json) here
+          // ----------------------------------------------------
+
           await _onboardingService.saveStudentProfile(
-            //Profiles
             firstname: _firstNameController.text,
             middlename: _middleNameController.text,
             lastname: _lastNameController.text,
             role: widget.role,
-
-            //Student_Table
             birthDate: _birthDateController.text,
             age: int.parse(_ageController.text),
             gender: _gender,
@@ -190,61 +217,57 @@ bool _isLoading = false;
             educationalLevel: _educationalLevel,
             gradeYearLevel: _gradeYearLevel,
           );
-        }
-        else {
+        } else {
           await _onboardingService.saveEducatorProfile(
-            //Profiles
             firstname: _firstNameController.text,
             middlename: _middleNameController.text,
             lastname: _lastNameController.text,
             role: widget.role,
-
-            //Educator Table
             birthDate: _birthDateController.text,
             age: int.parse(_ageController.text),
             gender: _gender,
             institution: _institutionController.text,
           );
-        
         }
 
-
-        setState (() {_isLoading = false; });
+        setState(() {
+          _isLoading = false;
+        });
 
         if (mounted) {
-          //If the onboarding is successfull
-          showCustomSnackBar(context, "Profile saved successfully!", isError: false);
-
-          ///If student, register face and voice here later
-          ///
-          ///
-          
-          /// For now, redirect to educator or student
+          showCustomSnackBar(
+            context,
+            "Profile saved successfully!",
+            isError: false,
+          );
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
               builder: (context) {
                 if (widget.role == 'student') {
-                  return const StudentShellScreen(); // Navigate to StudentShell (temporary educator)
+                  return const StudentShellScreen();
                 } else {
-                  return const EducatorShell(); // Navigate to EducatorShell
+                  return const EducatorShell();
                 }
               },
             ),
           );
         }
       } on AuthException catch (e) {
-        
-        setState (() {_isLoading = false; });
-
+        setState(() {
+          _isLoading = false;
+        });
         if (mounted) {
           showCustomSnackBar(context, 'Error: ${e.message}');
         }
       } catch (e) {
-        setState (() {_isLoading = false; });
+        print(e);
+        setState(() {
+          _isLoading = false;
+        });
         if (mounted) {
           showCustomSnackBar(context, 'An unexpected error occurred.');
-        } 
+        }
       }
     }
   }
@@ -270,6 +293,8 @@ bool _isLoading = false;
         onEducationalLevelChanged: _onEducationalLevelChanged,
         onGradeYearLevelChanged: _onGradeYearLevelChanged,
       ),
+      // --- Added Face Registration Page ---
+      FaceRegistrationPage(onFaceCaptured: _handleFaceCaptured),
     ];
 
     final List<Widget> teacherPages = [
@@ -289,6 +314,15 @@ bool _isLoading = false;
     ];
 
     _pagesToShow = (widget.role == 'student') ? studentPages : teacherPages;
+
+    // Check if on last page for students (Face ID page) to possibly change button text
+    bool isFacePage = widget.role == 'student' && currentPage == 2;
+    String buttonText = currentPage < _pagesToShow.length - 1
+        ? 'Save and Continue'
+        : 'Save and Finish';
+
+    // Disable main button if on face page and not yet captured?
+    // Or just let validation handle it (preferred for consistent UI).
 
     return Scaffold(
       body: Stack(
@@ -369,9 +403,7 @@ bool _isLoading = false;
                             ),
                           ),
                           child: Text(
-                            currentPage < _pagesToShow.length - 1
-                                ? 'Save and Continue'
-                                : 'Save and Finish',
+                            buttonText,
                             style: const TextStyle(
                               fontSize: 18,
                               color: Colors.white,

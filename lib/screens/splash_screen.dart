@@ -26,7 +26,7 @@ class _SplashScreenState extends State<SplashScreen> {
     // We run the delay AND the logic at the same time and wait for both.
     final results = await Future.wait([
       _authService.determineInitialPath(),
-      Future.delayed(const Duration(seconds: 2)), 
+      Future.delayed(const Duration(seconds: 2)),
     ]);
 
     if (!mounted) return;
@@ -44,11 +44,10 @@ class _SplashScreenState extends State<SplashScreen> {
 
       case AuthNavigationState.onboarding:
         // We can fetch the role safely here because we know they are logged in
-        final role = _authService.getCurrentUserRole() ?? 'student'; 
+        final role = _authService.getCurrentUserRole() ?? 'student';
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-              builder: (context) => OnBoardingScreen(role: role)),
+          MaterialPageRoute(builder: (context) => OnBoardingScreen(role: role)),
         );
         break;
 
@@ -88,7 +87,7 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
             const SizedBox(height: 20),
             // It is good practice to show a loader while checking the database
-            const CircularProgressIndicator(), 
+            const CircularProgressIndicator(),
           ],
         ),
       ),

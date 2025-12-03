@@ -7,6 +7,7 @@ import 'package:t_racks_softdev_1/services/models/student_model.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:collection/collection.dart';
 import 'dart:math';
+import 'dart:io';
 
 final _supabase = Supabase.instance.client;
 
