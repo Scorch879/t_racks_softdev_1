@@ -8,7 +8,6 @@ import 'package:t_racks_softdev_1/screens/onBoarding_screen/boarding_screens.dar
 import 'package:t_racks_softdev_1/screens/onBoarding_screen/face_registration_page.dart';
 import 'package:t_racks_softdev_1/screens/student/student_shell_screen.dart';
 import 'package:t_racks_softdev_1/services/onboarding_service.dart';
-import 'package:t_racks_softdev_1/services/database_service.dart';
 
 class OnBoardingScreen extends StatefulWidget {
   final String role;
@@ -199,9 +198,9 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
       try {
         if (widget.role == 'student') {
           // --- TEMP: Saving Face Data Locally (Console/Log) ---
-          print("--- SAVING FACE DATA ---");
-          print("Image Path: ${_capturedFaceImage!.path}");
-          print("Vector: $_capturedFaceVector");
+          //print("--- SAVING FACE DATA ---");
+          //print("Image Path: ${_capturedFaceImage!.path}");
+          //print("Vector: $_capturedFaceVector");
           // You can upload _capturedFaceImage to Supabase Storage here
           // You can save _capturedFaceVector to Supabase Database (as array/json) herece
           // ----------------------------------------------------
@@ -244,7 +243,7 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
           _isLoading = false;
         });
 
-        if (mounted) {
+        if (mounted ) {
           showCustomSnackBar(
             context,
             "Profile saved successfully!",
@@ -276,7 +275,7 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
           _isLoading = false;
         });
         if (mounted) {
-          showCustomSnackBar(context, 'An unexpected error occurred.');
+          showCustomSnackBar(context, 'Error occured ${e.toString()}'); ///error temp
         }
       }
     }
