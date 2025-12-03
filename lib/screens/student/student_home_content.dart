@@ -64,6 +64,9 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
 
   Future<Map<String, dynamic>> _fetchData() async {
     try {
+      // First, run the logic to mark any missed classes as absent.
+      await _databaseService.markMissedClassesAsAbsent();
+
       // Fetch student profile and classes concurrently
       final results = await Future.wait([
         _databaseService.getStudentData(),

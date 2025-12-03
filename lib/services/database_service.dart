@@ -1,3 +1,4 @@
+import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:t_racks_softdev_1/services/models/educator_model.dart';
 import 'package:t_racks_softdev_1/services/models/profile_model.dart';
@@ -457,6 +458,73 @@ Future<void> enrollStudent({
       return 0; // Return 0 on error to prevent UI from breaking
     }
   }
+
+  /// Checks for classes that have ended today where attendance was not marked,
+  /// and marks the student as absent.
+  Future<void> markMissedClassesAsAbsent() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return;
+
+      final now = DateTime.now();
+      final today = now.toIso8601String().split('T')[0];
+
+      // 1. Get all of today's attendance records for the user.
+      final attendanceData = await _supabase
+          .from('Attendance_Record')
+          .select('class_id')
+          .eq('student_id', userId)
+          .eq('date', today);
+
+      final attendedClassIds =
+          (attendanceData as List).map((e) => e['class_id']).toList();
+
+      // 2. Get all classes the user is enrolled in.
+      final enrolledClassesData = await _supabase
+          .from('Enrollments_Table')
+          .select('class:Classes_Table!inner(id, day, time)')
+          .eq('student_id', userId);
+
+      final classesToInsert = <Map<String, dynamic>>[];
+
+      for (final enrollment in enrolledClassesData) {
+        final sClass = enrollment['class'];
+        if (sClass == null) continue;
+
+        final classId = sClass['id'];
+        final scheduleDay = sClass['day']?.toString().toLowerCase();
+        final timeRangeStr = sClass['time']?.toString();
+
+        // Skip if already attended or if schedule is invalid
+        if (attendedClassIds.contains(classId) ||
+            scheduleDay == null ||
+            timeRangeStr == null) {
+          continue;
+        }
+
+        // Check if the class was scheduled for today and has ended
+        if (_isClassDoneForToday(scheduleDay, timeRangeStr, now)) {
+          classesToInsert.add({
+            'student_id': userId,
+            'class_id': classId,
+            'date': today,
+            'isPresent': false,
+            'time': DateFormat.Hms().format(now), // Record time of auto-marking
+          });
+        }
+      }
+
+      // 3. Batch insert all absence records.
+      if (classesToInsert.isNotEmpty) {
+        print('Auto-marking ${classesToInsert.length} classes as absent.');
+        await _supabase.from('Attendance_Record').insert(classesToInsert);
+      }
+    } catch (e) {
+      // We don't rethrow here to avoid crashing the UI.
+      // The main data fetch will proceed, and this can try again next time.
+      print('Error during auto-marking absences: $e');
+    }
+  }
 }
 
 class AccountServices {
@@ -473,6 +541,50 @@ class AccountServices {
       throw 'Error deleting profile: $e';
     }
   }
+}
+
+// Helper function to parse time strings (e.g., "10:00 AM") into DateTime objects.
+DateTime? _parseTimeHelper(String timeStr, DateTime now) {
+  try {
+    final isPM = timeStr.toLowerCase().contains('pm');
+    final timeOnly =
+        timeStr.replaceAll(RegExp(r'(am|pm)', caseSensitive: false), '').trim();
+    final parts = timeOnly.split(':');
+    if (parts.length < 2) return null;
+
+    var hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+
+    if (hour == null || minute == null) return null;
+
+    if (isPM && hour < 12) {
+      hour += 12;
+    } else if (!isPM && hour == 12) {
+      // Handle 12 AM (midnight)
+      hour = 0;
+    }
+
+    return DateTime(now.year, now.month, now.day, hour, minute);
+  } catch (e) {
+    return null;
+  }
+}
+
+/// Helper function to determine if a class has finished for today.
+bool _isClassDoneForToday(String scheduleDay, String timeRangeStr, DateTime now) {
+  const dayMappings = {'m': 1, 't': 2, 'w': 3, 'th': 4, 'f': 5, 's': 6, 'su': 7};
+  final todayWeekday = now.weekday;
+
+  // Check if the class is scheduled for today
+  bool isToday = scheduleDay.split('').any((char) => dayMappings[char] == todayWeekday);
+  if (!isToday) return false;
+
+  // Check if the class time has passed
+  final timeParts = timeRangeStr.split('-');
+  if (timeParts.length < 2) return false;
+  final classEndTime = _parseTimeHelper(timeParts[1].trim(), now);
+
+  return classEndTime != null && now.isAfter(classEndTime);
 }
 
 class ClassesServices {
