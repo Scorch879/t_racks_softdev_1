@@ -8,6 +8,7 @@ import 'package:t_racks_softdev_1/screens/onBoarding_screen/boarding_screens.dar
 import 'package:t_racks_softdev_1/screens/onBoarding_screen/face_registration_page.dart';
 import 'package:t_racks_softdev_1/screens/student/student_shell_screen.dart';
 import 'package:t_racks_softdev_1/services/onboarding_service.dart';
+import 'package:t_racks_softdev_1/services/database_service.dart';
 
 class OnBoardingScreen extends StatefulWidget {
   final String role;
@@ -19,6 +20,7 @@ class OnBoardingScreen extends StatefulWidget {
 
 class _OnBoardingScreenState extends State<OnBoardingScreen> {
   final OnboardingService _onboardingService = OnboardingService();
+  final AiServices _aiServices = AiServices();
 
   //Loading State
   bool _isLoading = false;
@@ -201,8 +203,16 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
           print("Image Path: ${_capturedFaceImage!.path}");
           print("Vector: $_capturedFaceVector");
           // You can upload _capturedFaceImage to Supabase Storage here
-          // You can save _capturedFaceVector to Supabase Database (as array/json) here
+          // You can save _capturedFaceVector to Supabase Database (as array/json) herece
           // ----------------------------------------------------
+          if (_capturedFaceImage == null || _capturedFaceVector == null) {
+            throw 'Face data is missing.';
+          } else {
+            await _aiServices.saveFaceData(
+              imageFile: _capturedFaceImage!,
+              faceVector: _capturedFaceVector!,
+            );
+          }
 
           await _onboardingService.saveStudentProfile(
             firstname: _firstNameController.text,
