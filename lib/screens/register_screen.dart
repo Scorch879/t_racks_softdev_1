@@ -224,7 +224,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 decoration: const InputDecoration(
                                   isDense: true,
                                   hintText: 'Email address',
-                                  hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
+                                  hintStyle: TextStyle(
+                                    color: Color.fromARGB(255, 207, 207, 207),
+                                  ),
                                   // --- ADD THIS ICON ---
                                   prefixIcon: Icon(
                                     Icons.email_outlined,
@@ -257,7 +259,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 decoration: const InputDecoration(
                                   isDense: true,
                                   hintText: 'Phone number',
-                                  hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
+                                  hintStyle: TextStyle(
+                                    color: Color.fromARGB(255, 207, 207, 207),
+                                  ),
                                   // --- ADD THIS ICON ---
                                   prefixIcon: Icon(
                                     Icons.phone_android_outlined,
@@ -291,7 +295,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   // Removed const
                                   isDense: true,
                                   hintText: 'Password',
-                                  hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
+                                  hintStyle: TextStyle(
+                                    color: Color.fromARGB(255, 207, 207, 207),
+                                  ),
                                   // --- ADD THIS ICON ---
                                   prefixIcon: const Icon(
                                     Icons.lock_outline,
@@ -338,7 +344,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   // Removed const
                                   isDense: true,
                                   hintText: 'Confirm Password',
-                                  hintStyle: TextStyle(color: Color.fromARGB(255, 207, 207, 207)),
+                                  hintStyle: TextStyle(
+                                    color: Color.fromARGB(255, 207, 207, 207),
+                                  ),
                                   // --- ADD THIS ICON ---
                                   prefixIcon: const Icon(
                                     Icons.lock_outline,
@@ -414,68 +422,76 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   const Text('Educator'),
                                 ],
                               ),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 50,
+                                child: ElevatedButton(
+                                  onPressed: _isLoading
+                                      ? null
+                                      : _handleRegister,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(
+                                      0xFF26A69A,
+                                    ), // Green/teal
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'Create Account',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Text(
+                                    "Don't have an account? ",
+                                    style: TextStyle(color: Colors.black54),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              const LoginScreen(),
+                                        ),
+                                      );
+                                    },
+                                    // You might need this style to rFmove default padding
+                                    style: TextButton.styleFrom(
+                                      padding: EdgeInsets.zero,
+                                      minimumSize: Size.zero,
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    child: const Text(
+                                      'Log In',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF26A69A), // Green/teal
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 20),
                             ],
                           ),
                         ),
                       ),
+
                       // This Spacer WILL work, but will cause an overflow
 
                       // Create Account Button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
-                          onPressed: _isLoading ? null : _handleRegister,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(
-                              0xFF26A69A,
-                            ), // Green/teal
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: const Text(
-                            'Create Account',
-                            style: TextStyle(color: Colors.white, fontSize: 18),
-                          ),
-                        ),
-                      ),
 
                       // "Already have an Account?" Row
-                      const SizedBox(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            "Don't have an account? ",
-                            style: TextStyle(color: Colors.black54),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const LoginScreen(),
-                                ),
-                              );
-                            },
-                            // You might need this style to rFmove default padding
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: const Text(
-                              'Log In',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF26A69A), // Green/teal
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
                     ],
                   ),
                 ),

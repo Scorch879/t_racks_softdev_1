@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:camera/camera.dart'; // Import Camera
 import 'package:flutter/material.dart';
-import 'package:t_racks_softdev_1/screens/student/student_camera_screen.dart';
 import 'package:t_racks_softdev_1/screens/student/student_class_content.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
@@ -37,12 +36,12 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
     if (!mounted) return;
 
     // 2. Pass them to the screen
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => StudentCameraScreen(cameras: cameras),
-      ),
-    );
+    // Navigator.push(
+    //   context,
+    //   MaterialPageRoute(
+    //     builder: (context) => StudentCameraScreen(cameras: cameras),
+    //   ),
+    // );
   }
   
   Timer? _timer;
