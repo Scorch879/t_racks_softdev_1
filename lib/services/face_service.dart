@@ -28,7 +28,7 @@ class FaceRecognitionService {
 
       // This is the cosine distance threshold. A lower value means a stricter match.
       // You will need to tune this value. Start with 0.5 and adjust.
-      const matchThreshold = 0.5;
+      const matchThreshold = 0.6; // Increased for more tolerance
 
       final response = await _supabase.rpc('match_face', params: {
         'embedding_to_match': embeddingString,
@@ -41,6 +41,10 @@ class FaceRecognitionService {
       }
 
       final match = (response as List).first;
+
+      // For debugging: print the distance of the found match.
+      print('Found a match for ${match['full_name']} with distance: ${match['distance']}');
+
       return FaceMatchResult(
           studentId: match['student_id'],
           fullName: match['full_name'],
