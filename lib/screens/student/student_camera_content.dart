@@ -50,7 +50,8 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
     );
     _faceDetector = FaceDetector(options: options);
 
-    _tfliteManager.loadModel().then((_) {
+    // FIX 1: Updated method name from loadModel to loadModels
+    _tfliteManager.loadModels().then((_) {
       if (mounted) {
         setState(() => _isTfliteLoaded = true);
       }
@@ -206,12 +207,11 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
 
   Future<void> _processTFLite(CameraImage image) async {
     try {
-      final results = await _tfliteManager.runInferenceOnCameraImage(image);
-      if (results.isEmpty) return;
+      // FIX 2: Use checkLiveness instead of runInferenceOnCameraImage
+      // This returns TRUE if it's a real face, FALSE if it's a spoof.
+      bool isReal = await _tfliteManager.checkLiveness(image);
 
-      double fakeScore = results.length > 2 ? results[2] : 0.0;
-
-      if (fakeScore > 0.85) {
+      if (!isReal) {
         _consecutiveFakeFrames++;
       } else {
         _consecutiveFakeFrames = 0;

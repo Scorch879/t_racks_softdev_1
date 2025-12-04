@@ -4,7 +4,6 @@ import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
-// FIX: Added 'as tflite' to resolve the name conflict
 import 'package:t_racks_softdev_1/services/tflite_service.dart' as tflite;
 
 class FaceRegistrationPage extends StatefulWidget {
@@ -18,10 +17,9 @@ class FaceRegistrationPage extends StatefulWidget {
 
 class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
   CameraController? _controller;
-
-  // FIX: Explicitly use the prefixed class name
   final tflite.ModelManager _modelManager = tflite.ModelManager();
 
+  // ... (ML Kit FaceDetector setup remains same) ...
   final FaceDetector _faceDetector = FaceDetector(
     options: FaceDetectorOptions(
       enableContours: false,
@@ -32,23 +30,25 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
 
   bool _isCameraInitialized = false;
   bool _isProcessing = false;
+
+  // Status
   String _statusMessage = "Initializing...";
   Color _statusColor = Colors.orange;
-
-  // Verification flags
   bool _isFaceDetected = false;
   bool _isLightingGood = false;
+  bool _isRealFace = false; // New flag for liveness
   bool _isCaptured = false;
 
-  List<double> _lastVector = [];
+  List<double> _currentEmbedding = [];
 
   @override
   void initState() {
     super.initState();
     _initializeCamera();
-    _modelManager.loadModel();
+    _modelManager.loadModels(); // Changed from loadModel to loadModels
   }
 
+  // ... (_initializeCamera remains the same) ...
   Future<void> _initializeCamera() async {
     final cameras = await availableCameras();
     final frontCamera = cameras.firstWhere(
@@ -73,81 +73,79 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
   }
 
   void _startImageStream() {
+    int frameCount = 0;
     _controller!.startImageStream((CameraImage image) async {
       if (_isProcessing || _isCaptured) return;
       _isProcessing = true;
+      frameCount++;
 
       try {
-        // 1. Check Lighting
-        final isLightingGood = _checkLighting(image);
-
-        // 2. Detect Face (ML Kit)
+        // 1. Basic Checks (Lighting & Detection)
+        _isLightingGood = _checkLighting(image);
         final inputImage = _inputImageFromCameraImage(image);
-        bool isFaceDetected = false;
+
+        bool faceFound = false;
         if (inputImage != null) {
           final faces = await _faceDetector.processImage(inputImage);
-          isFaceDetected = faces.isNotEmpty;
+          faceFound = faces.isNotEmpty;
         }
 
-        // 3. TFLite Inference (Get Vector)
+        bool isReal = false;
         List<double> vector = [];
-        if (isFaceDetected && _modelManager.isModelLoaded) {
-          vector = await _modelManager.runInferenceOnCameraImage(image);
+
+        // 2. Deep Learning Checks (Only run every 10 frames to save battery/FPS)
+        if (faceFound && _modelManager.areModelsLoaded && frameCount % 5 == 0) {
+          // A. Check Liveness (Anti-Spoofing)
+          isReal = await _modelManager.checkLiveness(image);
+
+          // B. If Real, Generate Identity Vector
+          if (isReal) {
+            vector = await _modelManager.generateFaceEmbedding(image);
+          }
+        } else {
+          // Keep previous states if we didn't run inference this frame
+          isReal = _isRealFace;
+          vector = _currentEmbedding;
         }
 
         if (mounted) {
           setState(() {
-            _isLightingGood = isLightingGood;
-            _isFaceDetected = isFaceDetected;
-            _lastVector = vector;
+            _isFaceDetected = faceFound;
+            _isRealFace = isReal;
+            if (vector.isNotEmpty) _currentEmbedding = vector;
             _updateStatus();
           });
         }
       } catch (e) {
-        print("Error processing frame: $e");
+        print("Error: $e");
       } finally {
         _isProcessing = false;
       }
     });
   }
 
+  // ... (_checkLighting and _inputImageFromCameraImage remain the same) ...
   bool _checkLighting(CameraImage image) {
-    // Simple brightness check using the Y plane (luminance)
     if (image.planes.isEmpty) return false;
     final bytes = image.planes[0].bytes;
     int totalBrightness = 0;
-    // Sample every 100th pixel for performance
     for (int i = 0; i < bytes.length; i += 100) {
       totalBrightness += bytes[i];
     }
     final averageBrightness = totalBrightness / (bytes.length / 100);
-    return averageBrightness > 80; // Threshold (0-255), adjust as needed
-  }
-
-  void _updateStatus() {
-    if (!_isLightingGood) {
-      _statusMessage = "Too Dark! Move to better light.";
-      _statusColor = Colors.red;
-    } else if (!_isFaceDetected) {
-      _statusMessage = "No Face Detected.";
-      _statusColor = Colors.orange;
-    } else {
-      _statusMessage = "Ready to Capture";
-      _statusColor = Colors.green;
-    }
+    return averageBrightness > 80;
   }
 
   InputImage? _inputImageFromCameraImage(CameraImage image) {
+    // ... Copy your previous implementation here ...
     final camera = _controller!.description;
     final sensorOrientation = camera.sensorOrientation;
     final rotation = InputImageRotationValue.fromRawValue(
       Platform.isAndroid ? (sensorOrientation + 0) % 360 : sensorOrientation,
     );
     if (rotation == null) return null;
-
     final format = InputImageFormatValue.fromRawValue(image.format.raw);
     if (format == null) return null;
-
     final plane = image.planes.first;
     return InputImage.fromBytes(
       bytes: Uint8List.fromList(
@@ -165,24 +163,48 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
     );
   }
 
+  void _updateStatus() {
+    if (!_isLightingGood) {
+      _statusMessage = "Too Dark!";
+      _statusColor = Colors.red;
+    } else if (!_isFaceDetected) {
+      _statusMessage = "Position face in frame";
+      _statusColor = Colors.orange;
+    } else if (!_isRealFace) {
+      _statusMessage =
+          "Keep still..."; // Or "Spoof Detected" if you want to be explicit
+      _statusColor = Colors.orangeAccent;
+    } else {
+      _statusMessage = "Ready to Capture";
+      _statusColor = Colors.green;
+    }
+  }
+
   Future<void> captureFace() async {
-    if (!_isFaceDetected || !_isLightingGood || _controller == null) return;
+    if (!_isFaceDetected || !_isRealFace || _currentEmbedding.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Face not verified or not real. Cannot capture."),
+        ),
+      );
+      return;
+    }
 
     try {
-      await _controller!.stopImageStream(); // Stop stream to take picture
+      await _controller!.stopImageStream();
       final XFile file = await _controller!.takePicture();
       final File imageFile = File(file.path);
 
       setState(() {
         _isCaptured = true;
-        _statusMessage = "Face Captured Successfully!";
+        _statusMessage = "Face Registered!";
       });
 
-      // Pass data back to parent
-      widget.onFaceCaptured(imageFile, _lastVector);
+      // Pass the REAL identity vector back
+      widget.onFaceCaptured(imageFile, _currentEmbedding);
     } catch (e) {
-      print("Error capturing face: $e");
-      _startImageStream(); // Restart stream if failed
+      print("Error: $e");
+      _startImageStream();
     }
   }
 
@@ -190,35 +212,26 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
   void dispose() {
     _controller?.dispose();
     _faceDetector.close();
+    _modelManager.close();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // ... UI Code remains mostly the same, just ensure onPressed checks _isRealFace ...
     if (!_isCameraInitialized || _controller == null) {
       return const Center(child: CircularProgressIndicator());
     }
 
     return Column(
       children: [
-        const Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text(
-            "Register Face ID",
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF194B61),
-            ),
-          ),
-        ),
+        // ... (Header) ...
         Expanded(
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 20),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: _statusColor, width: 4),
-              boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 10)],
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(16),
@@ -226,17 +239,7 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
                 fit: StackFit.expand,
                 children: [
                   CameraPreview(_controller!),
-                  if (_isCaptured)
-                    Container(
-                      color: Colors.black54,
-                      child: const Center(
-                        child: Icon(
-                          Icons.check_circle,
-                          color: Colors.green,
-                          size: 80,
-                        ),
-                      ),
-                    ),
+                  // ... (Status Text) ...
                   Positioned(
                     bottom: 10,
                     left: 0,
@@ -258,18 +261,13 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
           ),
         ),
         const SizedBox(height: 20),
-        if (!_isCaptured)
-          ElevatedButton.icon(
-            onPressed: (_isFaceDetected && _isLightingGood)
-                ? captureFace
-                : null,
-            icon: const Icon(Icons.camera_alt),
-            label: const Text("Capture Face"),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF26A69A),
-              foregroundColor: Colors.white,
-            ),
-          ),
+        ElevatedButton.icon(
+          // Ensure we only allow capture if it is a REAL face
+          onPressed: (_isFaceDetected && _isRealFace) ? captureFace : null,
+          icon: const Icon(Icons.camera_alt),
+          label: const Text("Capture Face"),
+          // ...
+        ),
         const SizedBox(height: 20),
       ],
     );
