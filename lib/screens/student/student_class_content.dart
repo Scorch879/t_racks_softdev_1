@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
+import 'package:t_racks_softdev_1/commonWidgets/join_class_dialog.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:t_racks_softdev_1/services/models/attendance_model.dart';
 
@@ -28,11 +29,34 @@ class _StudentClassClassesContentState extends State<StudentClassClassesContent>
   final _databaseService = DatabaseService();
   late Future<List<StudentClass>> _classesFuture;
   final Map<String, GlobalKey<__ClassCardState>> _cardKeys = {};
+  
+  // State for search functionality
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _classesFuture = _databaseService.getStudentClasses();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    setState(() => _searchQuery = _searchController.text);
+  }
+
+  void _refreshClasses() {
+    // This triggers a re-fetch of the classes and rebuilds the FutureBuilder
+    setState(() {
+      _classesFuture = _databaseService.getStudentClasses();
+    });
   }
   
   void _handleCardTap(String classId) {
@@ -70,6 +94,16 @@ class _StudentClassClassesContentState extends State<StudentClassClassesContent>
             }
 
             final classes = snapshot.data ?? [];
+
+            // Filter the classes based on the search query
+            final filteredClasses = classes.where((sClass) {
+              final query = _searchQuery.toLowerCase().trim();
+              if (query.isEmpty) return true;
+
+              final name = sClass.name?.toLowerCase() ?? '';
+              final subject = sClass.subject?.toLowerCase() ?? '';
+              return name.contains(query) || subject.contains(query);
+            }).toList();
 
             return SizedBox.expand(
               child: Stack(
@@ -167,15 +201,18 @@ class _StudentClassClassesContentState extends State<StudentClassClassesContent>
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   // Header
-                                  _MyClassesHeader(scale: scale),
+                                  _MyClassesHeader(
+                                    scale: scale,
+                                    onAddPressed: () => showJoinClassDialog(context, _refreshClasses),
+                                  ),
                                   SizedBox(height: 12 * scale),
                                   
                                   // Search
-                                  _SearchBar(scale: scale),
+                                  _SearchBar(scale: scale, controller: _searchController),
                                   SizedBox(height: 12 * scale),
 
                                   // Class List
-                                  if (classes.isEmpty)
+                                  if (filteredClasses.isEmpty)
                                     Padding(
                                       padding: EdgeInsets.symmetric(vertical: 60 * scale),
                                       child: Text(
@@ -188,7 +225,7 @@ class _StudentClassClassesContentState extends State<StudentClassClassesContent>
                                       ),
                                     )
                                   else
-                                    ...classes.map((sClass) {
+                                    ...filteredClasses.map((sClass) {
                                       // Ensure each card has a key
                                       _cardKeys.putIfAbsent(sClass.id, () => GlobalKey<__ClassCardState>());
                                       final dynamicStatus = getDynamicStatus(
@@ -206,6 +243,7 @@ class _StudentClassClassesContentState extends State<StudentClassClassesContent>
                                             key: _cardKeys[sClass.id]!,
                                             scale: scale,
                                             title: sClass.name ?? 'Unnamed Class', 
+                                            subject: sClass.subject,
                                             students: sClass.studentCount,
                                             time: sClass.schedule ?? 'No schedule',
                                             status: dynamicStatus.text,
@@ -563,9 +601,10 @@ class _SummaryCardState extends State<_SummaryCard> {
 }
 
 class _MyClassesHeader extends StatefulWidget {
-  const _MyClassesHeader({required this.scale});
+  const _MyClassesHeader({required this.scale, required this.onAddPressed});
   final double scale;
-
+  final VoidCallback onAddPressed;
+  
   @override
   State<_MyClassesHeader> createState() => _MyClassesHeaderState();
 }
@@ -592,7 +631,7 @@ class _MyClassesHeaderState extends State<_MyClassesHeader> {
           ),
         ),
         IconButton(
-          onPressed: () {},
+          onPressed: widget.onAddPressed,
           icon: Icon(
             Icons.add_circle_rounded,
             color: _chipGreen,
@@ -605,8 +644,9 @@ class _MyClassesHeaderState extends State<_MyClassesHeader> {
 }
 
 class _SearchBar extends StatefulWidget {
-  const _SearchBar({required this.scale});
+  const _SearchBar({required this.scale, required this.controller});
   final double scale;
+  final TextEditingController controller;
 
   @override
   State<_SearchBar> createState() => _SearchBarState();
@@ -615,31 +655,38 @@ class _SearchBar extends StatefulWidget {
 class _SearchBarState extends State<_SearchBar> {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16 * widget.scale, vertical: 12 * widget.scale),
-      decoration: BoxDecoration(
-        color: const Color(0xFF6AAFBF).withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(22 * widget.scale),
+    return TextFormField(
+      controller: widget.controller,
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 16 * widget.scale,
       ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.search_rounded,
-            color: Colors.white70,
-            size: 20 * widget.scale,
-          ),
-          SizedBox(width: 12 * widget.scale),
-          Expanded(
-            child: Text(
-              'Search Class',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 16 * widget.scale,
-              ),
-            ),
-          ),
-        ],
-      ),
+      decoration: InputDecoration(
+        hintText: 'Search Class by Name or Subject',
+        hintStyle: TextStyle(
+          color: Colors.white70,
+          fontSize: 16 * widget.scale,
+        ),
+        prefixIcon: Icon(
+          Icons.search_rounded,
+          color: Colors.white70,
+          size: 20 * widget.scale,
+        ),
+        filled: true,
+        fillColor: const Color(0xFF6AAFBF).withOpacity(0.3),
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: 16 * widget.scale,
+          vertical: 12 * widget.scale,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(22 * widget.scale),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(22 * widget.scale),
+          borderSide: const BorderSide(color: _chipGreen, width: 2),
+        ),
+      )
     );
   }
 }
@@ -649,6 +696,7 @@ class _ClassCard extends StatefulWidget {
     super.key,
     required this.scale,
     required this.title,
+    this.subject,
     required this.students,
     required this.time,
     required this.status,
@@ -659,6 +707,7 @@ class _ClassCard extends StatefulWidget {
 
   final double scale;
   final String title;
+  final String? subject;
   final int students;
   final String time;
   final String status;
@@ -727,6 +776,17 @@ class __ClassCardState extends State<_ClassCard> with SingleTickerProviderStateM
                 fontWeight: FontWeight.w800,
               ),
             ),
+            if (widget.subject != null && widget.subject!.isNotEmpty) ...[
+              SizedBox(height: 4 * widget.scale),
+              Text(
+                widget.subject!,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.8),
+                  fontSize: 14 * widget.scale,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
             SizedBox(height: 8 * widget.scale),
             Row(
               children: [
