@@ -130,10 +130,11 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
             for (var sClass in classes) {
               final status = getDynamicStatus(
                   sClass,
-                  _chipGreen,
-                  _statusRed,
-                  _statusYellow,
-                  Colors.grey.shade600);
+                  _chipGreen, // Ongoing
+                  _statusRed, // Absent
+                  _statusOrange, // Late
+                  _cardSurface, // Upcoming
+                  Colors.grey.shade600); // Done
               if (status.text == 'Ongoing' || status.text == 'Late') {
                 ongoingClass = sClass;
                 break;
@@ -183,10 +184,11 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
 
                               getDynamicStatus: (sClass) => getDynamicStatus(
                                   sClass,
-                                  _chipGreen,
-                                  _statusRed,
-                                  _statusYellow,
-                                  Colors.grey.shade600),
+                                  _chipGreen, // Ongoing
+                                  _statusRed, // Absent
+                                  _statusOrange, // Late
+                                  _cardSurface, // Upcoming
+                                  Colors.grey.shade600), // Done
                               onClassPressed: _showClassDetails,
                             ),
                           ],
