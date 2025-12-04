@@ -385,6 +385,47 @@ Future<void> enrollStudent({
   }
 }
 
+  /// Enrolls the current student in a class using a unique class code.
+  ///
+  /// Throws an error if the code is invalid or if the student is already enrolled.
+  Future<void> enrollInClassWithCode(String classCode) async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw 'You must be logged in to join a class.';
+
+      // 1. Find the class ID from the provided class code.
+      // .single() will throw an error if no class or more than one class is found.
+      final classResponse = await _supabase
+          .from('Classes_Table')
+          .select('id')
+          .eq('class_code', classCode.trim().toUpperCase())
+          .single();
+
+      final classId = classResponse['id'];
+
+      // 2. Check if the student is already enrolled in this class.
+      final enrollmentCheck = await _supabase
+          .from('Enrollments_Table')
+          .select()
+          .eq('student_id', userId)
+          .eq('class_id', classId)
+          .maybeSingle();
+
+      if (enrollmentCheck != null) {
+        throw 'You are already enrolled in this class.';
+      }
+
+      // 3. If not enrolled, create the new enrollment record.
+      await enrollStudent(classId: classId, studentId: userId);
+    } on PostgrestException catch (e) {
+      // This specifically handles the error from .single() when no rows are found.
+      if (e.code == 'PGRST116') {
+        throw 'Invalid class code. Please check the code and try again.';
+      }
+      rethrow; // Rethrow other database errors.
+    }
+  }
+
   Future<List<AttendanceRecord>> getStudentAttendanceForClass(
       String classId) async {
     try {

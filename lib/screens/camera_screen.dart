@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:t_racks_softdev_1/services/tflite_service.dart' as tflite;
+import 'package:t_racks_softdev_1/services/face_service.dart';
 
 enum ChallengeType { smile, blink, turnLeft, turnRight }
 
@@ -165,15 +166,15 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
     if (inputImage == null) return;
 
     final List<Face> faces = await _faceDetector.processImage(inputImage);
-    if (faces.isEmpty) return;
-
-    final Face face = faces.first;
-    _checkChallenge(face);
+    if (faces.isNotEmpty) {
+      final Face face = faces.first;
+      _checkChallenge(face, image);
+    }
   }
 
-  void _checkChallenge(Face face) {
-    if (_currentChallengeIndex >= _challenges.length) {
-      _finalizeVerification();
+  void _checkChallenge(Face face, CameraImage image) {
+    if (_currentChallengeIndex >= _challenges.length && !_isVerified) {
+      _finalizeVerification(image);
       return;
     }
 
@@ -240,17 +241,39 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
     }
   }
 
-  void _finalizeVerification() {
+  Future<void> _finalizeVerification(CameraImage image) async {
     // If we made it here without TFLite flagging us, we are good.
-    if (!_hasFailed) {
-      if (mounted) {
+    if (_hasFailed == false) {
+      // 1. Generate the face embedding from the final verified image.
+      final faceEmbedding = await _tfliteManager.generateFaceEmbedding(image);
+
+      if (faceEmbedding.isEmpty) {
+        // Handle case where embedding failed
         setState(() {
-          _isVerified = true;
-          _statusMessage = "✅ IDENTITY CONFIRMED";
-          _statusColor = Colors.green;
-          // TODO: Mark Attendance Here
+          _hasFailed = true;
+          _statusMessage = "⚠️ Could not read face. Try again.";
+          _statusColor = Colors.red;
         });
+        return;
       }
+
+      // 2. Call the service to find a match in the database.
+      final matchingService = FaceRecognitionService();
+      final matchResult =
+          await matchingService.findMatchingStudent(faceEmbedding);
+
+      // 3. Update UI based on the result.
+      setState(() {
+        _isVerified = true; // Stop processing
+        if (matchResult != null) {
+          _statusMessage = "✅ Welcome, ${matchResult.fullName}!";
+          _statusColor = Colors.green;
+          // TODO: Mark Attendance Here for matchResult.studentId
+        } else {
+          _statusMessage = "❌ Student Not Recognized";
+          _statusColor = Colors.orange;
+        }
+      });
     }
   }
 
