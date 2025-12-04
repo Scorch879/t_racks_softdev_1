@@ -390,7 +390,7 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                           horizontal: 18 * scale,
                         ),
                         child: Text(
-                          'Mark Attendance',
+                          'Ongoing',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 12 * scale,

@@ -204,14 +204,7 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
           // You can upload _capturedFaceImage to Supabase Storage here
           // You can save _capturedFaceVector to Supabase Database (as array/json) herece
           // ----------------------------------------------------
-          if (_capturedFaceImage == null || _capturedFaceVector == null) {
-            throw 'Face data is missing.';
-          } else {
-            await _aiServices.saveFaceData(
-              imageFile: _capturedFaceImage!,
-              faceVector: _capturedFaceVector!,
-            );
-          }
+        
 
           await _onboardingService.saveStudentProfile(
             firstname: _firstNameController.text,
@@ -226,6 +219,15 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
             educationalLevel: _educationalLevel,
             gradeYearLevel: _gradeYearLevel,
           );
+
+            if (_capturedFaceImage == null || _capturedFaceVector == null) {
+            throw 'Face data is missing.';
+          } else {
+            await _aiServices.saveFaceData(
+              imageFile: _capturedFaceImage!,
+              faceVector: _capturedFaceVector!,
+            );
+          }
         } else {
           await _onboardingService.saveEducatorProfile(
             firstname: _firstNameController.text,
