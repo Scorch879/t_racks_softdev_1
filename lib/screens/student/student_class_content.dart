@@ -13,8 +13,8 @@ const _cardSurface = Color(0xFF0C3343);
 const _accentCyan = Color(0xFF32657D);
 const _chipGreen = Color(0xFF37AA82);
 const _statusRed = Color(0xFFE26B6B);
-const _statusGreen = Color(0xFF7FE26B);
-const _statusYellow = Color(0xFFDAE26B);
+const _statusOrange = Color(0xFFFF8442);
+
 
 // --- MAIN CLASSES CONTENT VIEW ---
 class StudentClassClassesContent extends StatefulWidget {
@@ -22,13 +22,6 @@ class StudentClassClassesContent extends StatefulWidget {
 
   @override
   State<StudentClassClassesContent> createState() => _StudentClassClassesContentState();
-}
-
-/// A helper class to hold the calculated status and its corresponding color.
-class _DynamicStatus {
-  final String text;
-  final Color color;
-  _DynamicStatus(this.text, this.color);
 }
 
 class _StudentClassClassesContentState extends State<StudentClassClassesContent> {
@@ -55,86 +48,6 @@ class _StudentClassClassesContentState extends State<StudentClassClassesContent>
         return ClassDetailsDialog(classId: classId);
       },
     );
-  }
-
-  _DynamicStatus _getDynamicStatus(StudentClass sClass) {
-    // Attendance for today has been recorded
-    if (sClass.todaysAttendance != null) {
-      return sClass.todaysAttendance == 'true'
-          ? _DynamicStatus('Present', _statusGreen)
-          : _DynamicStatus('Absent', _statusRed);
-    }
-
-    // No attendance yet, determine status based on time
-    final now = DateTime.now();
-    final todayWeekday = now.weekday; // Monday=1, Sunday=7
-
-    // Map for full day names and abbreviations
-    const dayMappings = {
-      'monday': 1, 'm': 1,
-      'tuesday': 2, 't': 2,
-      'wednesday': 3, 'w': 3,
-      'thursday': 4, 'th': 4,
-      'friday': 5, 'f': 5,
-      'saturday': 6, 's': 6,
-      'sunday': 7, 'su': 7,
-    };
-
-    final scheduleDay = sClass.day?.toLowerCase().replaceAll(' ', ''); // "tf" or "tuesday"
-    if (scheduleDay == null || scheduleDay.isEmpty) {
-      return _DynamicStatus('No Schedule', Colors.grey);
-    }
-
-    // Check if any part of the schedule string matches today's weekday
-    bool isToday = false;
-    if (dayMappings.containsKey(scheduleDay)) { // Handles full day names like "tuesday"
-      isToday = dayMappings[scheduleDay] == todayWeekday;
-    } else { // Handles abbreviations like "tf"
-      isToday = scheduleDay.split('').any((char) => dayMappings[char] == todayWeekday);
-    }
-
-    if (!isToday) {
-      return _DynamicStatus('Upcoming', _statusYellow);
-    }
-
-    // It is today, let's check the time
-    if (sClass.time == null || !sClass.time!.contains('-')) {
-      return _DynamicStatus('Invalid Time', Colors.grey); // Cannot parse time range
-    }
-
-    try {
-      final timeRange = sClass.time!.split('-');
-      final startTimeStr = timeRange[0].trim();
-      final endTimeStr = timeRange[1].trim();
-
-      DateTime? parseTime(String timeStr) {
-        final isPM = timeStr.toLowerCase().contains('pm');
-        final timeOnly = timeStr.replaceAll(RegExp(r'(am|pm)', caseSensitive: false), '').trim();
-        final parts = timeOnly.split(':');
-        if (parts.length < 2) return null;
-
-        var hour = int.tryParse(parts[0]);
-        final minute = int.tryParse(parts[1]);
-
-        if (hour == null || minute == null) return null;
-
-        if (isPM && hour < 12) hour += 12;
-        else if (!isPM && hour == 12) hour = 0;
-        
-        return DateTime(now.year, now.month, now.day, hour, minute);
-      }
-
-      final classStartTime = parseTime(startTimeStr);
-      final classEndTime = parseTime(endTimeStr);
-
-      if (classStartTime == null || classEndTime == null) return _DynamicStatus('Invalid Time', Colors.grey);
-      if (now.isBefore(classStartTime)) return _DynamicStatus('Upcoming', _statusYellow);
-      if (now.isAfter(classEndTime)) return _DynamicStatus('Done', Colors.grey.shade600);
-      if (now.difference(classStartTime).inMinutes > 15) return _DynamicStatus('Late', _statusRed);
-      return _DynamicStatus('Ongoing', _chipGreen);
-    } catch (e) {
-      return _DynamicStatus('Upcoming', _statusYellow); // Error parsing time
-    }
   }
 
   @override
@@ -278,7 +191,13 @@ class _StudentClassClassesContentState extends State<StudentClassClassesContent>
                                     ...classes.map((sClass) {
                                       // Ensure each card has a key
                                       _cardKeys.putIfAbsent(sClass.id, () => GlobalKey<__ClassCardState>());
-                                      final dynamicStatus = _getDynamicStatus(sClass);
+                                      final dynamicStatus = getDynamicStatus(
+                                          sClass,
+                                          _chipGreen, // Ongoing
+                                          _statusRed, // Absent
+                                          _statusOrange, // Late
+                                          _darkBluePanel, // Upcoming
+                                          Colors.grey.shade600); // Done
                                       return Padding(
                                         padding: EdgeInsets.only(bottom: 12 * scale),
                                         child: GestureDetector(

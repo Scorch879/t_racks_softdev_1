@@ -531,7 +531,7 @@ class DynamicStatus {
 }
 
 /// This function is now the single source of truth for determining class status.
-DynamicStatus getDynamicStatus(StudentClass sClass, Color green, Color red, Color yellow, Color grey) {
+DynamicStatus getDynamicStatus(StudentClass sClass, Color green, Color red, Color orange, Color darkBlue, Color grey) {
   // Attendance for today has been recorded
   if (sClass.todaysAttendance != null) {
     return sClass.todaysAttendance == true || sClass.todaysAttendance == 'true'
@@ -552,7 +552,7 @@ DynamicStatus getDynamicStatus(StudentClass sClass, Color green, Color red, Colo
   bool isToday = _isClassScheduledForToday(scheduleDay, todayWeekday);
 
   if (!isToday) {
-    return DynamicStatus('Upcoming', yellow);
+    return DynamicStatus('Upcoming', darkBlue);
   }
 
   // It is today, let's check the time
@@ -566,12 +566,12 @@ DynamicStatus getDynamicStatus(StudentClass sClass, Color green, Color red, Colo
     final classEndTime = _parseTimeHelper(timeRange[1].trim(), now);
 
     if (classStartTime == null || classEndTime == null) return DynamicStatus('Invalid Time', grey);
-    if (now.isBefore(classStartTime)) return DynamicStatus('Upcoming', yellow);
+    if (now.isBefore(classStartTime)) return DynamicStatus('Upcoming', darkBlue);
     if (now.isAfter(classEndTime)) return DynamicStatus('Done', grey);
-    if (now.difference(classStartTime).inMinutes > 15) return DynamicStatus('Late', red);
+    if (now.difference(classStartTime).inMinutes > 15) return DynamicStatus('Late', orange);
     return DynamicStatus('Ongoing', green);
   } catch (e) {
-    return DynamicStatus('Upcoming', yellow);
+    return DynamicStatus('Upcoming', darkBlue);
   }
 }
 
