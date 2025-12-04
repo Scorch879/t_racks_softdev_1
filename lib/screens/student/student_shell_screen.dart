@@ -96,6 +96,7 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
         return Scaffold(
           // Remove the solid background color
           // backgroundColor: _bgTeal,
+          extendBody: true,
           appBar: PreferredSize(
             preferredSize: Size.fromHeight(64 * scale),
             child: _TopBar(
@@ -109,17 +110,26 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
           body: Stack(
             children: [
               // 1. The Gradient Background
-              Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Color(0xFF194B61),
-                      Color(0xFF2A7FA3),
-                      Color(0xFF267394),
-                      Color(0xFF349BC7),
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
+              Positioned.fill(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Color(0xFF194B61),
+                        Color(0xFF2A7FA3),
+                        Color(0xFF267394),
+                        Color(0xFF349BC7),
+                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                  ),
+                  child: Opacity(
+                    opacity: 0.3,
+                    child: Image.asset(
+                      'assets/images/squigglytexture.png',
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
               ),
