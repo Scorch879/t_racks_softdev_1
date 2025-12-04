@@ -137,46 +137,29 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
   }
 
   InputImage? _inputImageFromCameraImage(CameraImage image) {
-    if (_controller == null) return null;
+    // ... Copy your previous implementation here ...
     final camera = _controller!.description;
     final sensorOrientation = camera.sensorOrientation;
-    InputImageRotation? rotation;
-    if (Platform.isIOS) {
-      rotation = InputImageRotationValue.fromRawValue(sensorOrientation);
-    } else if (Platform.isAndroid) {
-      var rotationCompensation =
-          _orientations[_controller!.value.deviceOrientation];
-      if (rotationCompensation == null) return null;
-      if (camera.lensDirection == CameraLensDirection.front) {
-        rotationCompensation = (sensorOrientation + rotationCompensation) % 360;
-      } else {
-        rotationCompensation =
-            (sensorOrientation - rotationCompensation + 360) % 360;
-      }
-      rotation = InputImageRotationValue.fromRawValue(rotationCompensation);
-    }
-    if (rotation == null) return null;
-
-    final format = InputImageFormatValue.fromRawValue(image.format.raw);
-    if (image.planes.isEmpty) return null;
-
-    final metadata = InputImageMetadata(
-      size: Size(image.width.toDouble(), image.height.toDouble()),
-      rotation: rotation,
-      format: format ?? InputImageFormat.nv21,
-      bytesPerRow: image.planes[0].bytesPerRow,
+    final rotation = InputImageRotationValue.fromRawValue(
+      Platform.isAndroid ? (sensorOrientation + 0) % 360 : sensorOrientation,
     );
-
-    final WriteBuffer allBytes = WriteBuffer();
-    for (final Plane plane in image.planes) {
-      allBytes.putUint8List(plane.bytes);
-    }
-    final bytes = allBytes.done().buffer.asUint8List();
-
+    if (rotation == null) return null;
+    final format = InputImageFormatValue.fromRawValue(image.format.raw);
     if (format == null) return null;
+    final plane = image.planes.first;
     return InputImage.fromBytes(
-      bytes: bytes,
-      metadata: metadata,
+      bytes: Uint8List.fromList(
+        image.planes.fold(
+          <int>[],
+          (previous, element) => previous..addAll(element.bytes),
+        ),
+      ),
+      metadata: InputImageMetadata(
+        size: Size(image.width.toDouble(), image.height.toDouble()),
+        rotation: rotation,
+        format: format,
+        bytesPerRow: plane.bytesPerRow,
+      ),
     );
   }
 
@@ -224,13 +207,6 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
       _startImageStream();
     }
   }
-
-  final _orientations = {
-    DeviceOrientation.portraitUp: 0,
-    DeviceOrientation.landscapeLeft: 90,
-    DeviceOrientation.portraitDown: 180,
-    DeviceOrientation.landscapeRight: 270,
-  };
 
   @override
   void dispose() {
