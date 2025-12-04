@@ -50,7 +50,8 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
     );
     _faceDetector = FaceDetector(options: options);
 
-    _tfliteManager.loadModel().then((_) {
+    // FIX 1: Updated method name from loadModel to loadModels
+    _tfliteManager.loadModels().then((_) {
       if (mounted) {
         setState(() => _isTfliteLoaded = true);
       }
@@ -214,15 +215,12 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
 
   Future<void> _processTFLite(CameraImage image) async {
     try {
-      final results = await _tfliteManager.runInferenceOnCameraImage(image);
-      if (results.isEmpty) return;
+      // FIX 2: Use checkLiveness instead of runInferenceOnCameraImage
+      // This returns TRUE if it's a real face, FALSE if it's a spoof.
+      bool isReal = await _tfliteManager.checkLiveness(image);
 
-      // LABELS: [0: Real, 1: No Face, 2: Fake]
-      double fakeScore = results.length > 2 ? results[2] : 0.0;
-
-      // LOGIC UPDATE: Require 3 consecutive bad frames to fail
-      if (fakeScore > 0.85) {
-        // Stricter threshold (must be VERY fake)
+      if (!isReal) {
+        // If it's NOT real (i.e., a spoof), increment the counter
         _consecutiveFakeFrames++;
       } else {
         _consecutiveFakeFrames = 0; // Reset if we see a good frame

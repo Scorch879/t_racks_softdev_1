@@ -6,113 +6,155 @@ import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 
-const int INPUT_SIZE = 224;
-
 class ModelManager {
-  Interpreter? _interpreter;
-  bool _isModelLoaded = false;
-  List<String> _labels = [];
+  Interpreter? _livenessInterpreter;
+  Interpreter? _recognitionInterpreter;
+  bool _areModelsLoaded = false;
 
-  bool get isModelLoaded => _isModelLoaded;
-  List<String> get labels => _labels;
+  bool get areModelsLoaded => _areModelsLoaded;
 
-  Future<void> loadModel() async {
+  Future<void> loadModels() async {
     try {
       final options = InterpreterOptions();
-      // options.addDelegate(GpuDelegateV2()); // Optional: Enable for faster Android performance
 
-      _interpreter = await Interpreter.fromAsset(
+      // 1. Load Liveness Model (Your existing model)
+      _livenessInterpreter = await Interpreter.fromAsset(
         'assets/models/model.tflite',
         options: options,
       );
 
-      await _loadLabels();
-      _isModelLoaded = true;
-      print(
-        'Model Loaded Successfully. Input Shape: ${_interpreter?.getInputTensors().first.shape}',
+      // 2. Load Recognition Model (You need to add this file to assets!)
+      // Common name: mobilefacenet.tflite
+      _recognitionInterpreter = await Interpreter.fromAsset(
+        'assets/models/mobilefacenet.tflite',
+        options: options,
       );
-    } catch (e) {
-      print('Error loading model: $e');
-    }
-  }
 
-  Future<void> _loadLabels() async {
-    try {
-      final String labelsString = await rootBundle.loadString(
-        'assets/models/labels.txt',
-      );
-      _labels = labelsString
-          .split('\n')
-          .where((l) => l.trim().isNotEmpty)
-          .toList();
+      _areModelsLoaded = true;
+      print('Both Models Loaded Successfully.');
     } catch (e) {
-      print('Warning: Labels failed to load.');
+      print('Error loading models: $e');
+      print(
+        'Make sure you have both model.tflite and mobilefacenet.tflite in assets!',
+      );
     }
   }
 
   void close() {
-    _interpreter?.close();
+    _livenessInterpreter?.close();
+    _recognitionInterpreter?.close();
   }
 
-  Future<List<double>> runInferenceOnCameraImage(CameraImage image) async {
-    if (!_isModelLoaded || _interpreter == null) return [];
+  /// Returns true if the face is "Real", false if "Spoof"
+  Future<bool> checkLiveness(CameraImage image) async {
+    if (!_areModelsLoaded || _livenessInterpreter == null) return false;
 
-    // 1. Prepare data for Isolate
-    // We copy the bytes to send to the background thread
-    final planes = image.planes.map((p) => p.bytes).toList();
-    final isYUV = image.planes.length >= 3;
+    // Liveness models usually expect 224x224
+    const int livenessInputSize = 224;
 
-    // 2. Run Heavy Image Processing in Background Thread
+    // 1. Preprocess
     final flatInput = await compute(
       _processImageInIsolate,
       _IsolateData(
-        planes: planes,
+        planes: image.planes.map((p) => p.bytes).toList(),
         width: image.width,
         height: image.height,
         yRowStride: image.planes[0].bytesPerRow,
-        uvRowStride: isYUV ? image.planes[1].bytesPerRow : 0,
-        uvPixelStride: isYUV ? (image.planes[1].bytesPerPixel ?? 1) : 0,
-        isYUV: isYUV,
+        uvRowStride: image.planes.length > 1 ? image.planes[1].bytesPerRow : 0,
+        uvPixelStride: image.planes.length > 1
+            ? (image.planes[1].bytesPerPixel ?? 1)
+            : 0,
+        isYUV: image.planes.length >= 3,
+        targetSize: livenessInputSize,
       ),
     );
 
-    // 3. FIX: RESHAPE INPUT TO [1, 224, 224, 3]
-    // The model expects a 4D array, but 'flatInput' is 1D.
-    // This .reshape() call converts the flat list into the nested 4D structure.
-    final input = flatInput.reshape([1, INPUT_SIZE, INPUT_SIZE, 3]);
+    // 2. Reshape for Liveness Model [1, 224, 224, 3]
+    final input = flatInput.reshape([
+      1,
+      livenessInputSize,
+      livenessInputSize,
+      3,
+    ]);
 
-    // 4. Prepare Output
-    int classCount = _labels.isNotEmpty ? _labels.length : 3;
-    var output = List.filled(classCount, 0.0).reshape([1, classCount]);
+    // 3. Output (Assuming [1, 2] or [1, 3] depending on your labels)
+    // Adjust logic based on your specific liveness model labels
+    // Usually: Index 0 = Fake, Index 1 = Real (or vice versa)
+    var output = List.filled(3, 0.0).reshape([1, 3]);
+    _livenessInterpreter!.run(input, output);
 
-    // 5. Run Inference
-    _interpreter!.run(input, output);
+    List<double> scores = (output[0] as List)
+        .map((e) => (e as num).toDouble())
+        .toList();
 
-    // 6. Return results
+    // Example Logic: If index 1 (Real) > 0.5 (Adjust based on your specific model)
+    // You might need to check your labels.txt to know which index is "Real"
+    // Assuming Index 1 is Real:
+    double realScore = scores.length > 1 ? scores[1] : 0.0;
+    return realScore > 0.7;
+  }
+
+  /// Generates the 192-d (or 128-d) Identity Vector
+  Future<List<double>> generateFaceEmbedding(CameraImage image) async {
+    if (!_areModelsLoaded || _recognitionInterpreter == null) return [];
+
+    // MobileFaceNet usually expects 112x112
+    const int recogInputSize = 112;
+
+    // 1. Preprocess
+    final flatInput = await compute(
+      _processImageInIsolate,
+      _IsolateData(
+        planes: image.planes.map((p) => p.bytes).toList(),
+        width: image.width,
+        height: image.height,
+        yRowStride: image.planes[0].bytesPerRow,
+        uvRowStride: image.planes.length > 1 ? image.planes[1].bytesPerRow : 0,
+        uvPixelStride: image.planes.length > 1
+            ? (image.planes[1].bytesPerPixel ?? 1)
+            : 0,
+        isYUV: image.planes.length >= 3,
+        targetSize: recogInputSize,
+      ),
+    );
+
+    // 2. Reshape for MobileFaceNet [1, 112, 112, 3]
+    final input = flatInput.reshape([1, recogInputSize, recogInputSize, 3]);
+
+    // 3. Output (Vector size depends on model, usually 192 for MobileFaceNet, 128 for FaceNet)
+    // We try to catch the output shape dynamically
+    final outputTensor = _recognitionInterpreter!.getOutputTensors().first;
+    final outputShape = outputTensor.shape; // e.g., [1, 192]
+    int vectorSize = outputShape.last;
+
+    var output = List.filled(vectorSize, 0.0).reshape([1, vectorSize]);
+
+    _recognitionInterpreter!.run(input, output);
+
     return (output[0] as List).map((e) => (e as num).toDouble()).toList();
   }
 
-  /// STATIC FUNCTION: Runs in background
   static Float32List _processImageInIsolate(_IsolateData data) {
     final int width = data.width;
     final int height = data.height;
+    final int targetSize = data.targetSize; // Use dynamic target size
+
     final int cropSize = math.min(width, height);
     final int cropX = (width - cropSize) ~/ 2;
     final int cropY = (height - cropSize) ~/ 2;
 
-    final floatInput = Float32List(1 * INPUT_SIZE * INPUT_SIZE * 3);
+    final floatInput = Float32List(1 * targetSize * targetSize * 3);
     int pixelIndex = 0;
 
     if (data.isYUV) {
-      // --- ANDROID / YUV Processing ---
       final yBytes = data.planes[0];
       final uBytes = data.planes[1];
       final vBytes = data.planes[2];
 
-      for (int y = 0; y < INPUT_SIZE; y++) {
-        final int srcY = cropY + (y * cropSize ~/ INPUT_SIZE);
-        for (int x = 0; x < INPUT_SIZE; x++) {
-          final int srcX = cropX + (x * cropSize ~/ INPUT_SIZE);
+      for (int y = 0; y < targetSize; y++) {
+        final int srcY = cropY + (y * cropSize ~/ targetSize);
+        for (int x = 0; x < targetSize; x++) {
+          final int srcX = cropX + (x * cropSize ~/ targetSize);
 
           final int uvX = srcX ~/ 2;
           final int uvY = srcY ~/ 2;
@@ -130,27 +172,24 @@ class ModelManager {
           final int uVal = uBytes[indexUV];
           final int vVal = vBytes[indexUV];
 
-          // YUV to RGB
           int r = (yVal + 1.402 * (vVal - 128)).toInt();
           int g = (yVal - 0.344136 * (uVal - 128) - 0.714136 * (vVal - 128))
               .toInt();
           int b = (yVal + 1.772 * (uVal - 128)).toInt();
 
-          // Normalize to [0.0, 1.0]
-          floatInput[pixelIndex++] = r.clamp(0, 255) / 255.0;
-          floatInput[pixelIndex++] = g.clamp(0, 255) / 255.0;
-          floatInput[pixelIndex++] = b.clamp(0, 255) / 255.0;
+          floatInput[pixelIndex++] =
+              (r.clamp(0, 255) - 128) / 128.0; // Normalized -1 to 1 for Recog
+          floatInput[pixelIndex++] = (g.clamp(0, 255) - 128) / 128.0;
+          floatInput[pixelIndex++] = (b.clamp(0, 255) - 128) / 128.0;
         }
       }
     } else {
-      // --- EMULATOR / iOS / BGRA Processing ---
+      // BGRA logic (iOS/Emulator)
       final bytes = data.planes[0];
-
-      for (int y = 0; y < INPUT_SIZE; y++) {
-        final int srcY = cropY + (y * cropSize ~/ INPUT_SIZE);
-        for (int x = 0; x < INPUT_SIZE; x++) {
-          final int srcX = cropX + (x * cropSize ~/ INPUT_SIZE);
-
+      for (int y = 0; y < targetSize; y++) {
+        final int srcY = cropY + (y * cropSize ~/ targetSize);
+        for (int x = 0; x < targetSize; x++) {
+          final int srcX = cropX + (x * cropSize ~/ targetSize);
           final int index = (srcY * data.yRowStride) + (srcX * 4);
 
           if (index + 2 >= bytes.length) {
@@ -162,9 +201,9 @@ class ModelManager {
           final g = bytes[index + 1];
           final r = bytes[index + 2];
 
-          floatInput[pixelIndex++] = r / 255.0;
-          floatInput[pixelIndex++] = g / 255.0;
-          floatInput[pixelIndex++] = b / 255.0;
+          floatInput[pixelIndex++] = (r - 128) / 128.0;
+          floatInput[pixelIndex++] = (g - 128) / 128.0;
+          floatInput[pixelIndex++] = (b - 128) / 128.0;
         }
       }
     }
@@ -180,6 +219,7 @@ class _IsolateData {
   final int uvRowStride;
   final int uvPixelStride;
   final bool isYUV;
+  final int targetSize; // Added targetSize
 
   _IsolateData({
     required this.planes,
@@ -189,5 +229,6 @@ class _IsolateData {
     required this.uvRowStride,
     required this.uvPixelStride,
     required this.isYUV,
+    required this.targetSize,
   });
 }
