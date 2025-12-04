@@ -26,14 +26,16 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     // Fetch the list of available cameras
     final cameras = await availableCameras();
 
-    if (!mounted) return;
-
-    
+    if (!mounted) return; // TODO: Implement navigation to camera screen
   }
 
-  void onFilterAllClasses() {}
+  void onFilterAllClasses() {
+    // TODO: Implement filter functionality
+  }
 
-  void onClassPressed() {}
+  void onClassPressed() {
+    // TODO: Implement navigation to class details
+  }
 
   void onNotificationsPressed() => _showNotifications(full: false);
 
@@ -358,18 +360,18 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                   ),
                 ),
                 Material(
-                  color: _statusRed,
+                  color: _chipGreen,
                   borderRadius: BorderRadius.circular(20 * scale),
                   child: InkWell(
                     onTap: widget.onOngoingClassStatusPressed,
                     borderRadius: BorderRadius.circular(20 * scale),
                     child: Container(
                       padding: EdgeInsets.symmetric(
-                        vertical: 12 * scale,
-                        horizontal: 18 * scale,
+                        vertical: 12 * scale, // Adjusted padding
+                        horizontal: 18 * scale, // Adjusted padding
                       ),
                       child: Text(
-                        'Absent',
+                        'Ongoing',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 12 * scale,
@@ -549,74 +551,6 @@ class _TopBarState extends State<_TopBar> {
                   ),
                 ),
               ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FilterChipRow extends StatefulWidget {
-  const _FilterChipRow({
-    required this.scale,
-    required this.onTap,
-    required this.title,
-    required this.trailingText,
-    required this.backgroundColor,
-  });
-
-  final double scale;
-  final VoidCallback onTap;
-  final String title;
-  final String trailingText;
-  final Color backgroundColor;
-
-  @override
-  State<_FilterChipRow> createState() => _FilterChipRowState();
-}
-
-class _FilterChipRowState extends State<_FilterChipRow> {
-  @override
-  Widget build(BuildContext context) {
-    final scale = widget.scale;
-    return GestureDetector(
-      onTap: widget.onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: 14 * scale,
-          vertical: 12 * scale,
-        ),
-        decoration: BoxDecoration(
-          color: widget.backgroundColor,
-          borderRadius: BorderRadius.circular(22 * scale),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.25),
-              blurRadius: 10 * scale,
-              offset: Offset(0, 6 * scale),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                widget.title,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18 * scale,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            Text(
-              widget.trailingText,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18 * scale,
-                fontWeight: FontWeight.w800,
-              ),
             ),
           ],
         ),
