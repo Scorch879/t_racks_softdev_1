@@ -759,6 +759,55 @@ class DatabaseService {
       rethrow;
     }
   }
+
+  // Replace the entire updateEducatorProfile function with this:
+  Future<void> updateEducatorProfile({
+    required String firstName,
+    required String lastName,
+    required String bio,
+  }) async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw 'User not logged in';
+
+      // 1. Update the 'profiles' table (Always safe to update)
+      await _supabase
+          .from('profiles')
+          .update({'firstName': firstName, 'lastName': lastName})
+          .eq('id', userId);
+
+      // 2. Check if the Educator row already exists
+      final existingEducator = await _supabase
+          .from('Educator_Table')
+          .select()
+          .eq('id', userId)
+          .maybeSingle();
+
+      if (existingEducator != null) {
+        // CASE A: Profile exists -> UPDATE ONLY
+        // We only send 'bio' so we don't accidentally overwrite their real age with a default.
+        await _supabase
+            .from('Educator_Table')
+            .update({'bio': bio})
+            .eq('id', userId);
+      } else {
+        // CASE B: Profile is missing -> INSERT WITH DEFAULTS
+        // We MUST provide 'age', 'institution', etc. to satisfy the "Not Null" database rules.
+        await _supabase.from('Educator_Table').insert({
+          'id': userId,
+          'bio': bio,
+          // Dummy values to satisfy database constraints:
+          'age': 0,
+          'institution': 'Not Specified',
+          'gender': 'Not Specified',
+          'birthDate': DateTime.now().toIso8601String(),
+        });
+      }
+    } catch (e) {
+      print('Error updating educator profile: $e');
+      rethrow;
+    }
+  }
 }
 
 class AccountServices {
@@ -975,7 +1024,8 @@ class AttendanceService {
 
       await _supabase.from('Attendance_Record').insert(attendanceData);
       print(
-          'Successfully marked attendance for $studentId in class ${ongoingClass.id}');
+        'Successfully marked attendance for $studentId in class ${ongoingClass.id}',
+      );
 
       return ongoingClass.name;
     } catch (e) {
