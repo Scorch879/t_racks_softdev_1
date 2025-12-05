@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Import for Clipboard
+import 'package:flutter/services.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_add_student_screen.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
@@ -27,24 +27,23 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
 
   List<StudentAttendanceItem> studentList = [];
   bool isLoading = true;
-  String? _classCode; // Variable to store the class code
+  String? _classCode;
 
   @override
   void initState() {
     super.initState();
-    _fetchClassData(); // Renamed to reflect fetching both students and details
+    _fetchClassData();
   }
 
   void _fetchClassData() async {
     // 1. Fetch Students
     final students = await _dbService.getClassStudents(widget.classId);
 
-    // 2. Fetch Class Details (to get the code)
+    // 2. Fetch Class Details
     String? code;
     try {
       final classDetails = await _dbService.getClassDetails(widget.classId);
-      code =
-          classDetails.classCode; // Assuming StudentClass has a classCode field
+      code = classDetails.classCode;
     } catch (e) {
       print("Error fetching class code: $e");
       code = "Error";
@@ -59,7 +58,6 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
     }
   }
 
-  // Helper method to copy code
   void _copyClassCode() {
     if (_classCode != null) {
       Clipboard.setData(ClipboardData(text: _classCode!));
@@ -71,6 +69,128 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
         ),
       );
     }
+  }
+
+  // --- NEW: Attendance Dialog Logic ---
+  void _showAttendanceDialog(StudentAttendanceItem student) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Mark Attendance",
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0F3951),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                student.name,
+                style: const TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+              const SizedBox(height: 24),
+              
+              // Option: Present
+              _buildAttendanceOption(
+                label: "Present",
+                color: const Color(0xFF4CAF50),
+                icon: Icons.check_circle_outline,
+                onTap: () => _submitAttendance(student, "Present"),
+              ),
+              const SizedBox(height: 12),
+              
+              // Option: Late
+              _buildAttendanceOption(
+                label: "Late",
+                color: const Color(0xFFFF9800),
+                icon: Icons.access_time,
+                onTap: () => _submitAttendance(student, "Late"),
+              ),
+              const SizedBox(height: 12),
+              
+              // Option: Absent
+              _buildAttendanceOption(
+                label: "Absent",
+                color: const Color(0xFFE53935),
+                icon: Icons.cancel_outlined,
+                onTap: () => _submitAttendance(student, "Absent"),
+              ),
+              
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submitAttendance(StudentAttendanceItem student, String status) async {
+    Navigator.pop(context); // Close dialog
+    
+    // Show loading indicator briefly or optimistic update
+    ScaffoldMessenger.of(context).showSnackBar(
+       SnackBar(content: Text("Marking ${student.name} as $status..."), duration: const Duration(milliseconds: 500)),
+    );
+
+    try {
+      await _dbService.markManualAttendance(
+        classId: widget.classId, 
+        studentId: student.id, 
+        status: status
+      );
+      // Refresh list to show new status
+      _fetchClassData(); 
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Failed to update attendance"), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  Widget _buildAttendanceOption({
+    required String label, 
+    required Color color, 
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          border: Border.all(color: color, width: 1.5),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color),
+            const SizedBox(width: 16),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -94,7 +214,7 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
       ),
       body: Stack(
         children: [
-          // --- 1. BACKGROUND ---
+          // Background
           Positioned.fill(
             child: Container(
               decoration: const BoxDecoration(
@@ -121,7 +241,6 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
             ),
           ),
 
-          // --- 2. CONTENT ---
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -153,11 +272,10 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // --- Header Row ---
+          // Header Row
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Icon
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
@@ -167,8 +285,6 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
                 child: const Icon(Icons.star, color: Colors.white, size: 20),
               ),
               const SizedBox(width: 12),
-
-              // Class Name & Schedule
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -192,8 +308,6 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
                   ],
                 ),
               ),
-
-              // --- UPDATED: COMPACT CLASS CODE (Upper Right) ---
               if (_classCode != null)
                 InkWell(
                   onTap: _copyClassCode,
@@ -204,9 +318,7 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(
-                        0xFF7FE26B,
-                      ).withOpacity(0.2), // Subtle green bg
+                      color: const Color(0xFF7FE26B).withOpacity(0.2),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: const Color(0xFF7FE26B).withOpacity(0.5),
@@ -219,9 +331,9 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
                         Text(
                           _classCode!,
                           style: const TextStyle(
-                            color: Color(0xFF7FE26B), // Bright green text
+                            color: Color(0xFF7FE26B),
                             fontWeight: FontWeight.bold,
-                            fontSize: 13, // Smaller font
+                            fontSize: 13,
                             letterSpacing: 1,
                           ),
                         ),
@@ -229,7 +341,7 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
                         const Icon(
                           Icons.copy_rounded,
                           color: Color(0xFF7FE26B),
-                          size: 14, // Smaller icon
+                          size: 14,
                         ),
                       ],
                     ),
@@ -240,7 +352,7 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
 
           const SizedBox(height: 20),
 
-          // --- Search Bar ---
+          // Search Bar
           TextField(
             controller: _searchController,
             style: const TextStyle(color: Colors.white),
@@ -262,7 +374,7 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
           ),
           const SizedBox(height: 16),
 
-          // --- LIST AREA ---
+          // List Area
           Flexible(
             fit: FlexFit.loose,
             child: isLoading
@@ -291,7 +403,7 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
 
           const SizedBox(height: 16),
 
-          // --- Add Student Button ---
+          // Add Student Button
           Align(
             alignment: Alignment.centerRight,
             child: ElevatedButton.icon(
@@ -340,6 +452,14 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
   }
 
   Widget _buildStudentTile(StudentAttendanceItem student) {
+    // Determine color based on status for better visual feedback
+    Color statusColor = Colors.grey;
+    String displayStatus = student.status; // 'Present', 'Absent', or 'Mark Attendance'
+    
+    if (student.status == 'Present') statusColor = const Color(0xFF4CAF50);
+    else if (student.status == 'Absent') statusColor = const Color(0xFFE53935);
+    else if (student.status == 'Late') statusColor = const Color(0xFFFF9800); // Assuming Late is tracked
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
@@ -364,18 +484,24 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
               ),
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.grey,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Text(
-              "Mark Attendance",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
+          
+          // --- UPDATED BUTTON ---
+          InkWell(
+            onTap: () => _showAttendanceDialog(student),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: statusColor, // Dynamic color
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                displayStatus == "Mark Attendance" ? "Mark Attendance" : displayStatus,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),

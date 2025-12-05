@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../services/educator_profile_service.dart';
+import 'package:t_racks_softdev_1/services/database_service.dart';
 
 // Educator Theme Colors
 const _bgDarkBlue = Color(0xFF0F3951);
@@ -16,16 +16,17 @@ class EducatorProfileScreen extends StatefulWidget {
 }
 
 class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
+  final DatabaseService _databaseService = DatabaseService();
+
   // Logic State
   late TextEditingController _firstNameController;
   late TextEditingController _lastNameController;
-  late TextEditingController _emailController;
   late TextEditingController _bioController;
 
   String _initialFirstName = '';
   String _initialLastName = '';
-  String _initialEmail = '';
   String _initialBio = '';
+  
   bool _hasChanges = false;
   bool _isLoading = true;
 
@@ -34,12 +35,10 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
     super.initState();
     _firstNameController = TextEditingController();
     _lastNameController = TextEditingController();
-    _emailController = TextEditingController();
     _bioController = TextEditingController();
 
     _firstNameController.addListener(_checkForChanges);
     _lastNameController.addListener(_checkForChanges);
-    _emailController.addListener(_checkForChanges);
     _bioController.addListener(_checkForChanges);
 
     _loadData();
@@ -49,23 +48,21 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
   void dispose() {
     _firstNameController.dispose();
     _lastNameController.dispose();
-    _emailController.dispose();
     _bioController.dispose();
     super.dispose();
   }
 
   Future<void> _loadData() async {
     try {
-      final profile = await EducatorProfileService.fetchProfile();
-      if (mounted) {
-        _initialFirstName = profile['firstName'] ?? '';
-        _initialLastName = profile['lastName'] ?? '';
-        _initialEmail = profile['email'] ?? '';
-        _initialBio = profile['bio'] ?? '';
+      final educator = await _databaseService.getEducatorData();
 
+      if (mounted && educator != null) {
+        _initialFirstName = educator.profile.firstName;
+        _initialLastName = educator.profile.lastName;
+        _initialBio = educator.bio; 
+        
         _firstNameController.text = _initialFirstName;
         _lastNameController.text = _initialLastName;
-        _emailController.text = _initialEmail;
         _bioController.text = _initialBio;
 
         setState(() {
@@ -78,6 +75,9 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
         setState(() {
           _isLoading = false;
         });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading profile: $e')),
+        );
       }
     }
   }
@@ -85,7 +85,6 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
   void _checkForChanges() {
     final hasChanges = _firstNameController.text != _initialFirstName ||
         _lastNameController.text != _initialLastName ||
-        _emailController.text != _initialEmail ||
         _bioController.text != _initialBio;
 
     if (hasChanges != _hasChanges) {
@@ -95,17 +94,41 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
     }
   }
 
-  void _saveChanges() {
-    setState(() {
-      _initialFirstName = _firstNameController.text;
-      _initialLastName = _lastNameController.text;
-      _initialEmail = _emailController.text;
-      _initialBio = _bioController.text;
-      _hasChanges = false;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Changes Saved')),
-    );
+  Future<void> _saveChanges() async {
+    setState(() => _isLoading = true);
+
+    try {
+      await _databaseService.updateEducatorProfile(
+        firstName: _firstNameController.text.trim(),
+        lastName: _lastNameController.text.trim(),
+        bio: _bioController.text.trim(),
+      );
+
+      if (mounted) {
+        _initialFirstName = _firstNameController.text;
+        _initialLastName = _lastNameController.text;
+        _initialBio = _bioController.text;
+        
+        setState(() {
+          _hasChanges = false;
+          _isLoading = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile updated successfully'),
+            backgroundColor: Color(0xFF4CAF50),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving changes: $e'), backgroundColor: _statusRed),
+        );
+      }
+    }
   }
 
   Future<bool> _onWillPop() async {
@@ -129,7 +152,7 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
         if (_isLoading) {
           return const Scaffold(
             backgroundColor: Colors.white,
-            body: Center(child: CircularProgressIndicator()),
+            body: Center(child: CircularProgressIndicator(color: _bgDarkBlue)),
           );
         }
 
@@ -163,7 +186,7 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
                         ),
                         SizedBox(height: 8 * scale),
                         Text(
-                          _bioController.text,
+                          _bioController.text.isEmpty ? "No bio yet" : _bioController.text,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: _textCyan,
@@ -185,13 +208,7 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
                           controller: _lastNameController,
                           scale: scale,
                         ),
-                        SizedBox(height: 20 * scale),
-                        _ProfileTextField(
-                          label: 'Email',
-                          hint: 'Input your email here',
-                          controller: _emailController,
-                          scale: scale,
-                        ),
+                        // Removed Email Field SizedBox here
                         SizedBox(height: 20 * scale),
                         _ProfileTextField(
                           label: 'Bio',
@@ -205,21 +222,25 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
                           width: double.infinity,
                           height: 60 * scale,
                           child: OutlinedButton(
-                            onPressed: _saveChanges,
+                            onPressed: _hasChanges ? _saveChanges : null,
                             style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: _textCyan),
+                              side: BorderSide(
+                                color: _hasChanges ? _textCyan : _borderGrey
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16 * scale),
                               ),
-                              foregroundColor: _textCyan,
+                              foregroundColor: _hasChanges ? _textCyan : _borderGrey,
                             ),
-                            child: Text(
-                              'Save Changes',
-                              style: TextStyle(
-                                fontSize: 20 * scale,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
+                            child: _isLoading 
+                              ? const CircularProgressIndicator()
+                              : Text(
+                                  'Save Changes',
+                                  style: TextStyle(
+                                    fontSize: 20 * scale,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
                           ),
                         ),
                         SizedBox(height: 40 * scale),
@@ -236,6 +257,7 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
   }
 }
 
+// ... Keep the private classes (_ProfileHeader, _ProfileTextField, etc.) exactly as they were ...
 class _ProfileHeader extends StatelessWidget {
   const _ProfileHeader({required this.scale});
 
@@ -273,7 +295,7 @@ class _ProfileHeader extends StatelessWidget {
                         width: 48 * scale,
                         height: 48 * scale,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.25),
+                          color: Colors.white.withOpacity(0.25),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
@@ -308,7 +330,7 @@ class _ProfileHeader extends StatelessWidget {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
+                            color: Colors.black.withOpacity(0.15),
                             blurRadius: 12,
                             offset: const Offset(0, 6),
                           ),
@@ -356,36 +378,27 @@ class _HeaderClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
     final path = Path();
-    // Start slightly higher on the left
     path.lineTo(0, size.height - 50);
-    
-    // First curve: Convex (Hill) on the left
     final firstControlPoint = Offset(size.width * 0.25, size.height + 10);
     final firstEndPoint = Offset(size.width * 0.5, size.height - 30);
-    
     path.quadraticBezierTo(
       firstControlPoint.dx,
       firstControlPoint.dy,
       firstEndPoint.dx,
       firstEndPoint.dy,
     );
-    
-    // Second curve: Concave (Scoop) underneath/towards the right
     final secondControlPoint = Offset(size.width * 0.78, size.height - 80);
     final secondEndPoint = Offset(size.width, size.height - 30);
-    
     path.quadraticBezierTo(
       secondControlPoint.dx,
       secondControlPoint.dy,
       secondEndPoint.dx,
       secondEndPoint.dy,
     );
-
     path.lineTo(size.width, 0);
     path.close();
     return path;
   }
-
   @override
   bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }
@@ -397,6 +410,7 @@ class _ProfileTextField extends StatelessWidget {
     required this.controller,
     required this.scale,
     this.maxLines = 1,
+    this.readOnly = false,
   });
 
   final String label;
@@ -404,6 +418,7 @@ class _ProfileTextField extends StatelessWidget {
   final TextEditingController controller;
   final double scale;
   final int maxLines;
+  final bool readOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -422,8 +437,9 @@ class _ProfileTextField extends StatelessWidget {
         TextFormField(
           controller: controller,
           maxLines: maxLines,
+          readOnly: readOnly,
           style: TextStyle(
-            color: _textDarkBlue,
+            color: readOnly ? Colors.grey[600] : _textDarkBlue,
             fontSize: 16 * scale,
             fontWeight: FontWeight.w500,
           ),
@@ -446,7 +462,7 @@ class _ProfileTextField extends StatelessWidget {
               borderSide: const BorderSide(color: _textCyan, width: 1.5),
             ),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: readOnly ? Colors.grey[100] : Colors.white,
           ),
         ),
       ],
@@ -456,7 +472,6 @@ class _ProfileTextField extends StatelessWidget {
 
 class _UnsavedChangesDialog extends StatelessWidget {
   const _UnsavedChangesDialog();
-
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -495,21 +510,13 @@ class _UnsavedChangesDialog extends StatelessWidget {
                   child: SizedBox(
                     height: 52,
                     child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(false), // Continue editing
+                      onPressed: () => Navigator.of(context).pop(false),
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: _borderGrey),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         foregroundColor: const Color(0xFF1A2B3C),
                       ),
-                      child: const Text(
-                        'Continue',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      child: const Text('Continue', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ),
@@ -518,21 +525,13 @@ class _UnsavedChangesDialog extends StatelessWidget {
                   child: SizedBox(
                     height: 52,
                     child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(true), // Leave
+                      onPressed: () => Navigator.of(context).pop(true),
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: _borderGrey),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         foregroundColor: const Color(0xFF1A2B3C),
                       ),
-                      child: const Text(
-                        'Leave',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      child: const Text('Leave', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ),
@@ -547,7 +546,6 @@ class _UnsavedChangesDialog extends StatelessWidget {
 
 class _PermissionDialog extends StatelessWidget {
   const _PermissionDialog();
-
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -563,7 +561,7 @@ class _PermissionDialog extends StatelessWidget {
               'Permission Required',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Color(0xFF2E7D57), // Greenish color from design
+                color: Color(0xFF2E7D57),
                 fontSize: 24,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.5,
@@ -590,18 +588,10 @@ class _PermissionDialog extends StatelessWidget {
                       onPressed: () => Navigator.of(context).pop(),
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: _borderGrey),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         foregroundColor: const Color(0xFF1A2B3C),
                       ),
-                      child: const Text(
-                        'Allow',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      child: const Text('Allow', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ),
@@ -613,20 +603,10 @@ class _PermissionDialog extends StatelessWidget {
                       onPressed: () => Navigator.of(context).pop(),
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: _borderGrey),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         foregroundColor: const Color(0xFF1A2B3C),
                       ),
-                      child: const Text(
-                        'Do not allow',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      child: const Text('Do not allow', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ),

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:t_racks_softdev_1/services/models/notification_model.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class InAppNotificationService extends ChangeNotifier {
   static final InAppNotificationService _instance =
@@ -22,6 +23,7 @@ class InAppNotificationService extends ChangeNotifier {
   bool _isFirstLoad = true;
   StreamSubscription? _classSubscription;
   Timer? _scheduleTimer;
+  StreamSubscription? _educatorSubscription;
 
   Future<void> loadAllNotifications() async {
     // 1. Get DB Notifications (History)
@@ -40,6 +42,7 @@ class InAppNotificationService extends ChangeNotifier {
 
   void startListeningToEnrollments() {
     // Cancel existing subscription to avoid duplicates
+    _resetState();
     _classSubscription?.cancel();
     print("🎧 Listening for new class enrollments...");
 
@@ -129,9 +132,21 @@ class InAppNotificationService extends ChangeNotifier {
         _addNotificationIfNotExists(sClass, difference);
       }
     }
+    
   }
 
   // --- HELPERS ---
+
+  void _resetState() {
+    _notifications.clear();
+    _generatedAlerts.clear();
+    _knownClassIds.clear();
+    _isFirstLoad = true;
+    _scheduleTimer?.cancel();
+    _classSubscription?.cancel();
+    _educatorSubscription?.cancel();
+    notifyListeners();
+  }
 
   void generateTestNotification() {
     final testNote = AppNotification(
@@ -144,9 +159,17 @@ class InAppNotificationService extends ChangeNotifier {
     notifyListeners();
   }
 
-  void dismissNotification(String id) {
+  Future<void> dismissNotification(String id) async {
+    // 1. Remove from local list immediately (for snappy UI)
     _notifications.removeWhere((n) => n.id == id);
     notifyListeners();
+
+    // 2. Delete from Database permanently
+    // We check if it's a real database ID (usually UUID or int) 
+    // vs a local generated ID (like "enroll_12345")
+    if (!id.startsWith('enroll_') && !id.startsWith('test_')) {
+       await DatabaseService().deleteNotification(id);
+    }
   }
 
   void markAsRead() {
@@ -249,10 +272,47 @@ class InAppNotificationService extends ChangeNotifier {
     }
     notifyListeners();
   }
+  void startListeningForEducatorNotifications() {
+    _resetState();
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    _educatorSubscription?.cancel();
+    print("🎧 Listening for Educator notifications...");
+
+    _educatorSubscription = Supabase.instance.client
+        .from('Notification_Table')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', userId)
+        .order('timestamp', ascending: false)
+        .listen((data) {
+      
+      // 'data' is a List of Maps (rows)
+      for (var row in data) {
+        // Create notification object
+        final notif = AppNotification(
+          id: row['id'].toString(),
+          title: row['title'] ?? 'Notification',
+          message: row['subtitle'] ?? '',
+          timestamp: DateTime.parse(row['timestamp']),
+          isRead: false, // Default to false for new ones
+        );
+
+        // Add to list if it doesn't exist
+        if (!_notifications.any((n) => n.id == notif.id)) {
+          print("🔔 New Notification Received: ${notif.title}");
+          _notifications.insert(0, notif);
+          notifyListeners();
+        }
+      }
+    });
+  }
 
   @override
   void dispose() {
     _classSubscription?.cancel();
+    _educatorSubscription?.cancel(); // Cancel educator listener
+    _scheduleTimer?.cancel();
     super.dispose();
   }
 }
