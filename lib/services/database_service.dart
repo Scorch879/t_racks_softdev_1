@@ -1013,8 +1013,14 @@ class AttendanceService {
         .toList();
 
     return classes.firstWhereOrNull((sClass) {
-      final status = getDynamicStatus(sClass, Colors.green, Colors.red,
-          Colors.orange, Colors.blue, Colors.grey);
+      final status = getDynamicStatus(
+        sClass,
+        Colors.green,
+        Colors.red,
+        Colors.orange,
+        Colors.blue,
+        Colors.grey,
+      );
       return status.text == 'Ongoing' || status.text == 'Late';
     });
   }
