@@ -641,8 +641,6 @@ class DatabaseService {
       print('Error during auto-marking absences: $e');
     }
   }
-<<<<<<< HEAD
-=======
 
   // In database_service.dart
   Future<List<AppNotification>> getPersistentNotifications() async {
@@ -875,7 +873,6 @@ class DatabaseService {
       // We don't rethrow here so the UI doesn't crash on a background sync
     }
   }
->>>>>>> parent of e8b6f1e (Merge pull request #138 from Scorch879/branch-ni-carlo)
 }
 
 class AccountServices {

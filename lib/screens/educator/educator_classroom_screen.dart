@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-<<<<<<< HEAD
-=======
 import 'package:flutter/services.dart'; // Import for Clipboard
->>>>>>> parent of e8b6f1e (Merge pull request #138 from Scorch879/branch-ni-carlo)
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_add_student_screen.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
@@ -30,39 +27,17 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
 
   List<StudentAttendanceItem> studentList = [];
   bool isLoading = true;
-<<<<<<< HEAD
-=======
   String? _classCode; // Variable to store the class code
->>>>>>> parent of e8b6f1e (Merge pull request #138 from Scorch879/branch-ni-carlo)
 
   @override
   void initState() {
     super.initState();
-<<<<<<< HEAD
-    _fetchStudents();
-=======
-    _fetchClassData(); // Renamed to reflect fetching both students and details
->>>>>>> parent of e8b6f1e (Merge pull request #138 from Scorch879/branch-ni-carlo)
+    _fetchClassData();
   }
 
   void _fetchClassData() async {
     // 1. Fetch Students
     final students = await _dbService.getClassStudents(widget.classId);
-<<<<<<< HEAD
-=======
-
-    // 2. Fetch Class Details (to get the code)
-    String? code;
-    try {
-      final classDetails = await _dbService.getClassDetails(widget.classId);
-      code =
-          classDetails.classCode; // Assuming StudentClass has a classCode field
-    } catch (e) {
-      print("Error fetching class code: $e");
-      code = "Error";
-    }
-
->>>>>>> parent of e8b6f1e (Merge pull request #138 from Scorch879/branch-ni-carlo)
     if (mounted) {
       setState(() {
         studentList = students;
@@ -72,8 +47,6 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
     }
   }
 
-<<<<<<< HEAD
-=======
   // Helper method to copy code
   void _copyClassCode() {
     if (_classCode != null) {
@@ -88,7 +61,6 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
     }
   }
 
->>>>>>> parent of e8b6f1e (Merge pull request #138 from Scorch879/branch-ni-carlo)
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -169,14 +141,6 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-<<<<<<< HEAD
-          // --- Header ---
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(Icons.star, color: Colors.white),
-              const SizedBox(width: 8),
-=======
           // --- Header Row ---
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -193,7 +157,6 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
               const SizedBox(width: 12),
 
               // Class Name & Schedule
->>>>>>> parent of e8b6f1e (Merge pull request #138 from Scorch879/branch-ni-carlo)
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -217,10 +180,6 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
                   ],
                 ),
               ),
-<<<<<<< HEAD
-=======
-
-              // --- UPDATED: COMPACT CLASS CODE (Upper Right) ---
               if (_classCode != null)
                 InkWell(
                   onTap: _copyClassCode,
@@ -291,11 +250,6 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
           const SizedBox(height: 16),
 
           // --- LIST AREA ---
-<<<<<<< HEAD
-          // Flexible + shrinkWrap allows it to be small when few items,
-          // but scrollable when it hits the max height of the screen.
-=======
->>>>>>> parent of e8b6f1e (Merge pull request #138 from Scorch879/branch-ni-carlo)
           Flexible(
             fit: FlexFit.loose,
             child: isLoading
@@ -324,7 +278,7 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
 
           const SizedBox(height: 16),
 
-          // --- Add Student Button ---
+          // Add Student Button
           Align(
             alignment: Alignment.centerRight,
             child: ElevatedButton.icon(
