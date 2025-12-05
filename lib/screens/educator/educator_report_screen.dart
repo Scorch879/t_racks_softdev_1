@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:t_racks_softdev_1/services/database_service.dart';
+import 'package:t_racks_softdev_1/services/models/report_model.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 class EducatorReportScreen extends StatefulWidget {
   const EducatorReportScreen({super.key});
@@ -8,8 +11,52 @@ class EducatorReportScreen extends StatefulWidget {
 }
 
 class _EducatorReportScreenState extends State<EducatorReportScreen> {
+  // Use the existing DatabaseService
+  final DatabaseService _databaseService = DatabaseService();
+
+  bool _isLoading = true;
+  String? _error;
+  DashboardData? _data;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final data = await _databaseService.getEducatorDashboardData();
+      if (mounted) {
+        setState(() {
+          _data = data;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      );
+    }
+
+    if (_error != null) {
+      return Center(child: Text('Error loading data: $_error'));
+    }
+
+    if (_data == null) return const SizedBox();
+
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -20,8 +67,11 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
           const SizedBox(height: 16),
           _buildClassAttendanceSection(),
           const SizedBox(height: 16),
-          _buildAttendanceAlertSection(),
-          const SizedBox(height: 16),
+          // Only show alerts section if there are actual alerts
+          if (_data!.alerts.isNotEmpty) ...[
+            _buildAttendanceAlertSection(),
+            const SizedBox(height: 16),
+          ],
         ],
       ),
     );
@@ -35,7 +85,7 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
           Expanded(
             child: _buildKPICard(
               icon: Icons.person,
-              value: '94.2%',
+              value: _data?.overallAttendance ?? '-',
               label: 'Overall Attendance',
             ),
           ),
@@ -43,7 +93,7 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
           Expanded(
             child: _buildKPICard(
               icon: Icons.calendar_today,
-              value: '68',
+              value: _data?.presentToday ?? '-',
               label: 'Present Today',
             ),
           ),
@@ -82,10 +132,7 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
           const SizedBox(height: 4),
           Text(
             label,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 12,
-            ),
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
             textAlign: TextAlign.center,
           ),
         ],
@@ -93,17 +140,35 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
     );
   }
 
+  // inside lib/educator_report_screen.dart
+
   Widget _buildAttendanceTrendsCard() {
+    // If no data, show a simple message
+    if (_data?.trendData == null || _data!.trendData.isEmpty) {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F3951).withOpacity(0.85),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.white.withOpacity(0.15), width: 2),
+        ),
+        child: const Center(
+          child: Text(
+            "No attendance history available yet",
+            style: TextStyle(color: Colors.white70),
+          ),
+        ),
+      );
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F3951).withValues(alpha: 0.85),
+        color: const Color(0xFF0F3951).withOpacity(0.85),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.15),
-          width: 2,
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.15), width: 2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -122,70 +187,93 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
+          // THE GRAPH CONTAINER
           Container(
             height: 200,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text(
-                    'Missing Graph',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
+            padding: const EdgeInsets.only(right: 16),
+            child: LineChart(
+              LineChartData(
+                gridData: FlGridData(show: false),
+                titlesData: FlTitlesData(
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, meta) {
+                        // Only show specific indices to avoid clutter
+                        int index = value.toInt();
+                        if (index < 0 || index >= _data!.trendData.length)
+                          return const SizedBox();
+
+                        // Show date every few days depending on data size
+                        if (index % 5 != 0 &&
+                            index != _data!.trendData.length - 1)
+                          return const SizedBox();
+
+                        final date = _data!.trendData[index].date;
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(
+                            "${date.month}/${date.day}", // e.g. 10/27
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 10,
+                            ),
+                          ),
+                        );
+                      },
+                      interval: 1,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: const [
-                      Padding(
-                        padding: EdgeInsets.only(left: 8),
-                        child: Text(
-                          '100%',
-                          style: TextStyle(color: Colors.white70, fontSize: 10),
-                        ),
-                      ),
-                      Padding(
-                        padding: EdgeInsets.only(right: 8),
-                        child: Text(
-                          '0%',
-                          style: TextStyle(color: Colors.white70, fontSize: 10),
-                        ),
-                      ),
-                    ],
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 30,
+                      getTitlesWidget: (value, meta) {
+                        if (value == 0 || value == 50 || value == 100) {
+                          return Text(
+                            '${value.toInt()}%',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 10,
+                            ),
+                          );
+                        }
+                        return const SizedBox();
+                      },
+                    ),
                   ),
-                  const Spacer(),
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 8),
-                    child: Text(
-                      'Today',
-                      style: TextStyle(color: Colors.white70, fontSize: 10),
+                  topTitles: AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                ),
+                borderData: FlBorderData(show: false),
+                minX: 0,
+                maxX: (_data!.trendData.length - 1).toDouble(),
+                minY: 0,
+                maxY: 100,
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: _data!.trendData.asMap().entries.map((e) {
+                      return FlSpot(e.key.toDouble(), e.value.percentage);
+                    }).toList(),
+                    isCurved: true,
+                    color: const Color(0xFF4CAF50), // Green Line
+                    barWidth: 3,
+                    isStrokeCapRound: true,
+                    dotData: FlDotData(show: false),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: const Color(
+                        0xFF4CAF50,
+                      ).withOpacity(0.2), // Gradient fill
                     ),
                   ),
                 ],
               ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {},
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4CAF50),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text('Last 30 Days'),
             ),
           ),
         ],
@@ -213,7 +301,7 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
               Icon(Icons.bar_chart, color: Colors.white),
               SizedBox(width: 8),
               Text(
-                'Class Attendance',
+                'Class Attendance (Today)',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 20,
@@ -223,22 +311,23 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          _buildClassCard(
-            className: 'Calculus 137',
-            totalStudents: 28,
-            present: 26,
-          ),
-          const SizedBox(height: 12),
-          _buildClassCard(
-            className: 'Physics 138',
-            totalStudents: 38,
-            present: 30,
-          ),
-          const SizedBox(height: 12),
-          _buildClassCard(
-            className: 'Calculus 237',
-            totalStudents: 18,
-            present: 6,
+          if (_data!.classMetrics.isEmpty)
+            const Text(
+              "No classes found",
+              style: TextStyle(color: Colors.white70),
+            ),
+
+          ..._data!.classMetrics.map(
+            (metric) => Column(
+              children: [
+                _buildClassCard(
+                  className: metric.className,
+                  totalStudents: metric.totalStudents,
+                  present: metric.presentCount,
+                ),
+                const SizedBox(height: 12),
+              ],
+            ),
           ),
         ],
       ),
@@ -250,7 +339,10 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
     required int totalStudents,
     required int present,
   }) {
-    final percentage = (present / totalStudents * 100).round();
+    final percentage = totalStudents == 0
+        ? 0
+        : (present / totalStudents * 100).round();
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -279,7 +371,11 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
               value: percentage / 100,
               minHeight: 8,
               backgroundColor: Colors.white.withValues(alpha: 0.2),
-              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                percentage < 50
+                    ? const Color(0xFFE53935)
+                    : const Color(0xFF4CAF50),
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -288,17 +384,11 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
             children: [
               Text(
                 '$totalStudents Students',
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14,
-                ),
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
               ),
               Text(
                 '$present Present',
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14,
-                ),
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
               ),
             ],
           ),
@@ -337,16 +427,19 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          _buildAlertCard(
-            title: 'Low Attendance Warning',
-            message: 'Calculus 257 class attendance has dropped to 13%',
-            color: const Color(0xFFE53935),
-          ),
-          const SizedBox(height: 12),
-          _buildAlertCard(
-            title: 'Chronic Absence Alert',
-            message: '3 students have missed 5 consecutive days',
-            color: const Color(0xFFFF9800),
+          ..._data!.alerts.map(
+            (alert) => Column(
+              children: [
+                _buildAlertCard(
+                  title: alert.title,
+                  message: alert.message,
+                  color: alert.isCritical
+                      ? const Color(0xFFE53935)
+                      : const Color(0xFFFF9800),
+                ),
+                const SizedBox(height: 12),
+              ],
+            ),
           ),
         ],
       ),
@@ -378,10 +471,7 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
           const SizedBox(height: 8),
           Text(
             message,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-            ),
+            style: const TextStyle(color: Colors.white, fontSize: 14),
           ),
         ],
       ),
