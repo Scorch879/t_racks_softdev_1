@@ -26,6 +26,19 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
   void initState() {
     super.initState();
     _loadProfile();
+
+    // 1. Check for schedule alerts (One-time check)
+    InAppNotificationService().startScheduleChecker();
+
+    // 2. Start listening for DB changes (Real-time Enrollments)
+    InAppNotificationService().startListeningToEnrollments();
+  }
+
+  @override
+  void dispose() {
+    // Optional: Stop the timer when the widget is destroyed (e.g. logging out)
+    InAppNotificationService().stopScheduleChecker();
+    super.dispose();
   }
 
   Future<void> _loadProfile() async {
