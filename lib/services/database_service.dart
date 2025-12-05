@@ -8,6 +8,7 @@ import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:t_racks_softdev_1/services/models/student_model.dart';
 import 'package:collection/collection.dart';
 import 'dart:math';
+import 'package:t_racks_softdev_1/services/models/notification_model.dart'; // <--- ADD THIS
 
 final _supabase = Supabase.instance.client;
 
@@ -335,55 +336,88 @@ class DatabaseService {
   }
 
   Future<List<Map<String, String>>> getAvailableStudents(String classId) async {
-  try {
-    // 1. Get IDs of students ALREADY in the class
-    final enrolledRes = await _supabase
-        .from('Enrollments_Table')
-        .select('student_id')
-        .eq('class_id', classId);
-    
-    final enrolledIds = (enrolledRes as List).map((e) => e['student_id']).toList();
+    try {
+      // 1. Get IDs of students ALREADY in the class
+      final enrolledRes = await _supabase
+          .from('Enrollments_Table')
+          .select('student_id')
+          .eq('class_id', classId);
 
-    // 2. Fetch profiles using an INNER JOIN on Student_Table
-    // The '!inner' keyword ensures we ONLY get users who exist in Student_Table
-    var query = _supabase
-        .from('profiles')
-        .select('id, firstName, lastName, Student_Table!inner(id)'); // <--- CHANGED THIS LINE
+      final enrolledIds = (enrolledRes as List)
+          .map((e) => e['student_id'])
+          .toList();
 
-    if (enrolledIds.isNotEmpty) {
-      query = query.not('id', 'in', enrolledIds);
+      // 2. Fetch profiles using an INNER JOIN on Student_Table
+      // The '!inner' keyword ensures we ONLY get users who exist in Student_Table
+      var query = _supabase
+          .from('profiles')
+          .select(
+            'id, firstName, lastName, Student_Table!inner(id)',
+          ); // <--- CHANGED THIS LINE
+
+      if (enrolledIds.isNotEmpty) {
+        query = query.not('id', 'in', enrolledIds);
+      }
+
+      final res = await query;
+
+      return (res as List).map((profile) {
+        return {
+          'id': profile['id'].toString(),
+          'name': "${profile['firstName']} ${profile['lastName']}",
+          'subtitle': 'Student',
+        };
+      }).toList();
+    } catch (e) {
+      print('Error fetching available students: $e');
+      return [];
     }
-
-    final res = await query;
-
-    return (res as List).map((profile) {
-      return {
-        'id': profile['id'].toString(), 
-        'name': "${profile['firstName']} ${profile['lastName']}",
-        'subtitle': 'Student', 
-      };
-    }).toList();
-  } catch (e) {
-    print('Error fetching available students: $e');
-    return [];
   }
-}
 
-Future<void> enrollStudent({
-  required String classId,
-  required String studentId,
-}) async {
-  try {
-    await _supabase.from('Enrollments_Table').insert({
-      'class_id': classId,
-      'student_id': studentId,
-      'enrollment_date': DateTime.now().toIso8601String(),
-    });
-  } catch (e) {
-    print('Error enrolling student: $e');
-    rethrow;
+  Stream<List<StudentClass>> getStudentClassesStream() {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return Stream.value([]);
+
+    // 1. Listen to the Enrollments table for this specific student
+    return _supabase
+        .from('Enrollments_Table')
+        .stream(
+          primaryKey: ['id'],
+        ) // Ensure your Enrollments_Table has a primary key
+        .eq('student_id', userId)
+        .asyncMap((enrollments) async {
+          // 2. When enrollment changes, fetch the actual class details
+          if (enrollments.isEmpty) return [];
+
+          final classIds = enrollments.map((e) => e['class_id']).toList();
+
+          // 3. Fetch details from Classes_Table
+          final response = await _supabase
+              .from('Classes_Table')
+              .select()
+              .inFilter('id', classIds);
+
+          return (response as List)
+              .map((data) => StudentClass.fromJson(data))
+              .toList();
+        });
   }
-}
+
+  Future<void> enrollStudent({
+    required String classId,
+    required String studentId,
+  }) async {
+    try {
+      await _supabase.from('Enrollments_Table').insert({
+        'class_id': classId,
+        'student_id': studentId,
+        'enrollment_date': DateTime.now().toIso8601String(),
+      });
+    } catch (e) {
+      print('Error enrolling student: $e');
+      rethrow;
+    }
+  }
 
   /// Enrolls the current student in a class using a unique class code.
   ///
@@ -427,7 +461,8 @@ Future<void> enrollStudent({
   }
 
   Future<List<AttendanceRecord>> getStudentAttendanceForClass(
-      String classId) async {
+    String classId,
+  ) async {
     try {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) throw 'User not logged in';
@@ -456,9 +491,13 @@ Future<void> enrollStudent({
 
       // Calculate the start and end of the current week (assuming Monday is the first day)
       final now = DateTime.now();
-      final daysToSubtract = now.weekday - 1; // Monday is 1, so subtract 0. Sunday is 7, so subtract 6.
+      final daysToSubtract =
+          now.weekday -
+          1; // Monday is 1, so subtract 0. Sunday is 7, so subtract 6.
       final startOfWeek = now.subtract(Duration(days: daysToSubtract));
-      final endOfWeek = startOfWeek.add(const Duration(days: 6)); // Monday + 6 days = Sunday
+      final endOfWeek = startOfWeek.add(
+        const Duration(days: 6),
+      ); // Monday + 6 days = Sunday
 
       // Format dates to 'YYYY-MM-DD' for the query
       final startDateString = startOfWeek.toIso8601String().split('T')[0];
@@ -497,8 +536,9 @@ Future<void> enrollStudent({
           .eq('student_id', userId)
           .eq('date', today);
 
-      final attendedClassIds =
-          (attendanceData as List).map((e) => e['class_id']).toList();
+      final attendedClassIds = (attendanceData as List)
+          .map((e) => e['class_id'])
+          .toList();
 
       // 2. Get all classes the user is enrolled in.
       final enrolledClassesData = await _supabase
@@ -546,6 +586,36 @@ Future<void> enrollStudent({
       print('Error during auto-marking absences: $e');
     }
   }
+
+  // In database_service.dart
+  Future<List<AppNotification>> getPersistentNotifications() async {
+    // FIX: Use _supabase.auth instead of _auth
+    final userId = _supabase.auth.currentUser?.id;
+
+    if (userId == null) return [];
+
+    try {
+      final response = await _supabase
+          .from('Notification_Table')
+          .select()
+          .eq('user_id', userId)
+          .order('timestamp', ascending: false)
+          .limit(20);
+
+      return (response as List).map((row) {
+        return AppNotification(
+          id: row['id'].toString(),
+          title: row['title'] ?? 'Notification',
+          message: row['subtitle'] ?? '',
+          timestamp: DateTime.parse(row['timestamp']),
+          isRead: false,
+        );
+      }).toList();
+    } catch (e) {
+      print('Error fetching notifications: $e');
+      return [];
+    }
+  }
 }
 
 class AccountServices {
@@ -572,7 +642,14 @@ class DynamicStatus {
 }
 
 /// This function is now the single source of truth for determining class status.
-DynamicStatus getDynamicStatus(StudentClass sClass, Color green, Color red, Color orange, Color darkBlue, Color grey) {
+DynamicStatus getDynamicStatus(
+  StudentClass sClass,
+  Color green,
+  Color red,
+  Color orange,
+  Color darkBlue,
+  Color grey,
+) {
   // Attendance for today has been recorded
   if (sClass.todaysAttendance != null) {
     return sClass.todaysAttendance == true || sClass.todaysAttendance == 'true'
@@ -606,10 +683,13 @@ DynamicStatus getDynamicStatus(StudentClass sClass, Color green, Color red, Colo
     final classStartTime = _parseTimeHelper(timeRange[0].trim(), now);
     final classEndTime = _parseTimeHelper(timeRange[1].trim(), now);
 
-    if (classStartTime == null || classEndTime == null) return DynamicStatus('Invalid Time', grey);
-    if (now.isBefore(classStartTime)) return DynamicStatus('Upcoming', darkBlue);
+    if (classStartTime == null || classEndTime == null)
+      return DynamicStatus('Invalid Time', grey);
+    if (now.isBefore(classStartTime))
+      return DynamicStatus('Upcoming', darkBlue);
     if (now.isAfter(classEndTime)) return DynamicStatus('Done', grey);
-    if (now.difference(classStartTime).inMinutes > 15) return DynamicStatus('Late', orange);
+    if (now.difference(classStartTime).inMinutes > 15)
+      return DynamicStatus('Late', orange);
     return DynamicStatus('Ongoing', green);
   } catch (e) {
     return DynamicStatus('Upcoming', darkBlue);
@@ -620,8 +700,9 @@ DynamicStatus getDynamicStatus(StudentClass sClass, Color green, Color red, Colo
 DateTime? _parseTimeHelper(String timeStr, DateTime now) {
   try {
     final isPM = timeStr.toLowerCase().contains('pm');
-    final timeOnly =
-        timeStr.replaceAll(RegExp(r'(am|pm)', caseSensitive: false), '').trim();
+    final timeOnly = timeStr
+        .replaceAll(RegExp(r'(am|pm)', caseSensitive: false), '')
+        .trim();
     final parts = timeOnly.split(':');
     if (parts.length < 2) return null;
 
@@ -645,8 +726,24 @@ DateTime? _parseTimeHelper(String timeStr, DateTime now) {
 
 /// Helper function to robustly check if a class is scheduled for a given weekday.
 bool _isClassScheduledForToday(String scheduleDay, int todayWeekday) {
-  const dayMappings = {'m': 1, 't': 2, 'w': 3, 'th': 4, 'f': 5, 's': 6, 'su': 7};
-  const fullDayMappings = {'monday': 1, 'tuesday': 2, 'wednesday': 3, 'thursday': 4, 'friday': 5, 'saturday': 6, 'sunday': 7};
+  const dayMappings = {
+    'm': 1,
+    't': 2,
+    'w': 3,
+    'th': 4,
+    'f': 5,
+    's': 6,
+    'su': 7,
+  };
+  const fullDayMappings = {
+    'monday': 1,
+    'tuesday': 2,
+    'wednesday': 3,
+    'thursday': 4,
+    'friday': 5,
+    'saturday': 6,
+    'sunday': 7,
+  };
 
   if (fullDayMappings.containsKey(scheduleDay)) {
     return fullDayMappings[scheduleDay] == todayWeekday;
@@ -657,11 +754,20 @@ bool _isClassScheduledForToday(String scheduleDay, int todayWeekday) {
   if (scheduleDay.contains('su') && todayWeekday == 7) return true;
 
   // Handle single-letter abbreviations, ignoring 'h' and 'u' from 'th'/'su'
-  return scheduleDay.split('').any((char) => dayMappings[char] == todayWeekday && char != 'h' && char != 'u');
+  return scheduleDay
+      .split('')
+      .any(
+        (char) =>
+            dayMappings[char] == todayWeekday && char != 'h' && char != 'u',
+      );
 }
 
 /// Helper function to determine if a class has finished for today.
-bool _isClassDoneForToday(String scheduleDay, String timeRangeStr, DateTime now) {
+bool _isClassDoneForToday(
+  String scheduleDay,
+  String timeRangeStr,
+  DateTime now,
+) {
   final todayWeekday = now.weekday;
 
   // Check if the class is scheduled for today
