@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+<<<<<<< HEAD
+=======
+import 'package:flutter/services.dart'; // Import for Clipboard
+>>>>>>> parent of e8b6f1e (Merge pull request #138 from Scorch879/branch-ni-carlo)
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_add_student_screen.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
@@ -26,16 +30,39 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
 
   List<StudentAttendanceItem> studentList = [];
   bool isLoading = true;
+<<<<<<< HEAD
+=======
+  String? _classCode; // Variable to store the class code
+>>>>>>> parent of e8b6f1e (Merge pull request #138 from Scorch879/branch-ni-carlo)
 
   @override
   void initState() {
     super.initState();
+<<<<<<< HEAD
     _fetchStudents();
+=======
+    _fetchClassData(); // Renamed to reflect fetching both students and details
+>>>>>>> parent of e8b6f1e (Merge pull request #138 from Scorch879/branch-ni-carlo)
   }
 
   void _fetchClassData() async {
     // 1. Fetch Students
     final students = await _dbService.getClassStudents(widget.classId);
+<<<<<<< HEAD
+=======
+
+    // 2. Fetch Class Details (to get the code)
+    String? code;
+    try {
+      final classDetails = await _dbService.getClassDetails(widget.classId);
+      code =
+          classDetails.classCode; // Assuming StudentClass has a classCode field
+    } catch (e) {
+      print("Error fetching class code: $e");
+      code = "Error";
+    }
+
+>>>>>>> parent of e8b6f1e (Merge pull request #138 from Scorch879/branch-ni-carlo)
     if (mounted) {
       setState(() {
         studentList = students;
@@ -45,6 +72,23 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
     }
   }
 
+<<<<<<< HEAD
+=======
+  // Helper method to copy code
+  void _copyClassCode() {
+    if (_classCode != null) {
+      Clipboard.setData(ClipboardData(text: _classCode!));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Class Code '$_classCode' copied to clipboard!"),
+          backgroundColor: const Color(0xFF2A7FA3),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+>>>>>>> parent of e8b6f1e (Merge pull request #138 from Scorch879/branch-ni-carlo)
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -125,12 +169,31 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+<<<<<<< HEAD
           // --- Header ---
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Icon(Icons.star, color: Colors.white),
               const SizedBox(width: 8),
+=======
+          // --- Header Row ---
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Icon
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.star, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 12),
+
+              // Class Name & Schedule
+>>>>>>> parent of e8b6f1e (Merge pull request #138 from Scorch879/branch-ni-carlo)
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -154,6 +217,52 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
                   ],
                 ),
               ),
+<<<<<<< HEAD
+=======
+
+              // --- UPDATED: COMPACT CLASS CODE (Upper Right) ---
+              if (_classCode != null)
+                InkWell(
+                  onTap: _copyClassCode,
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(
+                        0xFF7FE26B,
+                      ).withOpacity(0.2), // Subtle green bg
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: const Color(0xFF7FE26B).withOpacity(0.5),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _classCode!,
+                          style: const TextStyle(
+                            color: Color(0xFF7FE26B), // Bright green text
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13, // Smaller font
+                            letterSpacing: 1,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Icon(
+                          Icons.copy_rounded,
+                          color: Color(0xFF7FE26B),
+                          size: 14, // Smaller icon
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+>>>>>>> parent of e8b6f1e (Merge pull request #138 from Scorch879/branch-ni-carlo)
             ],
           ),
 
@@ -182,8 +291,11 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
           const SizedBox(height: 16),
 
           // --- LIST AREA ---
+<<<<<<< HEAD
           // Flexible + shrinkWrap allows it to be small when few items,
           // but scrollable when it hits the max height of the screen.
+=======
+>>>>>>> parent of e8b6f1e (Merge pull request #138 from Scorch879/branch-ni-carlo)
           Flexible(
             fit: FlexFit.loose,
             child: isLoading
