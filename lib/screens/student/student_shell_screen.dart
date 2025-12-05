@@ -27,10 +27,13 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
     super.initState();
     _loadProfile();
 
-    // 1. Check for schedule alerts (One-time check)
+    // 1. Load History (Missed notifications while offline)
+    InAppNotificationService().loadPersistentNotifications();
+
+    // 2. Real-time Schedule Alerts
     InAppNotificationService().startScheduleChecker();
 
-    // 2. Start listening for DB changes (Real-time Enrollments)
+    // 3. Real-time Enrollments (While app is open)
     InAppNotificationService().startListeningToEnrollments();
   }
 
