@@ -408,10 +408,28 @@ class DatabaseService {
     required String studentId,
   }) async {
     try {
+      // 1. Fetch class details first (to get the class name for the notification)
+      final classData = await _supabase
+          .from('Classes_Table')
+          .select('class_name, subject')
+          .eq('id', classId)
+          .single();
+
+      // 2. Insert into Enrollments Table
       await _supabase.from('Enrollments_Table').insert({
         'class_id': classId,
         'student_id': studentId,
         'enrollment_date': DateTime.now().toIso8601String(),
+      });
+
+      // 3. NEW: Insert into Notification_Table (Persistent Storage)
+      await _supabase.from('Notification_Table').insert({
+        'user_id': studentId, // The student receiving the alert
+        'title': 'New Class Enrollment',
+        'subtitle':
+            'You have been added to ${classData['class_name']} (${classData['subject']})',
+        'timestamp': DateTime.now().toIso8601String(),
+        // 'is_read': false // Optional: if you added this column to your DB
       });
     } catch (e) {
       print('Error enrolling student: $e');

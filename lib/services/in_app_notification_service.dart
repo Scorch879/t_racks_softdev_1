@@ -233,6 +233,23 @@ class InAppNotificationService extends ChangeNotifier {
     }
   }
 
+  Future<void> loadPersistentNotifications() async {
+    // 1. Get notifications from the database
+    final dbNotifications = await DatabaseService()
+        .getPersistentNotifications();
+
+    // 2. Add them to our local list
+    // We reverse them so the newest is at the top if your DB returns oldest first
+    // or just addAll if your DB query already sorted by desc (which it does).
+    for (var n in dbNotifications) {
+      // Avoid duplicates if we already have this ID in memory
+      if (!_notifications.any((existing) => existing.id == n.id)) {
+        _notifications.add(n);
+      }
+    }
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _classSubscription?.cancel();
