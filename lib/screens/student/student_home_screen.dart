@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/student/student_settings_screen.dart';
 import 'package:t_racks_softdev_1/screens/student/student_class_screen.dart';
 import 'package:camera/camera.dart';
+import 'package:t_racks_softdev_1/screens/student/student_camera_screen.dart'; 
 
 const _bgTeal = Color(0xFF167C94);
 const _cardSurface = Color(0xFF173C45);

@@ -9,7 +9,6 @@ import 'package:flutter/services.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:t_racks_softdev_1/services/tflite_service.dart' as tflite;
 import 'package:t_racks_softdev_1/services/face_service.dart';
-import 'package:t_racks_softdev_1/services/database_service.dart';
 
 enum ChallengeType { smile, blink, turnLeft, turnRight }
 
@@ -28,7 +27,6 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
   bool _isProcessing = false;
   late FaceDetector _faceDetector;
   final tflite.ModelManager _tfliteManager = tflite.ModelManager();
-  final AttendanceService _attendanceService = AttendanceService();
 
   // Liveness Variables
   List<ChallengeType> _challenges = [];
@@ -268,20 +266,9 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
       setState(() {
         _isVerified = true; // Stop processing
         if (matchResult != null) {
-          _statusMessage = "Verifying class & marking attendance...";
-          _statusColor = Colors.blueAccent;
-
-          // Mark Attendance Here for matchResult.studentId
-          _attendanceService.markAttendance(matchResult.studentId).then((className) {
-            if (mounted) {
-              setState(() {
-                _statusMessage = className != null
-                    ? "✅ Welcome, ${matchResult.fullName}!\nAttendance marked for $className."
-                    : "❌ Welcome, ${matchResult.fullName}!\nCould not find an ongoing class.";
-                _statusColor = className != null ? Colors.green : Colors.orange;
-              });
-            }
-          });
+          _statusMessage = "✅ Welcome, ${matchResult.fullName}!";
+          _statusColor = Colors.green;
+          // TODO: Mark Attendance Here for matchResult.studentId
         } else {
           _statusMessage = "❌ Student Not Recognized";
           _statusColor = Colors.orange;

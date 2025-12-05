@@ -5,7 +5,6 @@ class AttendanceRecord {
   final DateTime date;
   final bool isPresent;
   final String? time;
-  final bool isLate;
 
   AttendanceRecord({
     required this.id,
@@ -13,7 +12,6 @@ class AttendanceRecord {
     required this.classId,
     required this.date,
     required this.isPresent,
-    this.isLate = false,
     this.time,
   });
 
@@ -25,7 +23,6 @@ class AttendanceRecord {
       date: DateTime.parse(json['date'] as String),
       isPresent: json['isPresent'] as bool,
       time: json['time'] as String?,
-      isLate: json['isLate'] as bool? ?? false,
     );
   }
 }

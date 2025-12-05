@@ -277,7 +277,7 @@ class _ProfileHeader extends StatelessWidget {
                 children: [
                   Positioned.fill(
                     child: Opacity(
-                      opacity: 0.3,
+                      opacity: 0.1,
                       child: Image.asset(
                         'assets/images/squigglytexture.png',
                         fit: BoxFit.cover,
