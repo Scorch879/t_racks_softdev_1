@@ -7,6 +7,9 @@ class StudentClass {
   final String? day;
   final String? time;
   final String? status;
+  final String? classCode;
+  final String? todaysAttendance;
+  final int studentCount;
 
   StudentClass({
     required this.id,
@@ -16,6 +19,9 @@ class StudentClass {
     this.time,
     this.schedule,
     this.status,
+    this.classCode,
+    this.todaysAttendance,
+    this.studentCount = 0,
   });
 
   factory StudentClass.fromJson(Map<String, dynamic> json) {
@@ -35,6 +41,9 @@ class StudentClass {
       time: time,
       schedule: scheduleString,
       status: json['status'] as String?,
+      classCode: json['class_code'] as String?,
+      todaysAttendance: json['todays_attendance']?.toString(),
+      studentCount: json['student_count'] as int? ?? 0,
     );
   }
 }

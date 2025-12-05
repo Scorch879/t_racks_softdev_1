@@ -44,18 +44,16 @@ class _LoginScreenState extends State<LoginScreen> {
         email: email,
         password: password,
       );
-      
 
       // 2. Handle success and navigate based on the role
       if (mounted) {
         _emailController.clear();
         _passwordController.clear();
-        
+
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('remember_me', _rememberMe);
 
         hasProfile = await _databaseService.checkProfileExists();
-        
 
         if (hasProfile == false) {
           Navigator.of(context).pushAndRemoveUntil(
@@ -69,15 +67,14 @@ class _LoginScreenState extends State<LoginScreen> {
             case 'student':
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(
-                    builder: (context) => const StudentShellScreen()),
+                  builder: (context) => const StudentShellScreen(),
+                ),
                 (route) => false, // This removes all previous routes
               );
               break;
             case 'educator':
               Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(
-                  builder: (context) => const EducatorShell(),
-                ),
+                MaterialPageRoute(builder: (context) => const EducatorShell()),
                 (route) => false, // This removes all previous routes
               );
               break;
@@ -273,7 +270,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
                               // --- START: NEW "REMEMBER ME" / "FORGOT PASSWORD" ROW ---
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 20),
                               Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
@@ -304,8 +301,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                   TextButton(
                                     onPressed: () {
                                       Navigator.push(
-                                        context,MaterialPageRoute(
-                                          builder: (context) =>const ForgotPasswordScreen(),
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              const ForgotPasswordScreen(),
                                         ),
                                       );
                                     },
@@ -319,77 +318,78 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ],
                               ),
                               // --- END: NEW ROW ---
+                              SizedBox(
+                                width:
+                                    double.infinity, // Makes button full-width
+                                height: 50,
+                                child: ElevatedButton(
+                                  onPressed: _isLoading ? null : _handleLogin,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(
+                                      0xFF26A69A,
+                                    ), // Green/teal
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  child: _isLoading
+                                      ? const CircularProgressIndicator(
+                                          color: Colors.white,
+                                        )
+                                      : const Text(
+                                          'Login',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                ),
+                              ),
                               // --- START: NEW LOGIN BUTTON ---
+                              const SizedBox(height: 24),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Text(
+                                    "Don't have an account? ",
+                                    style: TextStyle(color: Colors.black54),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              const RegisterScreen(),
+                                        ),
+                                      );
+                                    },
+                                    // You might need this style to rFmove default padding
+                                    style: TextButton.styleFrom(
+                                      padding: EdgeInsets.zero,
+                                      minimumSize: Size.zero,
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    child: const Text(
+                                      'Register',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF26A69A), // Green/teal
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              // --- END: NEW ROW ---
+                              const SizedBox(height: 20),
                             ],
                           ),
                         ),
                       ),
 
-                      SizedBox(
-                        width: double.infinity, // Makes button full-width
-                        height: 50,
-                        child: ElevatedButton(
-                          onPressed: _isLoading ? null : _handleLogin,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(
-                              0xFF26A69A,
-                            ), // Green/teal
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: _isLoading
-                              ? const CircularProgressIndicator(
-                                  color: Colors.white,
-                                )
-                              : const Text(
-                                  'Login',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                        ),
-                      ),
-                      // --- END: NEW LOGIN BUTTON ---
-
                       // --- START: NEW "DON'T HAVE AN ACCOUNT?" ROW ---
-                      const SizedBox(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            "Don't have an account? ",
-                            style: TextStyle(color: Colors.black54),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const RegisterScreen(),
-                                ),
-                              );
-                            },
-                            // You might need this style to rFmove default padding
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: const Text(
-                              'Register',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF26A69A), // Green/teal
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      // --- END: NEW ROW ---
-                      const SizedBox(height: 20),
                     ],
                   ),
                 ),

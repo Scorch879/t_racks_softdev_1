@@ -1,9 +1,11 @@
+import 'dart:async';
+import 'package:camera/camera.dart'; // Import Camera
 import 'package:flutter/material.dart';
-import 'package:t_racks_softdev_1/screens/student/student_camera_screen.dart';
 import 'package:t_racks_softdev_1/screens/student/student_class_content.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:t_racks_softdev_1/services/models/student_model.dart';
+import 'package:t_racks_softdev_1/screens/student/student_camera_screen.dart'; // Import StudentCameraScreen
 
 const _blueIcon = Color(0xFF57B0D7);
 const _cardSurface = Color(0xFF0C3343);
@@ -13,13 +15,9 @@ const _chipGreen = Color(0xFF37AA82);
 const _statusGreen = Color(0xFF7FE26B);
 const _statusOrange = Color(0xFFFF8442);
 const _statusRed = Color(0xFFE26B6B);
-const _titleRed = Color(0xFFE57373);
 
 class StudentHomeContent extends StatefulWidget {
-  const StudentHomeContent({
-    super.key,
-    required this.onNotificationsPressed,
-  });
+  const StudentHomeContent({super.key, required this.onNotificationsPressed});
 
   final VoidCallback onNotificationsPressed;
 
@@ -28,16 +26,26 @@ class StudentHomeContent extends StatefulWidget {
 }
 
 class _StudentHomeContentState extends State<StudentHomeContent> {
-  void onOngoingClassStatusPressed() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const StudentCameraScreen(),
-      ),
-    );
-  }
   final _databaseService = DatabaseService();
   late Future<Map<String, dynamic>> _dataFuture;
+
+  // --- FIX START: Fetch cameras and pass them ---
+  void onOngoingClassStatusPressed() async {
+    // 1. Get list of cameras
+    final cameras = await availableCameras();
+
+    if (!mounted) return;
+
+    // 2. Pass them to the screen
+    // Navigator.push(
+    //   context,
+    //   MaterialPageRoute(
+    //     builder: (context) => StudentCameraScreen(cameras: cameras),
+    //   ),
+    // );
+  }
+  
+  Timer? _timer;
 
   //void onOngoingClassStatusPressed() {} commented this out cuz awas giving errors
 
@@ -45,6 +53,19 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
   void initState() {
     super.initState();
     _dataFuture = _fetchData();
+    // Set up a timer to rebuild the widget every minute to update time-sensitive UI
+    _timer = Timer.periodic(const Duration(minutes: 1), (Timer t) {
+      // Calling setState will trigger a rebuild, which re-evaluates _getDynamicStatus
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel(); // Cancel the timer when the widget is disposed
+    super.dispose();
   }
 
   void _showClassDetails(String classId) {
@@ -58,6 +79,9 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
 
   Future<Map<String, dynamic>> _fetchData() async {
     try {
+      // First, run the logic to mark any missed classes as absent.
+      await _databaseService.markMissedClassesAsAbsent();
+
       // Fetch student profile and classes concurrently
       final results = await Future.wait([
         _databaseService.getStudentData(),
@@ -68,7 +92,6 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
         'classes': results[1] as List<StudentClass>,
       };
     } catch (e) {
-      // Propagate error to FutureBuilder
       throw Exception('Failed to load home screen data: $e');
     }
   }
@@ -86,15 +109,38 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
           future: _dataFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator(color: Colors.white));
+              return const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              );
             }
 
             if (snapshot.hasError) {
-              return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white)));
+              return Center(
+                child: Text(
+                  'Error: ${snapshot.error}',
+                  style: const TextStyle(color: Colors.white),
+                ),
+              );
             }
 
             final student = snapshot.data?['student'] as Student?;
             final classes = snapshot.data?['classes'] as List<StudentClass>? ?? [];
+
+            // Find the first ongoing class
+            StudentClass? ongoingClass;
+            for (var sClass in classes) {
+              final status = getDynamicStatus(
+                  sClass,
+                  _chipGreen, // Ongoing
+                  _statusRed, // Absent
+                  _statusOrange, // Late
+                  _cardSurface, // Upcoming
+                  Colors.grey.shade600); // Done
+              if (status.text == 'Ongoing' || status.text == 'Late') {
+                ongoingClass = sClass;
+                break;
+              }
+            }
 
             return SizedBox.expand(
               child: Stack(
@@ -125,15 +171,25 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
                           children: [
                             _WelcomeAndOngoingCard(
                               student: student,
+                              ongoingClass: ongoingClass,
                               scale: scale,
                               radius: cardRadius,
-                              onOngoingClassStatusPressed: onOngoingClassStatusPressed,
+                              onOngoingClassStatusPressed:
+                                  onOngoingClassStatusPressed,
                             ),
                             SizedBox(height: 16 * scale),
                             _MyClassesCard(
                               classes: classes,
                               scale: scale,
                               radius: cardRadius,
+
+                              getDynamicStatus: (sClass) => getDynamicStatus(
+                                  sClass,
+                                  _chipGreen, // Ongoing
+                                  _statusRed, // Absent
+                                  _statusOrange, // Late
+                                  _cardSurface, // Upcoming
+                                  Colors.grey.shade600), // Done
                               onClassPressed: _showClassDetails,
                             ),
                           ],
@@ -151,16 +207,38 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
   }
 }
 
+DateTime? _parseTime(String timeStr, DateTime now) {
+  final isPM = timeStr.toLowerCase().contains('pm');
+  final timeOnly = timeStr.replaceAll(RegExp(r'\s*(am|pm)', caseSensitive: false), '').trim();
+  final parts = timeOnly.split(':');
+  if (parts.length < 2) return null;
+
+  var hour = int.tryParse(parts[0]);
+  final minute = int.tryParse(parts[1]);
+
+  if (hour == null || minute == null) return null;
+
+  if (isPM && hour != 12) { // Convert 1 PM to 11 PM to 24-hour format
+    hour += 12;
+  } else if (!isPM && hour == 12) { // Handle 12 AM (midnight)
+    hour = 0;
+  }
+  
+  return DateTime(now.year, now.month, now.day, hour, minute);
+}
+
 class _WelcomeAndOngoingCard extends StatefulWidget {
   const _WelcomeAndOngoingCard({
     this.student,
+    this.ongoingClass,
     required this.scale,
     required this.radius,
     required this.onOngoingClassStatusPressed,
   });
+  final Student? student;
+  final StudentClass? ongoingClass;
   final double scale;
   final double radius;
-  final Student? student;
   final VoidCallback onOngoingClassStatusPressed;
 
   @override
@@ -171,6 +249,8 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
   @override
   Widget build(BuildContext context) {
     final scale = widget.scale;
+    final ongoingClass = widget.ongoingClass;
+
     return _CardContainer(
       radius: widget.radius,
       scale: scale,
@@ -195,125 +275,137 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                 Text(
                   "Today's Status",
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.75),
+                    color: Colors.white.withOpacity(0.75),
                     fontSize: 17 * scale,
                     fontWeight: FontWeight.w100,
                   ),
                 ),
                 SizedBox(height: 12 * scale),
-                Row(
-                  children: [
-                    Icon(Icons.access_time_filled_rounded,
-                        color: _chipGreen, size: 28 * scale),
-                    SizedBox(width: 8 * scale),
-                    Text(
-                      'Ongoing',
-                      style: TextStyle(
-                        color: _chipGreen,
-                        fontSize: 28 * scale,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Container(
-            height: 8 * scale,
-            decoration: BoxDecoration(
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.35),
-                  blurRadius: 12 * scale,
-                  offset: Offset(0, 6 * scale),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.symmetric(horizontal: 16 * scale, vertical: 10 * scale),
-            decoration: const BoxDecoration(color: _cardHeader),
-            child: Text(
-              'Ongoing Class',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16 * scale,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.all(12 * scale),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12 * scale),
-                  child: Image.asset(
-                    'assets/images/cpe361.png',
-                    width: 52 * scale,
-                    height: 52 * scale,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Image.asset(
-                      'assets/images/placeholder.png',
-                      width: 52 * scale,
-                      height: 52 * scale,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-                SizedBox(width: 12 * scale),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                if (ongoingClass != null)
+                  Row(
                     children: [
+                      Icon(Icons.access_time_filled_rounded,
+                          color: _chipGreen, size: 28 * scale),
+                      SizedBox(width: 8 * scale),
                       Text(
-                        'Physics 138',
+                        'Ongoing',
                         style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16 * scale,
+                          color: _chipGreen,
+                          fontSize: 28 * scale,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      SizedBox(height: 2 * scale),
-                      Text(
-                        '10:00 AM',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12 * scale,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
                     ],
+                  )
+                else
+                  Text(
+                    'No ongoing classes right now.',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 18 * scale,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
+              ],
+            ),
+          ),
+          if (ongoingClass != null) ...[
+            Container(
+              height: 8 * scale,
+              decoration: BoxDecoration(
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.35),
+                    blurRadius: 12 * scale,
+                    offset: Offset(0, 6 * scale),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(horizontal: 16 * scale, vertical: 10 * scale),
+              decoration: const BoxDecoration(color: _cardHeader),
+              child: Text(
+                'Ongoing Class',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16 * scale,
+                  fontWeight: FontWeight.w800,
                 ),
-                Material(
-                  color: const Color(0xFF37AA82),
-                  borderRadius: BorderRadius.circular(20 * scale),
-                  child: InkWell(
-                    onTap: widget.onOngoingClassStatusPressed,
-                    borderRadius: BorderRadius.circular(20 * scale),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        vertical: 12 * scale,
-                        horizontal: 18 * scale,
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(12 * scale),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12 * scale),
+                    child: Image.asset(
+                      'assets/images/cpe361.png', // This could be made dynamic later
+                      width: 52 * scale,
+                      height: 52 * scale,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Image.asset(
+                        'assets/images/placeholder.png',
+                        width: 52 * scale,
+                        height: 52 * scale,
+                        fit: BoxFit.cover,
                       ),
-                      child: Text(
-                        'Ongoing',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12 * scale,
-                          fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  SizedBox(width: 12 * scale),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          ongoingClass.name ?? 'Unnamed Class',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16 * scale,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        SizedBox(height: 2 * scale),
+                        Text(
+                          ongoingClass.schedule ?? 'No schedule',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12 * scale,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Material(
+                    color: const Color(0xFF37AA82),
+                    borderRadius: BorderRadius.circular(20 * scale),
+                    child: InkWell(
+                      onTap: widget.onOngoingClassStatusPressed,
+                      borderRadius: BorderRadius.circular(20 * scale),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          vertical: 12 * scale,
+                          horizontal: 18 * scale,
+                        ),
+                        child: Text(
+                          'Ongoing',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12 * scale,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -326,37 +418,26 @@ class _MyClassesCard extends StatefulWidget {
     required this.scale,
     required this.radius,
     required this.onClassPressed,
+    required this.getDynamicStatus,
   });
   final double scale;
   final List<StudentClass> classes;
   final double radius;
   final ValueChanged<String> onClassPressed;
+  final DynamicStatus Function(StudentClass) getDynamicStatus;
 
   @override
   State<_MyClassesCard> createState() => _MyClassesCardState();
 }
 
 class _MyClassesCardState extends State<_MyClassesCard> {
-  Color _getStatusColor(String? status) {
-    switch (status?.toLowerCase()) {
-      case 'ongoing':
-        return _chipGreen;
-      case 'absent':
-        return _statusRed;
-      case 'upcoming':
-        return _statusYellow;
-      default:
-        return Colors.grey;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final scale = widget.scale;
     return _CardContainer(
       radius: widget.radius,
       scale: scale,
-      borderColor: const Color(0xFF6AAFBF).withValues(alpha: 0.55),
+      borderColor: const Color(0xFF6AAFBF).withOpacity(0.55),
       background: const _CardBackground(),
       child: Padding(
         padding: EdgeInsets.all(16 * scale),
@@ -364,11 +445,7 @@ class _MyClassesCardState extends State<_MyClassesCard> {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.menu_rounded,
-                  color: _blueIcon,
-                  size: 24 * scale,
-                ),
+                Icon(Icons.menu_rounded, color: _blueIcon, size: 24 * scale),
                 SizedBox(width: 10 * scale),
                 Expanded(
                   child: Text(
@@ -383,7 +460,7 @@ class _MyClassesCardState extends State<_MyClassesCard> {
               ],
             ),
             SizedBox(height: 16 * scale),
-            
+
             _FilterChipRow(
               scale: scale,
               onTap: () {}, // Can be implemented later
@@ -397,22 +474,19 @@ class _MyClassesCardState extends State<_MyClassesCard> {
                 child: Text(
                   'No classes yet',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 16 * scale,
-                  ),
+                  style: TextStyle(color: Colors.white70, fontSize: 16 * scale),
                 ),
               )
             else
               ...widget.classes.map((sClass) {
+                final dynamicStatus = widget.getDynamicStatus(sClass);
                 return Padding(
                   padding: EdgeInsets.only(top: 16 * scale),
                   child: _ClassRow(
                     scale: scale,
                     title: sClass.name ?? 'Unnamed Class',
-                    // Status logic can be implemented later
-                    statusText: sClass.status ?? 'Unknown',
-                    statusColor: _getStatusColor(sClass.status),
+                    statusText: dynamicStatus.text,
+                    statusColor: dynamicStatus.color,
                     onTap: () => widget.onClassPressed(sClass.id),
                   ),
                 );
@@ -420,6 +494,132 @@ class _MyClassesCardState extends State<_MyClassesCard> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class ClassDetailsDialog extends StatefulWidget {
+  const ClassDetailsDialog({super.key, required this.classId});
+  final String classId;
+
+  @override
+  State<ClassDetailsDialog> createState() => _ClassDetailsDialogState();
+}
+
+class _ClassDetailsDialogState extends State<ClassDetailsDialog> {
+  final _databaseService = DatabaseService();
+  late Future<StudentClass> _classDetailsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _classDetailsFuture = _databaseService.getClassDetails(widget.classId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: _cardSurface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: FutureBuilder<StudentClass>(
+        future: _classDetailsFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const SizedBox(
+              height: 200,
+              child: Center(child: CircularProgressIndicator(color: Colors.white)),
+            );
+          }
+
+          if (snapshot.hasError || !snapshot.hasData) {
+            return Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Error', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Text('Could not load class details. ${snapshot.error}', style: const TextStyle(color: Colors.white70)),
+                  const SizedBox(height: 16),
+                  TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close'))
+                ],
+              ),
+            );
+          }
+
+          final sClass = snapshot.data!;
+
+          return Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  sClass.name ?? 'Class Details',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _DetailRow(icon: Icons.book_rounded, label: 'Subject', value: sClass.subject ?? 'N/A'),
+                const SizedBox(height: 12),
+                _DetailRow(icon: Icons.schedule_rounded, label: 'Schedule', value: sClass.schedule ?? 'N/A'),
+                const SizedBox(height: 12),
+                _DetailRow(icon: Icons.qr_code_2_rounded, label: 'Class Code', value: sClass.classCode ?? 'N/A'),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: TextButton.styleFrom(
+                      backgroundColor: _chipGreen,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: const Text('Close', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: _blueIcon, size: 20),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+              const SizedBox(height: 2),
+              Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -459,7 +659,7 @@ class _FilterChipRowState extends State<_FilterChipRow> {
           borderRadius: BorderRadius.circular(15),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.25),
+              color: Colors.black.withOpacity(0.25),
               blurRadius: 4 * scale,
               offset: Offset(0, 6),
             ),
@@ -511,7 +711,8 @@ class _ClassRow extends StatefulWidget {
   State<_ClassRow> createState() => __ClassRowState();
 }
 
-class __ClassRowState extends State<_ClassRow> with SingleTickerProviderStateMixin {
+class __ClassRowState extends State<_ClassRow>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
@@ -522,9 +723,10 @@ class __ClassRowState extends State<_ClassRow> with SingleTickerProviderStateMix
       vsync: this,
       duration: const Duration(milliseconds: 150),
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -551,7 +753,10 @@ class __ClassRowState extends State<_ClassRow> with SingleTickerProviderStateMix
       child: ScaleTransition(
         scale: _scaleAnimation,
         child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 16 * scale, vertical: 16 * scale),
+          padding: EdgeInsets.symmetric(
+            horizontal: 16 * scale,
+            vertical: 16 * scale,
+          ),
           decoration: BoxDecoration(
             color: widget.statusColor,
             borderRadius: BorderRadius.circular(22 * scale),
@@ -617,10 +822,10 @@ class _CardContainerState extends State<_CardContainer> {
       decoration: BoxDecoration(
         color: _cardSurface,
         borderRadius: BorderRadius.circular(widget.radius),
-        border: widget.borderColor != null ? Border.all(color: const Color(0xFFC8C8C8), width: 0.75) : null,
+        border: widget.borderColor != null ? Border.all(color: widget.borderColor!, width: 0.75) : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.25),
+            color: Colors.black.withOpacity(0.25),
             blurRadius: 10 * widget.scale,
             offset: Offset(0, 6 * widget.scale),
           ),

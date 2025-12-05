@@ -4,6 +4,7 @@ import 'package:t_racks_softdev_1/screens/educator/educator_classroom_screen.dar
 import 'package:t_racks_softdev_1/screens/educator/create_class_modal.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
+import 'package:t_racks_softdev_1/screens/educator/attendance_instruction_screen.dart';
 
 class EducatorClassesScreen extends StatefulWidget {
   const EducatorClassesScreen({super.key});
@@ -38,6 +39,15 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
     setState(() {
       _classesFuture = _dbService.getEducatorClasses();
     });
+  }
+
+  void _navigateToAttendance() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AttendanceInstructionScreen(),
+      ),
+    );
   }
 
   bool _isClassToday(String days) {
@@ -317,9 +327,7 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
               width: double.infinity,
               height: 48,
               child: ElevatedButton.icon(
-                onPressed: () {
-                  print("Take Attendance Pressed");
-                },
+                onPressed:_navigateToAttendance,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF7FE26B),
                   foregroundColor: const Color(0xFF0C3343),

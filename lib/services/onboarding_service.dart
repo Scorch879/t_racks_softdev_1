@@ -1,9 +1,10 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:io';
+import 'dart:convert'; // Import for jsonEncode
 
+ final _supabase = Supabase.instance.client;
 class OnboardingService {
-  final _supabase = Supabase.instance.client;
-
-
+ 
   ///Saves Student Data across profile and Student Table
   Future<void> saveStudentProfile({
     //for profiles table
@@ -41,7 +42,7 @@ class OnboardingService {
 
       final studentData = {
         'id' : userId,
-        'birthData': birthDate,
+        'birthDate': birthDate, // Corrected from 'birthData' in previous context if it was reverted
         'age': age,
         'gender': gender,
         'institution': institution,
@@ -113,6 +114,46 @@ class OnboardingService {
 
     } catch (e) {
         rethrow;
+    }
+  }
+
+}
+
+class AiServices {
+  /// Saves the user's face image to storage and the vector to the database.
+  ///
+  /// [imageFile]: The captured image file from the camera.
+  /// [faceVector]: The List<double> representing the face embedding.
+  Future<void> saveFaceData({
+    required File imageFile,
+    required List<double> faceVector,
+  }) async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw 'User not logged in';
+
+      // 1. Upload the face image to Supabase Storage.
+      // You must create a bucket named 'face_images' in your Supabase dashboard
+      // with public access turned OFF for security.
+      final imagePath = '$userId/face.jpg';
+      await _supabase.storage.from('face_images').upload(
+            imagePath,
+            imageFile,
+            fileOptions: const FileOptions(
+              cacheControl: '3600', // Optional: cache for 1 hour
+              upsert: true, // Overwrite if the user re-registers their face
+            ),
+          );
+
+      // 2. Save the face vector to the 'Face_Table'.
+      // Using upsert is a good practice here to handle cases where the user
+      // might re-register their face. For pgvector, we convert the List to a string.
+      await _supabase
+          .from('Face_Table')
+          .upsert({'student_id': userId, 'face_id': faceVector.toString()});
+    } catch (e) {
+      print('Error saving face data: $e');
+      rethrow;
     }
   }
 }
