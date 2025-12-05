@@ -9,7 +9,6 @@ import 'package:t_racks_softdev_1/services/models/student_model.dart';
 import 'package:collection/collection.dart';
 import 'dart:math';
 import 'package:t_racks_softdev_1/services/models/notification_model.dart';
-import 'package:t_racks_softdev_1/services/models/report_model.dart';
 
 final _supabase = Supabase.instance.client;
 
@@ -409,28 +408,10 @@ class DatabaseService {
     required String studentId,
   }) async {
     try {
-      // 1. Fetch class details first (to get the class name for the notification)
-      final classData = await _supabase
-          .from('Classes_Table')
-          .select('class_name, subject')
-          .eq('id', classId)
-          .single();
-
-      // 2. Insert into Enrollments Table
       await _supabase.from('Enrollments_Table').insert({
         'class_id': classId,
         'student_id': studentId,
         'enrollment_date': DateTime.now().toIso8601String(),
-      });
-
-      // 3. NEW: Insert into Notification_Table (Persistent Storage)
-      await _supabase.from('Notification_Table').insert({
-        'user_id': studentId, // The student receiving the alert
-        'title': 'New Class Enrollment',
-        'subtitle':
-            'You have been added to ${classData['class_name']} (${classData['subject']})',
-        'timestamp': DateTime.now().toIso8601String(),
-        // 'is_read': false // Optional: if you added this column to your DB
       });
     } catch (e) {
       print('Error enrolling student: $e');
@@ -633,149 +614,6 @@ class DatabaseService {
     } catch (e) {
       print('Error fetching notifications: $e');
       return [];
-    }
-  }
-  // inside lib/services/database_service.dart
-
-  Future<DashboardData> getEducatorDashboardData() async {
-    try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) throw 'User not logged in';
-
-      final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-
-      // 1. Fetch Classes
-      final classesResponse = await _supabase
-          .from('Classes_Table')
-          .select('id, class_name')
-          .eq('educator_id', userId);
-
-      final classes = List<Map<String, dynamic>>.from(classesResponse);
-      final classIds = classes.map((c) => c['id']).toList();
-
-      if (classIds.isEmpty) {
-        return DashboardData(
-          overallAttendance: '0%',
-          presentToday: '0',
-          classMetrics: [],
-          alerts: [],
-          trendData: [], // Return empty list
-        );
-      }
-
-      // 2. Fetch Enrollments
-      final enrollmentsResponse = await _supabase
-          .from('Enrollments_Table')
-          .select('class_id')
-          .inFilter('class_id', classIds);
-
-      // 3. Fetch Today's Attendance
-      final todayAttendanceResponse = await _supabase
-          .from('Attendance_Record')
-          .select('class_id, isPresent')
-          .inFilter('class_id', classIds)
-          .eq('date', todayStr);
-
-      // 4. Fetch History (Last 30 days) - MODIFIED QUERY
-      final thirtyDaysAgo = DateFormat(
-        'yyyy-MM-dd',
-      ).format(DateTime.now().subtract(const Duration(days: 30)));
-
-      final recentHistoryResponse = await _supabase
-          .from('Attendance_Record')
-          .select('date, isPresent') // <--- NOW FETCHING DATE TOO
-          .inFilter('class_id', classIds)
-          .gte('date', thirtyDaysAgo)
-          .order('date', ascending: true); // Sort by date for the graph
-
-      // --- PROCESSING DATA ---
-
-      // A. Process Graph Data (Group by Date)
-      Map<String, List<bool>> dailyStats = {};
-
-      for (var record in recentHistoryResponse) {
-        final dateKey = record['date'].toString(); // "2023-10-27"
-        final isPresent = record['isPresent'] as bool;
-
-        if (!dailyStats.containsKey(dateKey)) {
-          dailyStats[dateKey] = [];
-        }
-        dailyStats[dateKey]!.add(isPresent);
-      }
-
-      List<GraphPoint> trendData = [];
-      dailyStats.forEach((dateStr, statusList) {
-        final total = statusList.length;
-        final present = statusList.where((b) => b).length;
-        final percentage = total == 0 ? 0.0 : (present / total) * 100;
-        trendData.add(GraphPoint(DateTime.parse(dateStr), percentage));
-      });
-
-      // Sort again just to be safe
-      trendData.sort((a, b) => a.date.compareTo(b.date));
-
-      // B. Overall Attendance Calculation
-      final historyList = recentHistoryResponse as List;
-      final totalHistoryPresent = historyList
-          .where((r) => r['isPresent'] == true)
-          .length;
-      final overallPercentage = historyList.isEmpty
-          ? 0.0
-          : (totalHistoryPresent / historyList.length) * 100;
-
-      // C. Present Today
-      final presentTodayCount = (todayAttendanceResponse as List)
-          .where((r) => r['isPresent'] == true)
-          .length;
-
-      // D. Class Metrics & Alerts (Same as before)
-      List<ClassMetric> classMetrics = [];
-      List<AttendanceAlert> alerts = [];
-
-      for (var cls in classes) {
-        final classId = cls['id'];
-        final totalStudents = (enrollmentsResponse as List)
-            .where((e) => e['class_id'] == classId)
-            .length;
-        final presentCount = (todayAttendanceResponse as List)
-            .where((r) => r['class_id'] == classId && r['isPresent'] == true)
-            .length;
-
-        double percentage = totalStudents == 0
-            ? 0
-            : (presentCount / totalStudents) * 100;
-
-        classMetrics.add(
-          ClassMetric(
-            className: cls['class_name'] ?? 'Unknown',
-            totalStudents: totalStudents,
-            presentCount: presentCount,
-            percentage: percentage,
-          ),
-        );
-
-        if (totalStudents > 0 && percentage < 50) {
-          alerts.add(
-            AttendanceAlert(
-              title: 'Low Attendance Warning',
-              message:
-                  '${cls['class_name']} attendance is at ${percentage.toStringAsFixed(1)}%',
-              isCritical: true,
-            ),
-          );
-        }
-      }
-
-      return DashboardData(
-        overallAttendance: '${overallPercentage.toStringAsFixed(1)}%',
-        presentToday: presentTodayCount.toString(),
-        classMetrics: classMetrics,
-        alerts: alerts,
-        trendData: trendData, // <--- Pass the graph data
-      );
-    } catch (e) {
-      print('Error fetching dashboard data: $e');
-      rethrow;
     }
   }
 }
@@ -994,8 +832,7 @@ class AttendanceService {
 
       await _supabase.from('Attendance_Record').insert(attendanceData);
       print(
-        'Successfully marked attendance for $studentId in class ${ongoingClass.id}',
-      );
+          'Successfully marked attendance for $studentId in class ${ongoingClass.id}');
 
       return ongoingClass.name;
     } catch (e) {
@@ -1016,14 +853,8 @@ class AttendanceService {
         .toList();
 
     return classes.firstWhereOrNull((sClass) {
-      final status = getDynamicStatus(
-        sClass,
-        Colors.green,
-        Colors.red,
-        Colors.orange,
-        Colors.blue,
-        Colors.grey,
-      );
+      final status = getDynamicStatus(sClass, Colors.green, Colors.red,
+          Colors.orange, Colors.blue, Colors.grey);
       return status.text == 'Ongoing' || status.text == 'Late';
     });
   }
