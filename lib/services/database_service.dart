@@ -8,7 +8,7 @@ import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:t_racks_softdev_1/services/models/student_model.dart';
 import 'package:collection/collection.dart';
 import 'dart:math';
-import 'package:t_racks_softdev_1/services/models/notification_model.dart'; // <--- ADD THIS
+import 'package:t_racks_softdev_1/services/models/notification_model.dart';
 
 final _supabase = Supabase.instance.client;
 
@@ -780,4 +780,82 @@ bool _isClassDoneForToday(
   final classEndTime = _parseTimeHelper(timeParts[1].trim(), now);
 
   return classEndTime != null && now.isAfter(classEndTime);
+}
+
+class AttendanceService {
+  /// Marks attendance for a student for their currently ongoing class.
+  ///
+  /// Returns the name of the class if successful, otherwise null.
+  Future<String?> markAttendance(String studentId) async {
+    try {
+      // 1. Find the ongoing class for the student.
+      final ongoingClass = await _findOngoingClass(studentId);
+      if (ongoingClass == null) {
+        throw 'No ongoing class found to mark attendance for.';
+      }
+
+      // 2. Check if attendance has already been marked for this class today.
+      final today = DateTime.now().toIso8601String().split('T')[0];
+      final existingRecord = await _supabase
+          .from('Attendance_Record')
+          .select('id')
+          .eq('student_id', studentId)
+          .eq('class_id', ongoingClass.id)
+          .eq('date', today)
+          .maybeSingle();
+
+      if (existingRecord != null) {
+        print('Attendance already marked for ${ongoingClass.name} today.');
+        return ongoingClass.name; // Already marked, treat as success.
+      }
+
+      // 3. Determine if the student is late.
+      final status = getDynamicStatus(
+        ongoingClass,
+        Colors.green, // Dummy color
+        Colors.red, // Dummy color
+        Colors.orange, // Dummy color
+        Colors.blue, // Dummy color
+        Colors.grey, // Dummy color
+      );
+      final bool isLate = status.text == 'Late';
+
+      // 4. Create the new attendance record.
+      final attendanceData = {
+        'student_id': studentId,
+        'class_id': ongoingClass.id,
+        'date': today,
+        'isPresent': true,
+        'time': DateFormat.Hms().format(DateTime.now()),
+        'isLate': isLate,
+      };
+
+      await _supabase.from('Attendance_Record').insert(attendanceData);
+      print(
+          'Successfully marked attendance for $studentId in class ${ongoingClass.id}');
+
+      return ongoingClass.name;
+    } catch (e) {
+      print('Error marking attendance: $e');
+      rethrow; // Rethrow to be handled by the UI.
+    }
+  }
+
+  /// Helper to find the first class that is currently 'Ongoing' or 'Late'.
+  Future<StudentClass?> _findOngoingClass(String studentId) async {
+    final response = await _supabase.rpc(
+      'get_student_classes_with_details',
+      params: {'p_student_id': studentId},
+    );
+
+    final classes = (response as List)
+        .map((json) => StudentClass.fromJson(json))
+        .toList();
+
+    return classes.firstWhereOrNull((sClass) {
+      final status = getDynamicStatus(sClass, Colors.green, Colors.red,
+          Colors.orange, Colors.blue, Colors.grey);
+      return status.text == 'Ongoing' || status.text == 'Late';
+    });
+  }
 }
