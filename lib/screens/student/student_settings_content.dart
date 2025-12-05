@@ -25,9 +25,7 @@ class StudentSettingsContent extends StatefulWidget {
 class _StudentSettingsContentState extends State<StudentSettingsContent> {
   void onProfileSettingsPressed() {
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const StudentProfileScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const StudentProfileScreen()),
     );
   }
 
@@ -39,9 +37,7 @@ class _StudentSettingsContentState extends State<StudentSettingsContent> {
     showDialog(
       context: context,
       // Updated to use the imported public widget
-      builder: (context) => LogoutDialog(
-        onConfirm: _handleLogout,
-      ),
+      builder: (context) => LogoutDialog(onConfirm: _handleLogout),
     );
   }
 
@@ -76,7 +72,7 @@ class _StudentSettingsContentState extends State<StudentSettingsContent> {
             children: [
               Positioned.fill(
                 child: Opacity(
-                  opacity: 0.12,
+                  opacity: 0.3,
                   child: Image.asset(
                     'assets/images/squigglytexture.png',
                     width: double.infinity,
@@ -233,7 +229,10 @@ class _SettingsPillState extends State<_SettingsPill> {
       borderRadius: BorderRadius.circular(22 * scale),
       onTap: widget.onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 18 * scale, vertical: 16 * scale),
+        padding: EdgeInsets.symmetric(
+          horizontal: 18 * scale,
+          vertical: 16 * scale,
+        ),
         decoration: BoxDecoration(
           color: widget.color,
           borderRadius: BorderRadius.circular(22 * scale),
@@ -259,7 +258,11 @@ class _SettingsPillState extends State<_SettingsPill> {
                 ),
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: Colors.white, size: 22 * scale),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: Colors.white,
+              size: 22 * scale,
+            ),
           ],
         ),
       ),
@@ -307,10 +310,7 @@ class _CardContainerState extends State<_CardContainer> {
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
-        children: [
-          if (background != null) background,
-          widget.child,
-        ],
+        children: [if (background != null) background, widget.child],
       ),
     );
   }
@@ -328,7 +328,7 @@ class _CardBackgroundState extends State<_CardBackground> {
   Widget build(BuildContext context) {
     return Positioned.fill(
       child: Opacity(
-        opacity: 0,
+        opacity: 0.3,
         child: Image.asset(
           'assets/images/squigglytexture.png',
           width: double.infinity,

@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:t_racks_softdev_1/services/tflite_service.dart' as tflite;
 import 'package:t_racks_softdev_1/services/face_service.dart';
+import 'package:t_racks_softdev_1/services/database_service.dart';
 
 enum ChallengeType { smile, blink, turnLeft, turnRight }
 
