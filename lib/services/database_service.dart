@@ -873,6 +873,51 @@ class DatabaseService {
       // We don't rethrow here so the UI doesn't crash on a background sync
     }
   }
+  
+  Future<void> markManualAttendance({
+    required String classId,
+    required String studentId,
+    required String status, // 'Present', 'Late', 'Absent'
+  }) async {
+    try {
+      final date = DateTime.now().toIso8601String().split('T')[0];
+      final time = DateFormat.Hms().format(DateTime.now());
+
+      bool isPresent = status != 'Absent';
+      bool isLate = status == 'Late';
+
+      // Check if record exists for today
+      final existing = await _supabase
+          .from('Attendance_Record')
+          .select('id')
+          .eq('student_id', studentId)
+          .eq('class_id', classId)
+          .eq('date', date)
+          .maybeSingle();
+
+      if (existing != null) {
+        // Update existing record
+        await _supabase.from('Attendance_Record').update({
+          'isPresent': isPresent,
+          'isLate': isLate,
+          'time': time,
+        }).eq('id', existing['id']);
+      } else {
+        // Create new record
+        await _supabase.from('Attendance_Record').insert({
+          'student_id': studentId,
+          'class_id': classId,
+          'date': date,
+          'isPresent': isPresent,
+          'isLate': isLate,
+          'time': time,
+        });
+      }
+    } catch (e) {
+      print("Error marking manual attendance: $e");
+      rethrow;
+    }
+  }
 }
 
 class AccountServices {
