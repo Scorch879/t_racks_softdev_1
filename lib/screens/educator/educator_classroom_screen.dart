@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Import for Clipboard
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_add_student_screen.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
@@ -27,49 +26,20 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
 
   List<StudentAttendanceItem> studentList = [];
   bool isLoading = true;
-  String? _classCode; // Variable to store the class code
 
   @override
   void initState() {
     super.initState();
-    _fetchClassData(); // Renamed to reflect fetching both students and details
+    _fetchStudents();
   }
 
-  void _fetchClassData() async {
-    // 1. Fetch Students
+  void _fetchStudents() async {
     final students = await _dbService.getClassStudents(widget.classId);
-
-    // 2. Fetch Class Details (to get the code)
-    String? code;
-    try {
-      final classDetails = await _dbService.getClassDetails(widget.classId);
-      code =
-          classDetails.classCode; // Assuming StudentClass has a classCode field
-    } catch (e) {
-      print("Error fetching class code: $e");
-      code = "Error";
-    }
-
     if (mounted) {
       setState(() {
         studentList = students;
-        _classCode = code;
         isLoading = false;
       });
-    }
-  }
-
-  // Helper method to copy code
-  void _copyClassCode() {
-    if (_classCode != null) {
-      Clipboard.setData(ClipboardData(text: _classCode!));
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Class Code '$_classCode' copied to clipboard!"),
-          backgroundColor: const Color(0xFF2A7FA3),
-          duration: const Duration(seconds: 2),
-        ),
-      );
     }
   }
 
@@ -124,10 +94,22 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
           // --- 2. CONTENT ---
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              padding: const EdgeInsets.fromLTRB(
+                16,
+                16,
+                16,
+                0,
+              ), // Remove bottom padding here
               child: Column(
+                // This Column takes up the screen height
                 children: [
-                  Flexible(fit: FlexFit.loose, child: _buildClassroomCard()),
+                  // Use Flexible to allow the card to shrink/grow
+                  Flexible(
+                    fit:
+                        FlexFit.loose, // This makes it "hug" content when small
+                    child: _buildClassroomCard(),
+                  ),
+                  // Add some spacing at bottom so card doesn't touch edge
                   const SizedBox(height: 20),
                 ],
               ),
@@ -150,25 +132,14 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
         ),
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: MainAxisSize.min, // Important: Hug vertical content
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // --- Header Row ---
+          // --- Header ---
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Icon
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.star, color: Colors.white, size: 20),
-              ),
-              const SizedBox(width: 12),
-
-              // Class Name & Schedule
+              const Icon(Icons.star, color: Colors.white),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -192,53 +163,9 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
                   ],
                 ),
               ),
-
-              // --- UPDATED: COMPACT CLASS CODE (Upper Right) ---
-              if (_classCode != null)
-                InkWell(
-                  onTap: _copyClassCode,
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(
-                        0xFF7FE26B,
-                      ).withOpacity(0.2), // Subtle green bg
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: const Color(0xFF7FE26B).withOpacity(0.5),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _classCode!,
-                          style: const TextStyle(
-                            color: Color(0xFF7FE26B), // Bright green text
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13, // Smaller font
-                            letterSpacing: 1,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        const Icon(
-                          Icons.copy_rounded,
-                          color: Color(0xFF7FE26B),
-                          size: 14, // Smaller icon
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
             ],
           ),
-
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
           // --- Search Bar ---
           TextField(
@@ -249,10 +176,6 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
               hintStyle: const TextStyle(color: Colors.white70),
               filled: true,
               fillColor: Colors.white.withValues(alpha: 0.1),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
-              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
@@ -263,6 +186,8 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
           const SizedBox(height: 16),
 
           // --- LIST AREA ---
+          // Flexible + shrinkWrap allows it to be small when few items,
+          // but scrollable when it hits the max height of the screen.
           Flexible(
             fit: FlexFit.loose,
             child: isLoading
@@ -280,8 +205,8 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
                     ),
                   )
                 : ListView.builder(
-                    shrinkWrap: true,
-                    padding: EdgeInsets.zero,
+                    shrinkWrap: true, // Allow it to shrink!
+                    padding: EdgeInsets.zero, // Remove extra padding
                     itemCount: studentList.length,
                     itemBuilder: (context, index) {
                       return _buildStudentTile(studentList[index]);
@@ -296,41 +221,35 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
             alignment: Alignment.centerRight,
             child: ElevatedButton.icon(
               onPressed: () async {
+                // 1. Fetch the list of students who aren't in this class yet
                 final available = await _dbService.getAvailableStudents(
                   widget.classId,
                 );
 
                 if (context.mounted) {
+                  // 2. Navigate to the Add Student Screen
                   await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => EducatorAddStudentScreen(
-                        classId: widget.classId,
+                        classId: widget.classId, // <--- Pass the ID here!
                         className: widget.className,
                         availableStudents: available,
                       ),
                     ),
                   );
-                  _fetchClassData();
+
+                  // 3. Refresh the classroom list when we return
+                  _fetchStudents();
                 }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2A7FA3),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
               ),
-              icon: const Icon(Icons.add, color: Colors.white, size: 20),
+              icon: const Icon(Icons.add, color: Colors.white),
               label: const Text(
                 'Add Student',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(color: Colors.white),
               ),
             ),
           ),

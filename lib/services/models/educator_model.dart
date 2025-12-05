@@ -6,7 +6,6 @@ class Educator {
   final int age;
   final String? gender;
   final String institution;
-  final String bio;
 
   Educator({
     required this.profile,
@@ -14,38 +13,22 @@ class Educator {
     required this.age,
     this.gender,
     required this.institution,
-    required this.bio,
   });
 
   factory Educator.fromJson(Map<String, dynamic> json) {
-    // 1. Read as 'dynamic' first to prevent immediate crash
-    final dynamic rawData = json['educator_data'];
-    
-    Map<String, dynamic> educatorMap;
-
-    // 2. Check the type safely
-    if (rawData is List) {
-      if (rawData.isEmpty) {
-        educatorMap = {}; 
-      } else {
-        educatorMap = rawData.first as Map<String, dynamic>;
-      }
-    } else if (rawData is Map) {
-      // It is a single object (Map), so just use it
-      educatorMap = rawData as Map<String, dynamic>;
-    } else {
-      // It is null or unknown
-      educatorMap = {};
+    // The 'educator_data' key comes from our Supabase query alias
+    final educatorData = json['educator_data'] as List?;
+    if (educatorData == null || educatorData.isEmpty) {
+      throw Exception('Educator data not found in JSON');
     }
+    final educatorMap = educatorData.first as Map<String, dynamic>;
 
     return Educator(
       profile: Profile.fromJson(json),
-      birthDate: educatorMap['birthDate']?.toString() ?? '',
-      // Use 'num' to safely handle both int and double from DB
-      age: (educatorMap['age'] as num?)?.toInt() ?? 0, 
+      birthDate: educatorMap['birthDate'] as String? ??'',
+      age: educatorMap['age'] as int? ??0,
       gender: educatorMap['gender'] as String?,
-      institution: educatorMap['institution'] as String? ?? '',
-      bio: educatorMap['bio'] as String? ?? '',
+      institution: educatorMap['institution'] as String? ??'',
     );
   }
 
