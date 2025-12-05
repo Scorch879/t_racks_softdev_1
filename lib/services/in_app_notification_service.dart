@@ -16,7 +16,7 @@ class InAppNotificationService extends ChangeNotifier {
   int get unreadCount => _notifications.where((n) => !n.isRead).length;
   final Set<String> _generatedAlerts = {};
 
-  // DEBUG: Generates a fake alert to test the UI
+  // DEBUG: Generates a fake alert to test the UI and if it works
   void generateTestNotification() {
     final testNote = AppNotification(
       id: "test_${DateTime.now().millisecondsSinceEpoch}",
@@ -35,7 +35,9 @@ class InAppNotificationService extends ChangeNotifier {
     final now = DateTime.now();
     final todayName = DateFormat('EEE').format(now);
 
-    print("📅 Today is: $todayName, Time: ${DateFormat.jm().format(now)}");
+    print(
+      "📅 Today is: $todayName, Time: ${DateFormat.jm().format(now)}",
+    ); //for debugging
 
     for (var sClass in classes) {
       if (!_isClassToday(sClass.day, todayName)) {
@@ -45,7 +47,7 @@ class InAppNotificationService extends ChangeNotifier {
       final startTime = _parseStartTime(sClass.time);
 
       if (startTime == null) {
-        print("   ⚠️ Could not parse time: ${sClass.time}");
+        print("   ⚠️ Could not parse time: ${sClass.time}"); // for debug
         continue;
       }
 
@@ -58,7 +60,9 @@ class InAppNotificationService extends ChangeNotifier {
       );
 
       final difference = classDateTime.difference(now).inMinutes;
-      print(" - Found Today: ${sClass.name} starts in $difference mins");
+      print(
+        " - Found Today: ${sClass.name} starts in $difference mins",
+      ); //for debugging
 
       // Notify if class starts in 0-60 mins OR if it started less than 15 mins ago
       if (difference > -15 && difference <= 60) {
@@ -129,7 +133,7 @@ class InAppNotificationService extends ChangeNotifier {
 
       return TimeOfDay.fromDateTime(date);
     } catch (e) {
-      print("   ❌ Parse Error for '$timeStr': $e");
+      print("   ❌ Parse Error for '$timeStr': $e"); //debugging
       return null;
     }
   }

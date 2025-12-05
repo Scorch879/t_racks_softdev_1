@@ -26,13 +26,6 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
   void initState() {
     super.initState();
     _loadProfile();
-
-    // --- ADD THESE LINES ---
-    // 1. Force a test notification immediately so you see the badge
-    InAppNotificationService().generateTestNotification();
-
-    // 2. Run the real check (watch the Debug Console for the logs!)
-    InAppNotificationService().checkClassesForAlerts();
   }
 
   Future<void> _loadProfile() async {
