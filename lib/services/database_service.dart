@@ -8,6 +8,8 @@ import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:t_racks_softdev_1/services/models/student_model.dart';
 import 'package:collection/collection.dart';
 import 'dart:math';
+import 'package:t_racks_softdev_1/services/models/notification_model.dart';
+import 'package:t_racks_softdev_1/services/models/report_model.dart';
 
 final _supabase = Supabase.instance.client;
 
@@ -335,55 +337,104 @@ class DatabaseService {
   }
 
   Future<List<Map<String, String>>> getAvailableStudents(String classId) async {
-  try {
-    // 1. Get IDs of students ALREADY in the class
-    final enrolledRes = await _supabase
-        .from('Enrollments_Table')
-        .select('student_id')
-        .eq('class_id', classId);
-    
-    final enrolledIds = (enrolledRes as List).map((e) => e['student_id']).toList();
+    try {
+      // 1. Get IDs of students ALREADY in the class
+      final enrolledRes = await _supabase
+          .from('Enrollments_Table')
+          .select('student_id')
+          .eq('class_id', classId);
 
-    // 2. Fetch profiles using an INNER JOIN on Student_Table
-    // The '!inner' keyword ensures we ONLY get users who exist in Student_Table
-    var query = _supabase
-        .from('profiles')
-        .select('id, firstName, lastName, Student_Table!inner(id)'); // <--- CHANGED THIS LINE
+      final enrolledIds = (enrolledRes as List)
+          .map((e) => e['student_id'])
+          .toList();
 
-    if (enrolledIds.isNotEmpty) {
-      query = query.not('id', 'in', enrolledIds);
+      // 2. Fetch profiles using an INNER JOIN on Student_Table
+      // The '!inner' keyword ensures we ONLY get users who exist in Student_Table
+      var query = _supabase
+          .from('profiles')
+          .select(
+            'id, firstName, lastName, Student_Table!inner(id)',
+          ); // <--- CHANGED THIS LINE
+
+      if (enrolledIds.isNotEmpty) {
+        query = query.not('id', 'in', enrolledIds);
+      }
+
+      final res = await query;
+
+      return (res as List).map((profile) {
+        return {
+          'id': profile['id'].toString(),
+          'name': "${profile['firstName']} ${profile['lastName']}",
+          'subtitle': 'Student',
+        };
+      }).toList();
+    } catch (e) {
+      print('Error fetching available students: $e');
+      return [];
     }
-
-    final res = await query;
-
-    return (res as List).map((profile) {
-      return {
-        'id': profile['id'].toString(), 
-        'name': "${profile['firstName']} ${profile['lastName']}",
-        'subtitle': 'Student', 
-      };
-    }).toList();
-  } catch (e) {
-    print('Error fetching available students: $e');
-    return [];
   }
-}
 
-Future<void> enrollStudent({
-  required String classId,
-  required String studentId,
-}) async {
-  try {
-    await _supabase.from('Enrollments_Table').insert({
-      'class_id': classId,
-      'student_id': studentId,
-      'enrollment_date': DateTime.now().toIso8601String(),
-    });
-  } catch (e) {
-    print('Error enrolling student: $e');
-    rethrow;
+  Stream<List<StudentClass>> getStudentClassesStream() {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return Stream.value([]);
+
+    // 1. Listen to the Enrollments table for this specific student
+    return _supabase
+        .from('Enrollments_Table')
+        .stream(
+          primaryKey: ['id'],
+        ) // Ensure your Enrollments_Table has a primary key
+        .eq('student_id', userId)
+        .asyncMap((enrollments) async {
+          // 2. When enrollment changes, fetch the actual class details
+          if (enrollments.isEmpty) return [];
+
+          final classIds = enrollments.map((e) => e['class_id']).toList();
+
+          // 3. Fetch details from Classes_Table
+          final response = await _supabase
+              .from('Classes_Table')
+              .select()
+              .inFilter('id', classIds);
+
+          return (response as List)
+              .map((data) => StudentClass.fromJson(data))
+              .toList();
+        });
   }
-}
+
+  Future<void> enrollStudent({
+    required String classId,
+    required String studentId,
+  }) async {
+    try {
+      // 1. Perform the Enrollment
+      await _supabase.from('Enrollments_Table').insert({
+        'class_id': classId,
+        'student_id': studentId,
+        'enrollment_date': DateTime.now().toIso8601String(),
+      });
+
+      final classData = await _supabase
+          .from('Classes_Table')
+          .select('class_name')
+          .eq('id', classId)
+          .single();
+      
+      final className = classData['class_name'];
+      await _supabase.from('Notification_Table').insert({
+        'user_id': studentId, 
+        'title': 'You have been enrolled',
+        'subtitle': 'An educator has added you to $className.',
+        'timestamp': DateTime.now().toIso8601String(),
+      });
+
+    } catch (e) {
+      print('Error enrolling student: $e');
+      rethrow;
+    }
+  }
 
   /// Enrolls the current student in a class using a unique class code.
   ///
@@ -393,17 +444,18 @@ Future<void> enrollStudent({
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) throw 'You must be logged in to join a class.';
 
-      // 1. Find the class ID from the provided class code.
-      // .single() will throw an error if no class or more than one class is found.
+      // 1. Find the class ID AND Educator ID from the code [UPDATED]
       final classResponse = await _supabase
           .from('Classes_Table')
-          .select('id')
+          .select('id, educator_id, class_name') // Fetch educator_id too
           .eq('class_code', classCode.trim().toUpperCase())
           .single();
 
       final classId = classResponse['id'];
+      final educatorId = classResponse['educator_id'];
+      final className = classResponse['class_name'];
 
-      // 2. Check if the student is already enrolled in this class.
+      // 2. Check if the student is already enrolled.
       final enrollmentCheck = await _supabase
           .from('Enrollments_Table')
           .select()
@@ -417,17 +469,55 @@ Future<void> enrollStudent({
 
       // 3. If not enrolled, create the new enrollment record.
       await enrollStudent(classId: classId, studentId: userId);
+
+      // 4. Send Notification to Educator [NEW]
+      // We don't await this so it doesn't block the UI
+      _sendJoinNotification(
+        studentId: userId, 
+        educatorId: educatorId, 
+        className: className
+      );
+
     } on PostgrestException catch (e) {
-      // This specifically handles the error from .single() when no rows are found.
       if (e.code == 'PGRST116') {
         throw 'Invalid class code. Please check the code and try again.';
       }
-      rethrow; // Rethrow other database errors.
+      rethrow; 
+    }
+  }
+
+  /// Helper to insert notification
+  Future<void> _sendJoinNotification({
+    required String studentId,
+    required String educatorId,
+    required String className,
+  }) async {
+    try {
+      // Get student name
+      final profile = await _supabase
+          .from('profiles')
+          .select('firstName, lastName')
+          .eq('id', studentId)
+          .single();
+          
+      final name = "${profile['firstName']} ${profile['lastName']}";
+
+      // Insert notification
+      await _supabase.from('Notification_Table').insert({
+        'user_id': educatorId,
+        'title': 'New Student Enrolled',
+        'subtitle': '$name has joined $className.',
+        'timestamp': DateTime.now().toIso8601String(),
+        // 'isRead': false, // Uncomment if your table has this column
+      });
+    } catch (e) {
+      print("Error sending notification: $e");
     }
   }
 
   Future<List<AttendanceRecord>> getStudentAttendanceForClass(
-      String classId) async {
+    String classId,
+  ) async {
     try {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) throw 'User not logged in';
@@ -456,9 +546,13 @@ Future<void> enrollStudent({
 
       // Calculate the start and end of the current week (assuming Monday is the first day)
       final now = DateTime.now();
-      final daysToSubtract = now.weekday - 1; // Monday is 1, so subtract 0. Sunday is 7, so subtract 6.
+      final daysToSubtract =
+          now.weekday -
+          1; // Monday is 1, so subtract 0. Sunday is 7, so subtract 6.
       final startOfWeek = now.subtract(Duration(days: daysToSubtract));
-      final endOfWeek = startOfWeek.add(const Duration(days: 6)); // Monday + 6 days = Sunday
+      final endOfWeek = startOfWeek.add(
+        const Duration(days: 6),
+      ); // Monday + 6 days = Sunday
 
       // Format dates to 'YYYY-MM-DD' for the query
       final startDateString = startOfWeek.toIso8601String().split('T')[0];
@@ -497,8 +591,9 @@ Future<void> enrollStudent({
           .eq('student_id', userId)
           .eq('date', today);
 
-      final attendedClassIds =
-          (attendanceData as List).map((e) => e['class_id']).toList();
+      final attendedClassIds = (attendanceData as List)
+          .map((e) => e['class_id'])
+          .toList();
 
       // 2. Get all classes the user is enrolled in.
       final enrolledClassesData = await _supabase
@@ -546,6 +641,238 @@ Future<void> enrollStudent({
       print('Error during auto-marking absences: $e');
     }
   }
+
+  // In database_service.dart
+  Future<List<AppNotification>> getPersistentNotifications() async {
+    // FIX: Use _supabase.auth instead of _auth
+    final userId = _supabase.auth.currentUser?.id;
+
+    if (userId == null) return [];
+
+    try {
+      final response = await _supabase
+          .from('Notification_Table')
+          .select()
+          .eq('user_id', userId)
+          .order('timestamp', ascending: false)
+          .limit(20);
+
+      return (response as List).map((row) {
+        return AppNotification(
+          id: row['id'].toString(),
+          title: row['title'] ?? 'Notification',
+          message: row['subtitle'] ?? '',
+          timestamp: DateTime.parse(row['timestamp']),
+          isRead: false,
+        );
+      }).toList();
+    } catch (e) {
+      print('Error fetching notifications: $e');
+      return [];
+    }
+  }
+
+  Future<DashboardData> getEducatorDashboardData() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw 'User not logged in';
+
+      final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
+      // 1. Fetch Classes
+      final classesResponse = await _supabase
+          .from('Classes_Table')
+          .select('id, class_name')
+          .eq('educator_id', userId);
+
+      final classes = List<Map<String, dynamic>>.from(classesResponse);
+      final classIds = classes.map((c) => c['id']).toList();
+
+      if (classIds.isEmpty) {
+        return DashboardData(
+          overallAttendance: '0%',
+          presentToday: '0',
+          classMetrics: [],
+          alerts: [],
+          trendData: [], // Return empty list
+        );
+      }
+
+      // 2. Fetch Enrollments
+      final enrollmentsResponse = await _supabase
+          .from('Enrollments_Table')
+          .select('class_id')
+          .inFilter('class_id', classIds);
+
+      // 3. Fetch Today's Attendance
+      final todayAttendanceResponse = await _supabase
+          .from('Attendance_Record')
+          .select('class_id, isPresent')
+          .inFilter('class_id', classIds)
+          .eq('date', todayStr);
+
+      // 4. Fetch History (Last 30 days) - MODIFIED QUERY
+      final thirtyDaysAgo = DateFormat(
+        'yyyy-MM-dd',
+      ).format(DateTime.now().subtract(const Duration(days: 30)));
+
+      final recentHistoryResponse = await _supabase
+          .from('Attendance_Record')
+          .select('date, isPresent') // <--- NOW FETCHING DATE TOO
+          .inFilter('class_id', classIds)
+          .gte('date', thirtyDaysAgo)
+          .order('date', ascending: true); // Sort by date for the graph
+
+      // --- PROCESSING DATA ---
+
+      // A. Process Graph Data (Group by Date)
+      Map<String, List<bool>> dailyStats = {};
+
+      for (var record in recentHistoryResponse) {
+        final dateKey = record['date'].toString(); // "2023-10-27"
+        final isPresent = record['isPresent'] as bool;
+
+        if (!dailyStats.containsKey(dateKey)) {
+          dailyStats[dateKey] = [];
+        }
+        dailyStats[dateKey]!.add(isPresent);
+      }
+
+      List<GraphPoint> trendData = [];
+      dailyStats.forEach((dateStr, statusList) {
+        final total = statusList.length;
+        final present = statusList.where((b) => b).length;
+        final percentage = total == 0 ? 0.0 : (present / total) * 100;
+        trendData.add(GraphPoint(DateTime.parse(dateStr), percentage));
+      });
+
+      // Sort again just to be safe
+      trendData.sort((a, b) => a.date.compareTo(b.date));
+
+      // B. Overall Attendance Calculation
+      final historyList = recentHistoryResponse as List;
+      final totalHistoryPresent = historyList
+          .where((r) => r['isPresent'] == true)
+          .length;
+      final overallPercentage = historyList.isEmpty
+          ? 0.0
+          : (totalHistoryPresent / historyList.length) * 100;
+
+      // C. Present Today
+      final presentTodayCount = (todayAttendanceResponse as List)
+          .where((r) => r['isPresent'] == true)
+          .length;
+
+      // D. Class Metrics & Alerts (Same as before)
+      List<ClassMetric> classMetrics = [];
+      List<AttendanceAlert> alerts = [];
+
+      for (var cls in classes) {
+        final classId = cls['id'];
+        final totalStudents = (enrollmentsResponse as List)
+            .where((e) => e['class_id'] == classId)
+            .length;
+        final presentCount = (todayAttendanceResponse as List)
+            .where((r) => r['class_id'] == classId && r['isPresent'] == true)
+            .length;
+
+        double percentage = totalStudents == 0
+            ? 0
+            : (presentCount / totalStudents) * 100;
+
+        classMetrics.add(
+          ClassMetric(
+            className: cls['class_name'] ?? 'Unknown',
+            totalStudents: totalStudents,
+            presentCount: presentCount,
+            percentage: percentage,
+          ),
+        );
+
+        if (totalStudents > 0 && percentage < 50) {
+          alerts.add(
+            AttendanceAlert(
+              title: 'Low Attendance Warning',
+              message:
+                  '${cls['class_name']} attendance is at ${percentage.toStringAsFixed(1)}%',
+              isCritical: true,
+            ),
+          );
+        }
+      }
+
+      return DashboardData(
+        overallAttendance: '${overallPercentage.toStringAsFixed(1)}%',
+        presentToday: presentTodayCount.toString(),
+        classMetrics: classMetrics,
+        alerts: alerts,
+        trendData: trendData, // <--- Pass the graph data
+      );
+    } catch (e) {
+      print('Error fetching dashboard data: $e');
+      rethrow;
+    }
+  }
+
+  // Replace the entire updateEducatorProfile function with this:
+  Future<void> updateEducatorProfile({
+    required String firstName,
+    required String lastName,
+    required String bio,
+  }) async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw 'User not logged in';
+
+      // 1. Update the 'profiles' table (Always safe to update)
+      await _supabase
+          .from('profiles')
+          .update({'firstName': firstName, 'lastName': lastName})
+          .eq('id', userId);
+
+      // 2. Check if the Educator row already exists
+      final existingEducator = await _supabase
+          .from('Educator_Table')
+          .select()
+          .eq('id', userId)
+          .maybeSingle();
+
+      if (existingEducator != null) {
+        // CASE A: Profile exists -> UPDATE ONLY
+        // We only send 'bio' so we don't accidentally overwrite their real age with a default.
+        await _supabase
+            .from('Educator_Table')
+            .update({'bio': bio})
+            .eq('id', userId);
+      } else {
+        // CASE B: Profile is missing -> INSERT WITH DEFAULTS
+        // We MUST provide 'age', 'institution', etc. to satisfy the "Not Null" database rules.
+        await _supabase.from('Educator_Table').insert({
+          'id': userId,
+          'bio': bio,
+          // Dummy values to satisfy database constraints:
+          'age': 0,
+          'institution': 'Not Specified',
+          'gender': 'Not Specified',
+          'birthDate': DateTime.now().toIso8601String(),
+        });
+      }
+    } catch (e) {
+      print('Error updating educator profile: $e');
+      rethrow;
+    }
+  }
+  Future<void> deleteNotification(String notificationId) async {
+    try {
+      await _supabase
+          .from('Notification_Table')
+          .delete()
+          .eq('id', notificationId);
+    } catch (e) {
+      print('Error deleting notification: $e');
+      // We don't rethrow here so the UI doesn't crash on a background sync
+    }
+  }
 }
 
 class AccountServices {
@@ -572,7 +899,14 @@ class DynamicStatus {
 }
 
 /// This function is now the single source of truth for determining class status.
-DynamicStatus getDynamicStatus(StudentClass sClass, Color green, Color red, Color orange, Color darkBlue, Color grey) {
+DynamicStatus getDynamicStatus(
+  StudentClass sClass,
+  Color green,
+  Color red,
+  Color orange,
+  Color darkBlue,
+  Color grey,
+) {
   // Attendance for today has been recorded
   if (sClass.todaysAttendance != null) {
     return sClass.todaysAttendance == true || sClass.todaysAttendance == 'true'
@@ -606,10 +940,13 @@ DynamicStatus getDynamicStatus(StudentClass sClass, Color green, Color red, Colo
     final classStartTime = _parseTimeHelper(timeRange[0].trim(), now);
     final classEndTime = _parseTimeHelper(timeRange[1].trim(), now);
 
-    if (classStartTime == null || classEndTime == null) return DynamicStatus('Invalid Time', grey);
-    if (now.isBefore(classStartTime)) return DynamicStatus('Upcoming', darkBlue);
+    if (classStartTime == null || classEndTime == null)
+      return DynamicStatus('Invalid Time', grey);
+    if (now.isBefore(classStartTime))
+      return DynamicStatus('Upcoming', darkBlue);
     if (now.isAfter(classEndTime)) return DynamicStatus('Done', grey);
-    if (now.difference(classStartTime).inMinutes > 15) return DynamicStatus('Late', orange);
+    if (now.difference(classStartTime).inMinutes > 15)
+      return DynamicStatus('Late', orange);
     return DynamicStatus('Ongoing', green);
   } catch (e) {
     return DynamicStatus('Upcoming', darkBlue);
@@ -620,8 +957,9 @@ DynamicStatus getDynamicStatus(StudentClass sClass, Color green, Color red, Colo
 DateTime? _parseTimeHelper(String timeStr, DateTime now) {
   try {
     final isPM = timeStr.toLowerCase().contains('pm');
-    final timeOnly =
-        timeStr.replaceAll(RegExp(r'(am|pm)', caseSensitive: false), '').trim();
+    final timeOnly = timeStr
+        .replaceAll(RegExp(r'(am|pm)', caseSensitive: false), '')
+        .trim();
     final parts = timeOnly.split(':');
     if (parts.length < 2) return null;
 
@@ -645,8 +983,24 @@ DateTime? _parseTimeHelper(String timeStr, DateTime now) {
 
 /// Helper function to robustly check if a class is scheduled for a given weekday.
 bool _isClassScheduledForToday(String scheduleDay, int todayWeekday) {
-  const dayMappings = {'m': 1, 't': 2, 'w': 3, 'th': 4, 'f': 5, 's': 6, 'su': 7};
-  const fullDayMappings = {'monday': 1, 'tuesday': 2, 'wednesday': 3, 'thursday': 4, 'friday': 5, 'saturday': 6, 'sunday': 7};
+  const dayMappings = {
+    'm': 1,
+    't': 2,
+    'w': 3,
+    'th': 4,
+    'f': 5,
+    's': 6,
+    'su': 7,
+  };
+  const fullDayMappings = {
+    'monday': 1,
+    'tuesday': 2,
+    'wednesday': 3,
+    'thursday': 4,
+    'friday': 5,
+    'saturday': 6,
+    'sunday': 7,
+  };
 
   if (fullDayMappings.containsKey(scheduleDay)) {
     return fullDayMappings[scheduleDay] == todayWeekday;
@@ -657,11 +1011,20 @@ bool _isClassScheduledForToday(String scheduleDay, int todayWeekday) {
   if (scheduleDay.contains('su') && todayWeekday == 7) return true;
 
   // Handle single-letter abbreviations, ignoring 'h' and 'u' from 'th'/'su'
-  return scheduleDay.split('').any((char) => dayMappings[char] == todayWeekday && char != 'h' && char != 'u');
+  return scheduleDay
+      .split('')
+      .any(
+        (char) =>
+            dayMappings[char] == todayWeekday && char != 'h' && char != 'u',
+      );
 }
 
 /// Helper function to determine if a class has finished for today.
-bool _isClassDoneForToday(String scheduleDay, String timeRangeStr, DateTime now) {
+bool _isClassDoneForToday(
+  String scheduleDay,
+  String timeRangeStr,
+  DateTime now,
+) {
   final todayWeekday = now.weekday;
 
   // Check if the class is scheduled for today
@@ -674,4 +1037,89 @@ bool _isClassDoneForToday(String scheduleDay, String timeRangeStr, DateTime now)
   final classEndTime = _parseTimeHelper(timeParts[1].trim(), now);
 
   return classEndTime != null && now.isAfter(classEndTime);
+}
+
+class AttendanceService {
+  /// Marks attendance for a student for their currently ongoing class.
+  ///
+  /// Returns the name of the class if successful, otherwise null.
+  Future<String?> markAttendance(String studentId) async {
+    try {
+      // 1. Find the ongoing class for the student.
+      final ongoingClass = await _findOngoingClass(studentId);
+      if (ongoingClass == null) {
+        throw 'No ongoing class found to mark attendance for.';
+      }
+
+      // 2. Check if attendance has already been marked for this class today.
+      final today = DateTime.now().toIso8601String().split('T')[0];
+      final existingRecord = await _supabase
+          .from('Attendance_Record')
+          .select('id')
+          .eq('student_id', studentId)
+          .eq('class_id', ongoingClass.id)
+          .eq('date', today)
+          .maybeSingle();
+
+      if (existingRecord != null) {
+        print('Attendance already marked for ${ongoingClass.name} today.');
+        return ongoingClass.name; // Already marked, treat as success.
+      }
+
+      // 3. Determine if the student is late.
+      final status = getDynamicStatus(
+        ongoingClass,
+        Colors.green, // Dummy color
+        Colors.red, // Dummy color
+        Colors.orange, // Dummy color
+        Colors.blue, // Dummy color
+        Colors.grey, // Dummy color
+      );
+      final bool isLate = status.text == 'Late';
+
+      // 4. Create the new attendance record.
+      final attendanceData = {
+        'student_id': studentId,
+        'class_id': ongoingClass.id,
+        'date': today,
+        'isPresent': true,
+        'time': DateFormat.Hms().format(DateTime.now()),
+        'isLate': isLate,
+      };
+
+      await _supabase.from('Attendance_Record').insert(attendanceData);
+      print(
+        'Successfully marked attendance for $studentId in class ${ongoingClass.id}',
+      );
+
+      return ongoingClass.name;
+    } catch (e) {
+      print('Error marking attendance: $e');
+      rethrow; // Rethrow to be handled by the UI.
+    }
+  }
+
+  /// Helper to find the first class that is currently 'Ongoing' or 'Late'.
+  Future<StudentClass?> _findOngoingClass(String studentId) async {
+    final response = await _supabase.rpc(
+      'get_student_classes_with_details',
+      params: {'p_student_id': studentId},
+    );
+
+    final classes = (response as List)
+        .map((json) => StudentClass.fromJson(json))
+        .toList();
+
+    return classes.firstWhereOrNull((sClass) {
+      final status = getDynamicStatus(
+        sClass,
+        Colors.green,
+        Colors.red,
+        Colors.orange,
+        Colors.blue,
+        Colors.grey,
+      );
+      return status.text == 'Ongoing' || status.text == 'Late';
+    });
+  }
 }
