@@ -409,11 +409,27 @@ class DatabaseService {
     required String studentId,
   }) async {
     try {
+      // 1. Perform the Enrollment
       await _supabase.from('Enrollments_Table').insert({
         'class_id': classId,
         'student_id': studentId,
         'enrollment_date': DateTime.now().toIso8601String(),
       });
+
+      final classData = await _supabase
+          .from('Classes_Table')
+          .select('class_name')
+          .eq('id', classId)
+          .single();
+      
+      final className = classData['class_name'];
+      await _supabase.from('Notification_Table').insert({
+        'user_id': studentId, 
+        'title': 'You have been enrolled',
+        'subtitle': 'An educator has added you to $className.',
+        'timestamp': DateTime.now().toIso8601String(),
+      });
+
     } catch (e) {
       print('Error enrolling student: $e');
       rethrow;
@@ -428,17 +444,18 @@ class DatabaseService {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) throw 'You must be logged in to join a class.';
 
-      // 1. Find the class ID from the provided class code.
-      // .single() will throw an error if no class or more than one class is found.
+      // 1. Find the class ID AND Educator ID from the code [UPDATED]
       final classResponse = await _supabase
           .from('Classes_Table')
-          .select('id')
+          .select('id, educator_id, class_name') // Fetch educator_id too
           .eq('class_code', classCode.trim().toUpperCase())
           .single();
 
       final classId = classResponse['id'];
+      final educatorId = classResponse['educator_id'];
+      final className = classResponse['class_name'];
 
-      // 2. Check if the student is already enrolled in this class.
+      // 2. Check if the student is already enrolled.
       final enrollmentCheck = await _supabase
           .from('Enrollments_Table')
           .select()
@@ -452,12 +469,49 @@ class DatabaseService {
 
       // 3. If not enrolled, create the new enrollment record.
       await enrollStudent(classId: classId, studentId: userId);
+
+      // 4. Send Notification to Educator [NEW]
+      // We don't await this so it doesn't block the UI
+      _sendJoinNotification(
+        studentId: userId, 
+        educatorId: educatorId, 
+        className: className
+      );
+
     } on PostgrestException catch (e) {
-      // This specifically handles the error from .single() when no rows are found.
       if (e.code == 'PGRST116') {
         throw 'Invalid class code. Please check the code and try again.';
       }
-      rethrow; // Rethrow other database errors.
+      rethrow; 
+    }
+  }
+
+  /// Helper to insert notification
+  Future<void> _sendJoinNotification({
+    required String studentId,
+    required String educatorId,
+    required String className,
+  }) async {
+    try {
+      // Get student name
+      final profile = await _supabase
+          .from('profiles')
+          .select('firstName, lastName')
+          .eq('id', studentId)
+          .single();
+          
+      final name = "${profile['firstName']} ${profile['lastName']}";
+
+      // Insert notification
+      await _supabase.from('Notification_Table').insert({
+        'user_id': educatorId,
+        'title': 'New Student Enrolled',
+        'subtitle': '$name has joined $className.',
+        'timestamp': DateTime.now().toIso8601String(),
+        // 'isRead': false, // Uncomment if your table has this column
+      });
+    } catch (e) {
+      print("Error sending notification: $e");
     }
   }
 
@@ -759,6 +813,66 @@ class DatabaseService {
       rethrow;
     }
   }
+
+  // Replace the entire updateEducatorProfile function with this:
+  Future<void> updateEducatorProfile({
+    required String firstName,
+    required String lastName,
+    required String bio,
+  }) async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw 'User not logged in';
+
+      // 1. Update the 'profiles' table (Always safe to update)
+      await _supabase
+          .from('profiles')
+          .update({'firstName': firstName, 'lastName': lastName})
+          .eq('id', userId);
+
+      // 2. Check if the Educator row already exists
+      final existingEducator = await _supabase
+          .from('Educator_Table')
+          .select()
+          .eq('id', userId)
+          .maybeSingle();
+
+      if (existingEducator != null) {
+        // CASE A: Profile exists -> UPDATE ONLY
+        // We only send 'bio' so we don't accidentally overwrite their real age with a default.
+        await _supabase
+            .from('Educator_Table')
+            .update({'bio': bio})
+            .eq('id', userId);
+      } else {
+        // CASE B: Profile is missing -> INSERT WITH DEFAULTS
+        // We MUST provide 'age', 'institution', etc. to satisfy the "Not Null" database rules.
+        await _supabase.from('Educator_Table').insert({
+          'id': userId,
+          'bio': bio,
+          // Dummy values to satisfy database constraints:
+          'age': 0,
+          'institution': 'Not Specified',
+          'gender': 'Not Specified',
+          'birthDate': DateTime.now().toIso8601String(),
+        });
+      }
+    } catch (e) {
+      print('Error updating educator profile: $e');
+      rethrow;
+    }
+  }
+  Future<void> deleteNotification(String notificationId) async {
+    try {
+      await _supabase
+          .from('Notification_Table')
+          .delete()
+          .eq('id', notificationId);
+    } catch (e) {
+      print('Error deleting notification: $e');
+      // We don't rethrow here so the UI doesn't crash on a background sync
+    }
+  }
 }
 
 class AccountServices {
@@ -975,7 +1089,8 @@ class AttendanceService {
 
       await _supabase.from('Attendance_Record').insert(attendanceData);
       print(
-          'Successfully marked attendance for $studentId in class ${ongoingClass.id}');
+        'Successfully marked attendance for $studentId in class ${ongoingClass.id}',
+      );
 
       return ongoingClass.name;
     } catch (e) {
