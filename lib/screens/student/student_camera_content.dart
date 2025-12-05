@@ -13,13 +13,8 @@ enum ChallengeType { smile, blink, turnLeft, turnRight }
 
 class StudentCameraContent extends StatefulWidget {
   final List<CameraDescription> cameras;
-  final List<double> studentSavedVector; // <--- NEW: Accepts the saved face ID
 
-  const StudentCameraContent({
-    super.key,
-    required this.cameras,
-    required this.studentSavedVector, // <--- Required
-  });
+  const StudentCameraContent({super.key, required this.cameras});
 
   @override
   State<StudentCameraContent> createState() => _StudentCameraContentState();
@@ -38,12 +33,12 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
   bool _isSessionActive = false;
   String _statusMessage = "Initializing...";
   Color _statusColor = Colors.white;
-
-  // Verification State
   bool _isVerified = false;
   bool _hasFailed = false;
+
+  // TFLite Variables
+  bool _isTfliteLoaded = false;
   int _consecutiveFakeFrames = 0;
-  int _consecutiveMatchFrames = 0; // <--- NEW: To confirm identity match
 
   @override
   void initState() {
@@ -55,8 +50,11 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
     );
     _faceDetector = FaceDetector(options: options);
 
+    // FIX 1: Updated method name from loadModel to loadModels
     _tfliteManager.loadModels().then((_) {
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() => _isTfliteLoaded = true);
+      }
     });
 
     _initializeCamera();
@@ -102,7 +100,6 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
       _isVerified = false;
       _hasFailed = false;
       _consecutiveFakeFrames = 0;
-      _consecutiveMatchFrames = 0;
       _updateStatusMessage();
     });
   }
@@ -111,7 +108,7 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
     if (_isVerified || _hasFailed) return;
 
     if (_currentChallengeIndex >= _challenges.length) {
-      _statusMessage = "Verifying Identity...";
+      _statusMessage = "Verifying Texture...";
       _statusColor = const Color(0xFF93C0D3);
       return;
     }
@@ -145,9 +142,7 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
 
       try {
         await _processMLKit(image);
-
-        // Run heavy AI checks every 5th frame
-        if (frameCount % 5 == 0 && _tfliteManager.areModelsLoaded) {
+        if (frameCount % 10 == 0 && _isTfliteLoaded) {
           await _processTFLite(image);
         }
         frameCount++;
@@ -172,7 +167,7 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
 
   void _checkChallenge(Face face) {
     if (_currentChallengeIndex >= _challenges.length) {
-      // Challenges done, waiting for Identity Verification in _processTFLite
+      _finalizeVerification();
       return;
     }
 
@@ -212,57 +207,27 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
 
   Future<void> _processTFLite(CameraImage image) async {
     try {
-      // 1. Check Liveness (Real vs Spoof)
+      // FIX 2: Use checkLiveness instead of runInferenceOnCameraImage
+      // This returns TRUE if it's a real face, FALSE if it's a spoof.
       bool isReal = await _tfliteManager.checkLiveness(image);
 
       if (!isReal) {
         _consecutiveFakeFrames++;
-        if (_consecutiveFakeFrames >= 3) {
-          _triggerFailure("⚠️ SPOOF DETECTED");
-        }
-        return; // Don't check identity if it's fake
       } else {
         _consecutiveFakeFrames = 0;
       }
 
-      // 2. Check Identity (Only if challenges are done)
-      if (_currentChallengeIndex >= _challenges.length) {
-        // Generate live vector
-        List<double> liveVector = await _tfliteManager.generateFaceEmbedding(
-          image,
-        );
-
-        if (liveVector.isNotEmpty && widget.studentSavedVector.isNotEmpty) {
-          // Compare!
-          double distance = _tfliteManager.compareVectors(
-            widget.studentSavedVector,
-            liveVector,
-          );
-
-          // MobileFaceNet Threshold: < 0.80 or 0.85 is a match
-          if (distance < 0.85) {
-            _consecutiveMatchFrames++;
-          } else {
-            _consecutiveMatchFrames = 0;
-          }
-
-          if (_consecutiveMatchFrames >= 2) {
-            _finalizeVerification();
-          }
+      if (_consecutiveFakeFrames >= 3) {
+        if (mounted) {
+          setState(() {
+            _hasFailed = true;
+            _statusMessage = "⚠️ SPOOF DETECTED";
+            _statusColor = const Color(0xFFDA6A6A);
+          });
         }
       }
     } catch (e) {
       print("TFLite Error: $e");
-    }
-  }
-
-  void _triggerFailure(String message) {
-    if (mounted) {
-      setState(() {
-        _hasFailed = true;
-        _statusMessage = message;
-        _statusColor = const Color(0xFFDA6A6A);
-      });
     }
   }
 
@@ -271,13 +236,14 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
       if (mounted) {
         setState(() {
           _isVerified = true;
-          _statusMessage = "✅ IDENTITY VERIFIED";
+          _statusMessage = "✅ VERIFIED";
           _statusColor = const Color(0xFF4DBD88);
         });
 
+        // 2-Second Delay before closing
         Future.delayed(const Duration(seconds: 2), () {
           if (mounted) {
-            Navigator.of(context).pop(); // Or navigate to success screen
+            Navigator.of(context).pop();
           }
         });
       }
@@ -288,6 +254,7 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
     if (_controller == null) return null;
     final camera = _controller!.description;
     final sensorOrientation = camera.sensorOrientation;
+
     InputImageRotation? rotation;
     if (Platform.isIOS) {
       rotation = InputImageRotationValue.fromRawValue(sensorOrientation);
@@ -303,20 +270,25 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
       }
       rotation = InputImageRotationValue.fromRawValue(rotationCompensation);
     }
+
     if (rotation == null) return null;
     final format = InputImageFormatValue.fromRawValue(image.format.raw);
+
     if (image.planes.isEmpty) return null;
+
     final metadata = InputImageMetadata(
       size: Size(image.width.toDouble(), image.height.toDouble()),
       rotation: rotation,
       format: format ?? InputImageFormat.nv21,
       bytesPerRow: image.planes[0].bytesPerRow,
     );
+
     final WriteBuffer allBytes = WriteBuffer();
     for (final Plane plane in image.planes) {
       allBytes.putUint8List(plane.bytes);
     }
     final bytes = allBytes.done().buffer.asUint8List();
+
     return InputImage.fromBytes(bytes: bytes, metadata: metadata);
   }
 
@@ -330,8 +302,7 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
   @override
   void dispose() {
     _faceDetector.close();
-    _tfliteManager
-        .close(); // Careful if you share this instance, might verify where it's created
+    _tfliteManager.close();
     _controller?.stopImageStream();
     _controller?.dispose();
     super.dispose();
@@ -348,28 +319,10 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
             LayoutBuilder(
               builder: (context, constraints) {
                 final size = constraints.biggest;
-
-                // --- FIX: CALCULATE SCALE TO PREVENT SQUISHING ---
-                // Camera aspect ratio is usually landscape (e.g. 4:3)
-                // Screen aspect ratio is portrait (e.g. 9:16)
-                // We calculate how much to scale the width to cover the height.
-                var scale = 1.0;
-                if (_controller!.value.aspectRatio < size.aspectRatio) {
-                  // If camera is "wider" than screen (relative to portrait), scale height
-                  scale = 1 / _controller!.value.aspectRatio * size.aspectRatio;
-                } else {
-                  // If camera is "taller", scale width
-                  scale = _controller!.value.aspectRatio / size.aspectRatio;
-                }
-
-                // Just use the simple logic from the registration page if this feels off
-                // The most reliable "Cover" mode for portrait front cam:
-                final double finalScale =
-                    1 / (_controller!.value.aspectRatio * size.aspectRatio);
-
+                var scale = size.aspectRatio * _controller!.value.aspectRatio;
+                if (scale < 1) scale = 1 / scale;
                 return Transform.scale(
-                  scale: finalScale,
-                  alignment: Alignment.topCenter,
+                  scale: scale,
                   child: Center(child: CameraPreview(_controller!)),
                 );
               },
@@ -380,7 +333,6 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
           if (_hasFailed || _isVerified)
             Container(color: Colors.black.withOpacity(0.7)),
 
-          // Overlay Gradient
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -397,7 +349,6 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
             ),
           ),
 
-          // Header
           SafeArea(
             child: Column(
               children: [
@@ -433,7 +384,7 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
                             ],
                           ),
                           child: const Text(
-                            'Attendance Verification',
+                            'You have not taken your attendance for Physics 138',
                             style: TextStyle(
                               color: Colors.black87,
                               fontSize: 14,
@@ -449,14 +400,12 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
             ),
           ),
 
-          // Main HUD
           Center(
             child: SizedBox(
               width: 300,
               height: 450,
               child: Stack(
                 children: [
-                  // Corner Brackets
                   Positioned(
                     top: 0,
                     left: 0,
@@ -478,11 +427,87 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
                     child: _CornerBracket(isTop: false, isLeft: false),
                   ),
 
-                  // Status Text
+                  const Positioned(
+                    top: 20,
+                    right: 20,
+                    child: Column(
+                      children: [
+                        Icon(Icons.circle, color: Colors.red, size: 12),
+                        SizedBox(height: 4),
+                        RotatedBox(
+                          quarterTurns: 1,
+                          child: Text(
+                            'REC',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontSize: 10,
+                              letterSpacing: 2,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const Positioned(
+                    top: 100,
+                    left: 10,
+                    child: RotatedBox(
+                      quarterTurns: 1,
+                      child: Text(
+                        '1920 x 1080',
+                        style: TextStyle(
+                          color: Colors.white54,
+                          fontSize: 10,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                    ),
+                  ),
+                  const Positioned(
+                    top: 200,
+                    left: 10,
+                    child: RotatedBox(
+                      quarterTurns: 1,
+                      child: Text(
+                        'FULL-HD 60FPS',
+                        style: TextStyle(
+                          color: Colors.white54,
+                          fontSize: 10,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                    ),
+                  ),
+                  const Positioned(
+                    top: 200,
+                    right: 10,
+                    child: RotatedBox(
+                      quarterTurns: 1,
+                      child: Text(
+                        '00:00:00:00',
+                        style: TextStyle(
+                          color: Colors.white54,
+                          fontSize: 10,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                    ),
+                  ),
+
                   Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.white30, width: 1),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
                         if (!_hasFailed && !_isVerified)
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -507,7 +532,6 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
                     ),
                   ),
 
-                  // Failure State
                   if (_hasFailed)
                     Center(
                       child: Column(
@@ -529,7 +553,7 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            "Face does not match profile\nor spoof detected.",
+                            "Spoof detected or face not clear.\nEnsure good lighting.",
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: Colors.white70,
@@ -544,13 +568,16 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,
                               foregroundColor: Colors.black,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
 
-                  // Success State
                   if (_isVerified)
                     const Center(
                       child: Column(
@@ -577,6 +604,38 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
               ),
             ),
           ),
+
+          Positioned(
+            bottom: 20,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _CircleButton(
+                  icon: Icons.cameraswitch_outlined,
+                  color: const Color(0xFF173C45),
+                  iconColor: Colors.white,
+                  onTap: () {},
+                ),
+                const SizedBox(width: 24),
+                _CircleButton(
+                  icon: Icons.close,
+                  color: const Color(0xFFDA6A6A),
+                  iconColor: Colors.white,
+                  size: 64,
+                  onTap: () => Navigator.of(context).pop(),
+                ),
+                const SizedBox(width: 24),
+                _CircleButton(
+                  icon: Icons.mic_none_rounded,
+                  color: const Color(0xFF167C94),
+                  iconColor: Colors.white,
+                  onTap: () {},
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -597,18 +656,57 @@ class _CornerBracket extends StatelessWidget {
       decoration: BoxDecoration(
         border: Border(
           top: isTop
-              ? const BorderSide(color: Colors.white, width: 2)
+              ? const BorderSide(color: Colors.black87, width: 2)
               : BorderSide.none,
           bottom: !isTop
-              ? const BorderSide(color: Colors.white, width: 2)
+              ? const BorderSide(color: Colors.black87, width: 2)
               : BorderSide.none,
           left: isLeft
-              ? const BorderSide(color: Colors.white, width: 2)
+              ? const BorderSide(color: Colors.black87, width: 2)
               : BorderSide.none,
           right: !isLeft
-              ? const BorderSide(color: Colors.white, width: 2)
+              ? const BorderSide(color: Colors.black87, width: 2)
               : BorderSide.none,
         ),
+      ),
+    );
+  }
+}
+
+class _CircleButton extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final Color iconColor;
+  final double size;
+  final VoidCallback onTap;
+
+  const _CircleButton({
+    required this.icon,
+    required this.color,
+    required this.iconColor,
+    this.size = 48,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Icon(icon, color: iconColor, size: size * 0.5),
       ),
     );
   }

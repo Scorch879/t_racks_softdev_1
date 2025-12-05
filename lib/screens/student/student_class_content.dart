@@ -12,28 +12,24 @@ const _darkBluePanel = Color(0xFF0C3343);
 const _myClassCardSurface = Color(0xFF32657D);
 const _cardSurface = Color(0xFF0C3343);
 const _accentCyan = Color(0xFF32657D);
-
-// UPDATED GREEN COLOR
-const _chipGreen = Color(0xFF7FE26B);
-
+const _chipGreen = Color(0xFF37AA82);
 const _statusRed = Color(0xFFE26B6B);
 const _statusOrange = Color(0xFFFF8442);
+
 
 // --- MAIN CLASSES CONTENT VIEW ---
 class StudentClassClassesContent extends StatefulWidget {
   const StudentClassClassesContent({super.key});
 
   @override
-  State<StudentClassClassesContent> createState() =>
-      _StudentClassClassesContentState();
+  State<StudentClassClassesContent> createState() => _StudentClassClassesContentState();
 }
 
-class _StudentClassClassesContentState
-    extends State<StudentClassClassesContent> {
+class _StudentClassClassesContentState extends State<StudentClassClassesContent> {
   final _databaseService = DatabaseService();
   late Future<List<StudentClass>> _classesFuture;
   final Map<String, GlobalKey<__ClassCardState>> _cardKeys = {};
-
+  
   // State for search functionality
   final _searchController = TextEditingController();
   String _searchQuery = '';
@@ -62,7 +58,7 @@ class _StudentClassClassesContentState
       _classesFuture = _databaseService.getStudentClasses();
     });
   }
-
+  
   void _handleCardTap(String classId) {
     // Trigger the animation on the specific card that was tapped
     _cardKeys[classId]?.currentState?.triggerTapAnimation();
@@ -90,18 +86,11 @@ class _StudentClassClassesContentState
           future: _classesFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(color: Colors.white),
-              );
+              return const Center(child: CircularProgressIndicator(color: Colors.white));
             }
 
             if (snapshot.hasError) {
-              return Center(
-                child: Text(
-                  'Error: ${snapshot.error}',
-                  style: const TextStyle(color: Colors.white),
-                ),
-              );
+              return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white)));
             }
 
             final classes = snapshot.data ?? [];
@@ -124,13 +113,13 @@ class _StudentClassClassesContentState
                     child: Opacity(
                       opacity: 0.12,
                       child: SizedBox(
+                      width: double.infinity,
+                      height: MediaQuery.of(context).size.height,
+                      child: Image.asset(
+                        'assets/images/squigglytexture.png',
                         width: double.infinity,
                         height: MediaQuery.of(context).size.height,
-                        child: Image.asset(
-                          'assets/images/squigglytexture.png',
-                          width: double.infinity,
-                          height: MediaQuery.of(context).size.height,
-                          fit: BoxFit.cover,
+                        fit: BoxFit.cover,
                         ),
                       ),
                     ),
@@ -139,7 +128,7 @@ class _StudentClassClassesContentState
                   SingleChildScrollView(
                     padding: EdgeInsets.fromLTRB(
                       horizontalPadding,
-                      12 * scale,
+                     12 * scale,
                       horizontalPadding,
                       100 * scale, // Padding for bottom nav
                     ),
@@ -165,12 +154,10 @@ class _StudentClassClassesContentState
                                 SizedBox(width: 12 * scale),
                                 Expanded(
                                   child: FutureBuilder<int>(
-                                    future: _databaseService
-                                        .getAbsencesThisWeek(),
+                                    future: _databaseService.getAbsencesThisWeek(),
                                     builder: (context, snapshot) {
                                       String value = '...';
-                                      if (snapshot.connectionState ==
-                                          ConnectionState.done) {
+                                      if (snapshot.connectionState == ConnectionState.done) {
                                         if (snapshot.hasData) {
                                           value = snapshot.data!.toString();
                                         } else {
@@ -201,9 +188,7 @@ class _StudentClassClassesContentState
                                 color: _darkBluePanel,
                                 borderRadius: BorderRadius.circular(16 * scale),
                                 border: Border.all(
-                                  color: const Color(0xFFBDBBBB),
-                                  width: 0.75,
-                                ),
+                                  color: const Color(0xFFBDBBBB), width: 0.75),
                                 boxShadow: [
                                   BoxShadow(
                                     color: Colors.black.withValues(alpha: 0.25),
@@ -218,26 +203,18 @@ class _StudentClassClassesContentState
                                   // Header
                                   _MyClassesHeader(
                                     scale: scale,
-                                    onAddPressed: () => showJoinClassDialog(
-                                      context,
-                                      _refreshClasses,
-                                    ),
+                                    onAddPressed: () => showJoinClassDialog(context, _refreshClasses),
                                   ),
                                   SizedBox(height: 12 * scale),
-
+                                  
                                   // Search
-                                  _SearchBar(
-                                    scale: scale,
-                                    controller: _searchController,
-                                  ),
+                                  _SearchBar(scale: scale, controller: _searchController),
                                   SizedBox(height: 12 * scale),
 
                                   // Class List
                                   if (filteredClasses.isEmpty)
                                     Padding(
-                                      padding: EdgeInsets.symmetric(
-                                        vertical: 60 * scale,
-                                      ),
+                                      padding: EdgeInsets.symmetric(vertical: 60 * scale),
                                       child: Text(
                                         'No classes yet',
                                         textAlign: TextAlign.center,
@@ -250,35 +227,25 @@ class _StudentClassClassesContentState
                                   else
                                     ...filteredClasses.map((sClass) {
                                       // Ensure each card has a key
-                                      _cardKeys.putIfAbsent(
-                                        sClass.id,
-                                        () => GlobalKey<__ClassCardState>(),
-                                      );
+                                      _cardKeys.putIfAbsent(sClass.id, () => GlobalKey<__ClassCardState>());
                                       final dynamicStatus = getDynamicStatus(
-                                        sClass,
-                                        _chipGreen, // Ongoing
-                                        _statusRed, // Absent
-                                        _statusOrange, // Late
-                                        _darkBluePanel, // Upcoming
-                                        Colors.grey.shade600,
-                                      ); // Done
+                                          sClass,
+                                          _chipGreen, // Ongoing
+                                          _statusRed, // Absent
+                                          _statusOrange, // Late
+                                          _darkBluePanel, // Upcoming
+                                          Colors.grey.shade600); // Done
                                       return Padding(
-                                        padding: EdgeInsets.only(
-                                          bottom: 12 * scale,
-                                        ),
+                                        padding: EdgeInsets.only(bottom: 12 * scale),
                                         child: GestureDetector(
-                                          onTap: () =>
-                                              _handleCardTap(sClass.id),
+                                          onTap: () => _handleCardTap(sClass.id),
                                           child: _ClassCard(
                                             key: _cardKeys[sClass.id]!,
                                             scale: scale,
-                                            title:
-                                                sClass.name ?? 'Unnamed Class',
+                                            title: sClass.name ?? 'Unnamed Class', 
                                             subject: sClass.subject,
                                             students: sClass.studentCount,
-                                            time:
-                                                sClass.schedule ??
-                                                'No schedule',
+                                            time: sClass.schedule ?? 'No schedule',
                                             status: dynamicStatus.text,
                                             statusColor: dynamicStatus.color,
                                             cardColor: _myClassCardSurface,
@@ -295,7 +262,7 @@ class _StudentClassClassesContentState
                     ),
                   ),
                 ],
-              ),
+              )
             );
           },
         );
@@ -314,8 +281,8 @@ class ClassDetailsDialog extends StatefulWidget {
 
 class _ClassDetailsDialogState extends State<ClassDetailsDialog> {
   final _databaseService = DatabaseService();
-  late final Future<(StudentClass, List<AttendanceRecord>)>
-  _detailsAndAttendanceFuture;
+  late final Future<
+      (StudentClass, List<AttendanceRecord>)> _detailsAndAttendanceFuture;
 
   @override
   void initState() {
@@ -324,14 +291,11 @@ class _ClassDetailsDialogState extends State<ClassDetailsDialog> {
   }
 
   Future<(StudentClass, List<AttendanceRecord>)>
-  _fetchDetailsAndAttendance() async {
+      _fetchDetailsAndAttendance() async {
     return await Future.wait([
       _databaseService.getClassDetails(widget.classId),
       _databaseService.getStudentAttendanceForClass(widget.classId),
-    ]).then(
-      (results) =>
-          (results[0] as StudentClass, results[1] as List<AttendanceRecord>),
-    );
+    ]).then((results) => (results[0] as StudentClass, results[1] as List<AttendanceRecord>));
   }
 
   @override
@@ -345,19 +309,14 @@ class _ClassDetailsDialogState extends State<ClassDetailsDialog> {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const SizedBox(
               height: 200,
-              child: Center(
-                child: CircularProgressIndicator(color: Colors.white),
-              ),
+              child: Center(child: CircularProgressIndicator(color: Colors.white)),
             );
           }
 
           if (snapshot.hasError) {
             return Padding(
               padding: const EdgeInsets.all(24.0),
-              child: Text(
-                'Error: ${snapshot.error}',
-                style: const TextStyle(color: Colors.white),
-              ),
+              child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white)),
             );
           }
 
@@ -375,28 +334,23 @@ class _ClassDetailsDialogState extends State<ClassDetailsDialog> {
                   Text(
                     sClass.name ?? 'Class Details',
                     style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 24),
                   _DetailItem(label: 'Subject', value: sClass.subject),
                   const Divider(color: Colors.white24),
-                  _DetailItem(
-                    label: 'Schedule',
-                    value: '${sClass.day} ${sClass.time}',
-                  ),
+                  _DetailItem(label: 'Schedule', value: '${sClass.day} ${sClass.time}'),
                   const Divider(color: Colors.white24),
                   _DetailItem(label: 'Status', value: sClass.status),
                   const SizedBox(height: 24),
                   const Text(
                     'My Attendance History',
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
                   Expanded(
@@ -423,10 +377,8 @@ class _ClassDetailsDialogState extends State<ClassDetailsDialog> {
                     alignment: Alignment.centerRight,
                     child: TextButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: const Text(
-                        'Close',
-                        style: TextStyle(color: _accentCyan),
-                      ),
+                      child: const Text('Close',
+                          style: TextStyle(color: _accentCyan)),
                     ),
                   ),
                 ],
@@ -467,31 +419,29 @@ class _AttendanceHistoryItem extends StatelessWidget {
         ),
         child: Text(
           statusText,
-          // Used a darker color for text on the bright green pill to ensure readability
-          style: TextStyle(
-            color: record.isPresent ? _cardSurface : Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 12,
-          ),
+          style: const TextStyle(
+              color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
         ),
       ),
     );
   }
 }
 
+
 // --- SCHEDULE CONTENT VIEW (Now Stateful) ---
 class StudentClassScheduleContent extends StatefulWidget {
   const StudentClassScheduleContent({super.key});
 
   @override
-  State<StudentClassScheduleContent> createState() =>
-      _StudentClassScheduleContentState();
+  State<StudentClassScheduleContent> createState() => _StudentClassScheduleContentState();
 }
 
-class _StudentClassScheduleContentState
-    extends State<StudentClassScheduleContent> {
+class _StudentClassScheduleContentState extends State<StudentClassScheduleContent> {
   @override
   Widget build(BuildContext context) {
+    // Render the Classes content in place of the daily schedule cards.
+    // Using the Classes component directly avoids nested scrollables
+    // and shows totals, absences, search, and class cards as requested.
     return const StudentClassClassesContent();
   }
 }
@@ -501,12 +451,10 @@ class StudentClassSettingsContent extends StatefulWidget {
   const StudentClassSettingsContent({super.key});
 
   @override
-  State<StudentClassSettingsContent> createState() =>
-      _StudentClassSettingsContentState();
+  State<StudentClassSettingsContent> createState() => _StudentClassSettingsContentState();
 }
 
-class _StudentClassSettingsContentState
-    extends State<StudentClassSettingsContent> {
+class _StudentClassSettingsContentState extends State<StudentClassSettingsContent> {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -522,6 +470,21 @@ class _StudentClassSettingsContentState
           color: _bgTeal,
           child: Stack(
             children: [
+              Positioned.fill(
+                child: Opacity(
+                  opacity: 0.12,
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: MediaQuery.of(context).size.height,
+                    child: Image.asset(
+                      'assets/images/squigglytexture.png',
+                      width: double.infinity,
+                      height: MediaQuery.of(context).size.height,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              ),
               SingleChildScrollView(
                 padding: EdgeInsets.fromLTRB(
                   horizontalPadding,
@@ -563,19 +526,9 @@ class _DetailItem extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white70, fontSize: 14),
-          ),
+          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 14)),
           const SizedBox(height: 4),
-          Text(
-            value ?? 'Not available',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          Text(value ?? 'Not available', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -651,7 +604,7 @@ class _MyClassesHeader extends StatefulWidget {
   const _MyClassesHeader({required this.scale, required this.onAddPressed});
   final double scale;
   final VoidCallback onAddPressed;
-
+  
   @override
   State<_MyClassesHeader> createState() => _MyClassesHeaderState();
 }
@@ -661,7 +614,11 @@ class _MyClassesHeaderState extends State<_MyClassesHeader> {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(Icons.star_rounded, color: _accentCyan, size: 28 * widget.scale),
+        Icon(
+          Icons.star_rounded,
+          color: _accentCyan,
+          size: 28 * widget.scale,
+        ),
         SizedBox(width: 8 * widget.scale),
         Expanded(
           child: Text(
@@ -673,38 +630,12 @@ class _MyClassesHeaderState extends State<_MyClassesHeader> {
             ),
           ),
         ),
-        // UPDATED: Replaced simple IconButton with a Pill Button
-        InkWell(
-          onTap: widget.onAddPressed,
-          borderRadius: BorderRadius.circular(20 * widget.scale),
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: 16 * widget.scale,
-              vertical: 8 * widget.scale,
-            ),
-            decoration: BoxDecoration(
-              color: _chipGreen,
-              borderRadius: BorderRadius.circular(20 * widget.scale),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.add,
-                  color: _cardSurface, // Dark icon for contrast
-                  size: 20 * widget.scale,
-                ),
-                SizedBox(width: 6 * widget.scale),
-                Text(
-                  'Join class',
-                  style: TextStyle(
-                    color: _cardSurface, // Dark text for contrast
-                    fontSize: 14 * widget.scale,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
+        IconButton(
+          onPressed: widget.onAddPressed,
+          icon: Icon(
+            Icons.add_circle_rounded,
+            color: _chipGreen,
+            size: 28 * widget.scale,
           ),
         ),
       ],
@@ -726,7 +657,10 @@ class _SearchBarState extends State<_SearchBar> {
   Widget build(BuildContext context) {
     return TextFormField(
       controller: widget.controller,
-      style: TextStyle(color: Colors.white, fontSize: 16 * widget.scale),
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 16 * widget.scale,
+      ),
       decoration: InputDecoration(
         hintText: 'Search Class by Name or Subject',
         hintStyle: TextStyle(
@@ -752,7 +686,7 @@ class _SearchBarState extends State<_SearchBar> {
           borderRadius: BorderRadius.circular(22 * widget.scale),
           borderSide: const BorderSide(color: _chipGreen, width: 2),
         ),
-      ),
+      )
     );
   }
 }
@@ -785,8 +719,7 @@ class _ClassCard extends StatefulWidget {
   State<_ClassCard> createState() => __ClassCardState();
 }
 
-class __ClassCardState extends State<_ClassCard>
-    with SingleTickerProviderStateMixin {
+class __ClassCardState extends State<_ClassCard> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
@@ -797,10 +730,9 @@ class __ClassCardState extends State<_ClassCard>
       vsync: this,
       duration: const Duration(milliseconds: 150),
     );
-    _scaleAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.95,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
   }
 
   @override
@@ -818,11 +750,6 @@ class __ClassCardState extends State<_ClassCard>
 
   @override
   Widget build(BuildContext context) {
-    // If the statusColor is our bright green, change text color to dark for readability
-    final textColor = widget.statusColor == _chipGreen
-        ? _cardSurface
-        : Colors.white;
-
     return ScaleTransition(
       scale: _scaleAnimation,
       child: Container(
@@ -863,11 +790,7 @@ class __ClassCardState extends State<_ClassCard>
             SizedBox(height: 8 * widget.scale),
             Row(
               children: [
-                Icon(
-                  Icons.group,
-                  color: Colors.white70,
-                  size: 16 * widget.scale,
-                ),
+                Icon(Icons.group, color: Colors.white70, size: 16 * widget.scale),
                 SizedBox(width: 6 * widget.scale),
                 Text(
                   '${widget.students} Students',
@@ -901,7 +824,7 @@ class __ClassCardState extends State<_ClassCard>
               child: Text(
                 widget.status,
                 style: TextStyle(
-                  color: textColor, // Adjusted for contrast
+                  color: Colors.white,
                   fontSize: 14 * widget.scale,
                   fontWeight: FontWeight.w800,
                 ),
@@ -913,6 +836,7 @@ class __ClassCardState extends State<_ClassCard>
     );
   }
 }
+
 
 class _SettingsCard extends StatefulWidget {
   const _SettingsCard({required this.scale, required this.radius});
@@ -948,11 +872,7 @@ class _SettingsCardState extends State<_SettingsCard> {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.settings,
-                  color: Colors.white,
-                  size: 24 * widget.scale,
-                ),
+                Icon(Icons.settings, color: Colors.white, size: 24 * widget.scale),
                 SizedBox(width: 8 * widget.scale),
                 Text(
                   'Settings',
@@ -1012,17 +932,11 @@ class _SettingsPill extends StatefulWidget {
 class _SettingsPillState extends State<_SettingsPill> {
   @override
   Widget build(BuildContext context) {
-    // If background is our bright green, text/icons should be dark
-    final textColor = widget.color == _chipGreen ? _cardSurface : Colors.white;
-
     return InkWell(
       borderRadius: BorderRadius.circular(22 * widget.scale),
       onTap: () {},
       child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: 18 * widget.scale,
-          vertical: 16 * widget.scale,
-        ),
+        padding: EdgeInsets.symmetric(horizontal: 18 * widget.scale, vertical: 16 * widget.scale),
         decoration: BoxDecoration(
           color: widget.color,
           borderRadius: BorderRadius.circular(22 * widget.scale),
@@ -1036,23 +950,19 @@ class _SettingsPillState extends State<_SettingsPill> {
         ),
         child: Row(
           children: [
-            Icon(widget.icon, color: textColor, size: 20 * widget.scale),
+            Icon(widget.icon, color: Colors.white, size: 20 * widget.scale),
             SizedBox(width: 12 * widget.scale),
             Expanded(
               child: Text(
                 widget.label,
                 style: TextStyle(
-                  color: textColor,
+                  color: Colors.white,
                   fontSize: 16 * widget.scale,
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ),
-            Icon(
-              Icons.chevron_right_rounded,
-              color: textColor,
-              size: 22 * widget.scale,
-            ),
+            Icon(Icons.chevron_right_rounded, color: Colors.white, size: 22 * widget.scale),
           ],
         ),
       ),
@@ -1103,12 +1013,13 @@ class _ScheduleCardState extends State<_ScheduleCard> {
             ),
           ),
           SizedBox(height: 12 * widget.scale),
-          ...widget.classes.map(
-            (item) => Padding(
-              padding: EdgeInsets.only(bottom: 12 * widget.scale),
-              child: _ScheduleItemWidget(scale: widget.scale, item: item),
-            ),
-          ),
+          ...widget.classes.map((item) => Padding(
+                padding: EdgeInsets.only(bottom: 12 * widget.scale),
+                child: _ScheduleItemWidget(
+                  scale: widget.scale,
+                  item: item,
+                ),
+              )),
         ],
       ),
     );
@@ -1128,7 +1039,10 @@ class _ScheduleItem {
 }
 
 class _ScheduleItemWidget extends StatefulWidget {
-  const _ScheduleItemWidget({required this.scale, required this.item});
+  const _ScheduleItemWidget({
+    required this.scale,
+    required this.item,
+  });
 
   final double scale;
   final _ScheduleItem item;

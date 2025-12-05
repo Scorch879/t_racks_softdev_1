@@ -102,6 +102,7 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
         return FutureBuilder<List<EducatorClassSummary>>(
           future: _classesFuture,
           builder: (context, snapshot) {
+            
             // 2. FIX: Force the loading state to fill the screen height
             if (snapshot.connectionState == ConnectionState.waiting) {
               return SizedBox(
@@ -326,7 +327,7 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
               width: double.infinity,
               height: 48,
               child: ElevatedButton.icon(
-                onPressed: _navigateToAttendance,
+                onPressed:_navigateToAttendance,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF7FE26B),
                   foregroundColor: const Color(0xFF0C3343),

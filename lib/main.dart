@@ -6,13 +6,10 @@ import 'package:t_racks_softdev_1/services/camera_service.dart';
 import 'package:camera/camera.dart';
 import 'package:t_racks_softdev_1/screens/student/student_home_screen.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_shell.dart';
-import 'package:t_racks_softdev_1/services/notification_service.dart';
 
 Future<void> main() async {
   // Ensure Flutter bindings are initialized before any async operations.
   WidgetsFlutterBinding.ensureInitialized();
-
-  await NotificationService().init();
 
   await CameraService.instance.initialize();
 

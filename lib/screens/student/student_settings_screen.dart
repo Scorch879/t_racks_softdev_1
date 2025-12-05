@@ -29,17 +29,17 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen> {
 
   void onNavHome() {
     if (_isNavigating()) return;
-
+    
     try {
       final navigator = Navigator.of(context);
       final currentRoute = ModalRoute.of(context);
       final routeName = currentRoute?.settings.name;
-
+      
       // If already on home screen, do nothing rahhhhhhhhhhhhhh
       if (routeName == '/home' || routeName == '/studentHome') {
         return;
       }
-
+      
       // Navigate to home screen using pushAndRemoveUntil
       // This will push home and remove all routes until we reach the first route
       // This ensures we end up on home without accidentally going back to onboarding
@@ -56,13 +56,13 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen> {
       );
     } catch (e) {}
   }
-
+  
   void onNavSchedule() {}
-
+  
   void onNavSettings() {
     // Already on settings screen
   }
-
+  
   bool _isNavigating() {
     final now = DateTime.now();
     if (_lastNavTime != null) {
@@ -112,31 +112,28 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen> {
           extendBodyBehindAppBar: false,
           appBar: PreferredSize(
             preferredSize: Size.fromHeight(64 * scale),
-            child: _TopBar(
-              scale: scale,
-              onNotificationsPressed: onNotificationsPressed,
-            ),
+            child: _TopBar(scale: scale, onNotificationsPressed: onNotificationsPressed),
           ),
           body: Container(
             width: double.infinity,
             height: double.infinity,
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFF194B61),
-                  Color(0xFF2A7FA3),
-                  Color(0xFF267394),
-                  Color(0xFF349BC7),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
+                gradient: LinearGradient(
+                  colors: [
+                    Color(0xFF194B61),
+                    Color(0xFF2A7FA3),
+                    Color(0xFF267394),
+                    Color(0xFF349BC7),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
               ),
-            ),
             child: Stack(
               children: [
                 Positioned.fill(
                   child: Opacity(
-                    opacity: 0.3,
+                    opacity: 0.12,
                     child: Image.asset(
                       'assets/images/squigglytexture.png',
                       fit: BoxFit.cover,
@@ -289,10 +286,7 @@ class _SettingsPillState extends State<_SettingsPill> {
       borderRadius: BorderRadius.circular(22 * scale),
       onTap: widget.onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: 18 * scale,
-          vertical: 16 * scale,
-        ),
+        padding: EdgeInsets.symmetric(horizontal: 18 * scale, vertical: 16 * scale),
         decoration: BoxDecoration(
           color: widget.color,
           borderRadius: BorderRadius.circular(22 * scale),
@@ -318,11 +312,7 @@ class _SettingsPillState extends State<_SettingsPill> {
                 ),
               ),
             ),
-            Icon(
-              Icons.chevron_right_rounded,
-              color: Colors.white,
-              size: 22 * scale,
-            ),
+            Icon(Icons.chevron_right_rounded, color: Colors.white, size: 22 * scale),
           ],
         ),
       ),
@@ -371,7 +361,10 @@ class _CardContainerState extends State<_CardContainer> {
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
-        children: [if (background != null) background, widget.child],
+        children: [
+          if (background != null) background,
+          widget.child,
+        ],
       ),
     );
   }
@@ -389,7 +382,7 @@ class _CardBackgroundState extends State<_CardBackground> {
   Widget build(BuildContext context) {
     return Positioned.fill(
       child: Opacity(
-        opacity: 0.3,
+        opacity: 0.08,
         child: Image.asset(
           'assets/images/squigglytexture.png',
           fit: BoxFit.cover,
@@ -667,9 +660,7 @@ class _NotificationDialogState extends State<_NotificationDialog> {
   @override
   Widget build(BuildContext context) {
     final double maxHeight = widget.isFull ? 520 : 360;
-    final String toggleLabel = widget.isFull
-        ? 'See Less'
-        : 'View All Notifications';
+    final String toggleLabel = widget.isFull ? 'See Less' : 'View All Notifications';
 
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
@@ -784,7 +775,11 @@ class _NotificationTileState extends State<_NotificationTile> {
               color: indicator.backgroundColor,
               shape: BoxShape.circle,
             ),
-            child: Icon(indicator.icon, color: indicator.iconColor, size: 18),
+            child: Icon(
+              indicator.icon,
+              color: indicator.iconColor,
+              size: 18,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
