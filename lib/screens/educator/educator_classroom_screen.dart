@@ -33,11 +33,13 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
     _fetchStudents();
   }
 
-  void _fetchStudents() async {
+  void _fetchClassData() async {
+    // 1. Fetch Students
     final students = await _dbService.getClassStudents(widget.classId);
     if (mounted) {
       setState(() {
         studentList = students;
+        _classCode = code;
         isLoading = false;
       });
     }
@@ -94,22 +96,10 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
           // --- 2. CONTENT ---
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                16,
-                16,
-                16,
-                0,
-              ), // Remove bottom padding here
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               child: Column(
-                // This Column takes up the screen height
                 children: [
-                  // Use Flexible to allow the card to shrink/grow
-                  Flexible(
-                    fit:
-                        FlexFit.loose, // This makes it "hug" content when small
-                    child: _buildClassroomCard(),
-                  ),
-                  // Add some spacing at bottom so card doesn't touch edge
+                  Flexible(fit: FlexFit.loose, child: _buildClassroomCard()),
                   const SizedBox(height: 20),
                 ],
               ),
@@ -132,11 +122,12 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
         ),
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min, // Important: Hug vertical content
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // --- Header ---
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Icon(Icons.star, color: Colors.white),
               const SizedBox(width: 8),
@@ -165,7 +156,8 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+
+          const SizedBox(height: 20),
 
           // --- Search Bar ---
           TextField(
@@ -176,6 +168,10 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
               hintStyle: const TextStyle(color: Colors.white70),
               filled: true,
               fillColor: Colors.white.withValues(alpha: 0.1),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
@@ -205,8 +201,8 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
                     ),
                   )
                 : ListView.builder(
-                    shrinkWrap: true, // Allow it to shrink!
-                    padding: EdgeInsets.zero, // Remove extra padding
+                    shrinkWrap: true,
+                    padding: EdgeInsets.zero,
                     itemCount: studentList.length,
                     itemBuilder: (context, index) {
                       return _buildStudentTile(studentList[index]);
@@ -221,35 +217,41 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
             alignment: Alignment.centerRight,
             child: ElevatedButton.icon(
               onPressed: () async {
-                // 1. Fetch the list of students who aren't in this class yet
                 final available = await _dbService.getAvailableStudents(
                   widget.classId,
                 );
 
                 if (context.mounted) {
-                  // 2. Navigate to the Add Student Screen
                   await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => EducatorAddStudentScreen(
-                        classId: widget.classId, // <--- Pass the ID here!
+                        classId: widget.classId,
                         className: widget.className,
                         availableStudents: available,
                       ),
                     ),
                   );
-
-                  // 3. Refresh the classroom list when we return
-                  _fetchStudents();
+                  _fetchClassData();
                 }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2A7FA3),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              icon: const Icon(Icons.add, color: Colors.white),
+              icon: const Icon(Icons.add, color: Colors.white, size: 20),
               label: const Text(
                 'Add Student',
-                style: TextStyle(color: Colors.white),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
