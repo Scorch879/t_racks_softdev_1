@@ -1,8 +1,9 @@
+import 'dart:async'; // Required for StreamSubscription
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
 import 'package:t_racks_softdev_1/services/models/notification_model.dart';
-import 'package:t_racks_softdev_1/services/database_service.dart';
-import 'package:intl/intl.dart';
 
 class InAppNotificationService extends ChangeNotifier {
   static final InAppNotificationService _instance =
@@ -16,7 +17,122 @@ class InAppNotificationService extends ChangeNotifier {
   int get unreadCount => _notifications.where((n) => !n.isRead).length;
   final Set<String> _generatedAlerts = {};
 
-  // DEBUG: Generates a fake alert to test the UI and if it works
+  // --- VARIABLES FOR REALTIME LISTENER ---
+  Set<String> _knownClassIds = {};
+  bool _isFirstLoad = true;
+  StreamSubscription? _classSubscription;
+  Timer? _scheduleTimer;
+
+  Future<void> loadAllNotifications() async {
+    // 1. Get DB Notifications (History)
+    final dbNotifications = await DatabaseService()
+        .getPersistentNotifications();
+
+    // 2. Clear current list and add DB items
+    _notifications.clear();
+    _notifications.addAll(dbNotifications);
+
+    // 3. Run the local Schedule Check (adds "Class starting soon" on top)
+    await checkClassesForAlerts();
+
+    notifyListeners();
+  }
+
+  void startListeningToEnrollments() {
+    // Cancel existing subscription to avoid duplicates
+    _classSubscription?.cancel();
+    print("🎧 Listening for new class enrollments...");
+
+    // This calls the function you just added to DatabaseService
+    _classSubscription = DatabaseService().getStudentClassesStream().listen((
+      classes,
+    ) {
+      final currentIds = classes.map((c) => c.id).toSet();
+
+      // If it's NOT the first load, check for newly added classes
+      if (!_isFirstLoad) {
+        for (var sClass in classes) {
+          // If we didn't know about this class ID before, it's NEW!
+          if (!_knownClassIds.contains(sClass.id)) {
+            _generateEnrollmentNotification(sClass);
+          }
+        }
+      } else {
+        print("✅ Initial class list loaded. Count: ${classes.length}");
+      }
+
+      // Update our cache and mark first load as done
+      _knownClassIds = currentIds;
+      _isFirstLoad = false;
+    });
+  }
+
+  void _generateEnrollmentNotification(StudentClass sClass) {
+    print("🎉 New Enrollment Detected: ${sClass.name}");
+
+    final newNotification = AppNotification(
+      id: "enroll_${DateTime.now().millisecondsSinceEpoch}",
+      title: "New Class Added!",
+      message: "You have been added to ${sClass.name} (${sClass.subject}).",
+      timestamp: DateTime.now(),
+      isRead: false,
+    );
+
+    _notifications.insert(0, newNotification);
+    notifyListeners();
+  }
+
+  void startScheduleChecker() {
+    // 1. Run immediately once
+    checkClassesForAlerts();
+
+    // 2. Cancel existing timer if any
+    _scheduleTimer?.cancel();
+
+    // 3. Set up a timer to run every minute
+    print("⏰ Schedule Checker Started (Runs every 60s)");
+    _scheduleTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      checkClassesForAlerts();
+    });
+  }
+
+  void stopScheduleChecker() {
+    _scheduleTimer?.cancel();
+  }
+
+  Future<void> checkClassesForAlerts() async {
+    print("🔍 Checking for upcoming classes...");
+
+    // We use a simple fetch here because we only need to check ONCE when app opens
+    final classes = await DatabaseService().getStudentClasses();
+    final now = DateTime.now();
+    final todayName = DateFormat('EEE').format(now);
+
+    for (var sClass in classes) {
+      if (!_isClassToday(sClass.day, todayName)) continue;
+
+      final startTime = _parseStartTime(sClass.time);
+      if (startTime == null) continue;
+
+      final classDateTime = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        startTime.hour,
+        startTime.minute,
+      );
+
+      final difference = classDateTime.difference(now).inMinutes;
+
+      // Notify if class starts in 0-60 mins OR if it started less than 15 mins ago
+      if (difference > -15 && difference <= 60) {
+        _addNotificationIfNotExists(sClass, difference);
+      }
+    }
+  }
+
+  // --- HELPERS ---
+
   void generateTestNotification() {
     final testNote = AppNotification(
       id: "test_${DateTime.now().millisecondsSinceEpoch}",
@@ -28,47 +144,16 @@ class InAppNotificationService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> checkClassesForAlerts() async {
-    print("🔍 Checking for upcoming classes...");
+  void dismissNotification(String id) {
+    _notifications.removeWhere((n) => n.id == id);
+    notifyListeners();
+  }
 
-    final classes = await DatabaseService().getStudentClasses();
-    final now = DateTime.now();
-    final todayName = DateFormat('EEE').format(now);
-
-    print(
-      "📅 Today is: $todayName, Time: ${DateFormat.jm().format(now)}",
-    ); //for debugging
-
-    for (var sClass in classes) {
-      if (!_isClassToday(sClass.day, todayName)) {
-        continue;
-      }
-
-      final startTime = _parseStartTime(sClass.time);
-
-      if (startTime == null) {
-        print("   ⚠️ Could not parse time: ${sClass.time}"); // for debug
-        continue;
-      }
-
-      final classDateTime = DateTime(
-        now.year,
-        now.month,
-        now.day,
-        startTime.hour,
-        startTime.minute,
-      );
-
-      final difference = classDateTime.difference(now).inMinutes;
-      print(
-        " - Found Today: ${sClass.name} starts in $difference mins",
-      ); //for debugging
-
-      // Notify if class starts in 0-60 mins OR if it started less than 15 mins ago
-      if (difference > -15 && difference <= 60) {
-        _addNotificationIfNotExists(sClass, difference);
-      }
+  void markAsRead() {
+    for (var n in _notifications) {
+      n.isRead = true;
     }
+    notifyListeners();
   }
 
   bool _isClassToday(String? classDays, String todayName) {
@@ -100,40 +185,28 @@ class InAppNotificationService extends ChangeNotifier {
     return classDays.contains(code);
   }
 
-  // --- UPDATED PARSER ---
   TimeOfDay? _parseStartTime(String? timeStr) {
     if (timeStr == null) return null;
     try {
-      // 1. Split range "6:10 am-10:05 AM" -> "6:10 am"
-      // Using regex to handle "-" with or without spaces
       final parts = timeStr.split(RegExp(r'\s*-\s*'));
       String startPart = parts[0].trim();
-
-      // 2. Clean & Normalize
-      startPart = startPart.replaceAll(
-        '\u00A0',
-        ' ',
-      ); // Remove non-breaking space
-      startPart = startPart.replaceAll('.', ''); // Remove dots (a.m. -> am)
-      startPart = startPart.toUpperCase(); // "6:10 am" -> "6:10 AM"
+      startPart = startPart
+          .replaceAll('\u00A0', ' ')
+          .replaceAll('.', '')
+          .toUpperCase();
 
       DateTime date;
       try {
-        // Try Standard Format "6:10 AM"
         date = DateFormat("h:mm a").parse(startPart);
       } catch (e) {
         try {
-          // Try Compact Format "6:10AM"
           date = DateFormat("h:mma").parse(startPart);
         } catch (e2) {
-          // Try 24-Hour Format "18:10"
           date = DateFormat("HH:mm").parse(startPart);
         }
       }
-
       return TimeOfDay.fromDateTime(date);
     } catch (e) {
-      print("   ❌ Parse Error for '$timeStr': $e"); //debugging
       return null;
     }
   }
@@ -157,19 +230,12 @@ class InAppNotificationService extends ChangeNotifier {
       _notifications.insert(0, newNotification);
       _generatedAlerts.add(alertKey);
       notifyListeners();
-      print("   ✅ Notification Added for ${sClass.name}!");
     }
   }
 
-  void markAsRead() {
-    for (var n in _notifications) {
-      n.isRead = true;
-    }
-    notifyListeners();
-  }
-
-  void dismissNotification(String id) {
-    _notifications.removeWhere((n) => n.id == id);
-    notifyListeners();
+  @override
+  void dispose() {
+    _classSubscription?.cancel();
+    super.dispose();
   }
 }
