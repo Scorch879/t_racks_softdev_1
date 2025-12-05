@@ -617,9 +617,6 @@ class DatabaseService {
       return [];
     }
   }
-}
-
-// inside lib/services/database_service.dart
 
   Future<DashboardData> getEducatorDashboardData() async {
     try {
@@ -762,21 +759,7 @@ class DatabaseService {
       rethrow;
     }
   }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+}
 
 class AccountServices {
   Future<void> deleteProfile() async {
