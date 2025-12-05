@@ -17,26 +17,22 @@ class ModelManager {
     try {
       final options = InterpreterOptions();
 
-      // 1. Load Liveness Model (Your existing model)
+      // 1. Load Liveness Model
       _livenessInterpreter = await Interpreter.fromAsset(
         'assets/models/model.tflite',
         options: options,
       );
 
-      // 2. Load Recognition Model (You need to add this file to assets!)
-      // Common name: mobilefacenet.tflite
+      // 2. Load Recognition Model
       _recognitionInterpreter = await Interpreter.fromAsset(
         'assets/models/mobilefacenet.tflite',
         options: options,
       );
 
       _areModelsLoaded = true;
-      print('Both Models Loaded Successfully.');
+      print('✅ Both Models Loaded Successfully.');
     } catch (e) {
-      print('Error loading models: $e');
-      print(
-        'Make sure you have both model.tflite and mobilefacenet.tflite in assets!',
-      );
+      print('❌ Error loading models: $e');
     }
   }
 
@@ -45,14 +41,11 @@ class ModelManager {
     _recognitionInterpreter?.close();
   }
 
-  /// Returns true if the face is "Real", false if "Spoof"
+  /// Returns True if face is Real, False if Spoof
   Future<bool> checkLiveness(CameraImage image) async {
     if (!_areModelsLoaded || _livenessInterpreter == null) return false;
+    const int inputSize = 224;
 
-    // Liveness models usually expect 224x224
-    const int livenessInputSize = 224;
-
-    // 1. Preprocess
     final flatInput = await compute(
       _processImageInIsolate,
       _IsolateData(
@@ -65,43 +58,26 @@ class ModelManager {
             ? (image.planes[1].bytesPerPixel ?? 1)
             : 0,
         isYUV: image.planes.length >= 3,
-        targetSize: livenessInputSize,
+        targetSize: inputSize,
       ),
     );
 
-    // 2. Reshape for Liveness Model [1, 224, 224, 3]
-    final input = flatInput.reshape([
-      1,
-      livenessInputSize,
-      livenessInputSize,
-      3,
-    ]);
-
-    // 3. Output (Assuming [1, 2] or [1, 3] depending on your labels)
-    // Adjust logic based on your specific liveness model labels
-    // Usually: Index 0 = Fake, Index 1 = Real (or vice versa)
+    final input = flatInput.reshape([1, inputSize, inputSize, 3]);
     var output = List.filled(3, 0.0).reshape([1, 3]);
     _livenessInterpreter!.run(input, output);
 
     List<double> scores = (output[0] as List)
         .map((e) => (e as num).toDouble())
         .toList();
-
-    // Example Logic: If index 1 (Real) > 0.5 (Adjust based on your specific model)
-    // You might need to check your labels.txt to know which index is "Real"
-    // Assuming Index 1 is Real:
-    double realScore = scores.length > 1 ? scores[1] : 0.0;
-    return realScore > 0.7;
+    // Index 1 is usually "Real" for typical Anti-Spoofing models
+    return scores.length > 1 && scores[1] > 0.75;
   }
 
-  /// Generates the 192-d (or 128-d) Identity Vector
+  /// Generates the Normalized 192-D Identity Vector
   Future<List<double>> generateFaceEmbedding(CameraImage image) async {
     if (!_areModelsLoaded || _recognitionInterpreter == null) return [];
+    const int inputSize = 112;
 
-    // MobileFaceNet usually expects 112x112
-    const int recogInputSize = 112;
-
-    // 1. Preprocess
     final flatInput = await compute(
       _processImageInIsolate,
       _IsolateData(
@@ -114,37 +90,63 @@ class ModelManager {
             ? (image.planes[1].bytesPerPixel ?? 1)
             : 0,
         isYUV: image.planes.length >= 3,
-        targetSize: recogInputSize,
+        targetSize: inputSize,
+        normalizeMinusOneToOne: true,
       ),
     );
 
-    // 2. Reshape for MobileFaceNet [1, 112, 112, 3]
-    final input = flatInput.reshape([1, recogInputSize, recogInputSize, 3]);
+    final input = flatInput.reshape([1, inputSize, inputSize, 3]);
 
-    // 3. Output (Vector size depends on model, usually 192 for MobileFaceNet, 128 for FaceNet)
-    // We try to catch the output shape dynamically
+    // Get output shape dynamically
     final outputTensor = _recognitionInterpreter!.getOutputTensors().first;
-    final outputShape = outputTensor.shape; // e.g., [1, 192]
-    int vectorSize = outputShape.last;
-
-    var output = List.filled(vectorSize, 0.0).reshape([1, vectorSize]);
+    int vectorLen = outputTensor.shape.last;
+    var output = List.filled(vectorLen, 0.0).reshape([1, vectorLen]);
 
     _recognitionInterpreter!.run(input, output);
 
-    return (output[0] as List).map((e) => (e as num).toDouble()).toList();
+    List<double> rawVector = (output[0] as List)
+        .map((e) => (e as num).toDouble())
+        .toList();
+
+    // --- CRITICAL FIX: L2 Normalization ---
+    // This scales the vector so comparing distance works correctly
+    return _l2Normalize(rawVector);
+  }
+
+  /// Helper: L2 Normalization
+  List<double> _l2Normalize(List<double> vector) {
+    double sum = 0;
+    for (var x in vector) {
+      sum += x * x;
+    }
+    double norm = math.sqrt(sum);
+    if (norm == 0) return vector;
+    return vector.map((x) => x / norm).toList();
+  }
+
+  /// Calculates Euclidean Distance between two vectors
+  double compareVectors(List<double> v1, List<double> v2) {
+    if (v1.length != v2.length) return 10.0;
+    double sum = 0.0;
+    for (int i = 0; i < v1.length; i++) {
+      sum += math.pow(v1[i] - v2[i], 2);
+    }
+    return math.sqrt(sum);
   }
 
   static Float32List _processImageInIsolate(_IsolateData data) {
     final int width = data.width;
     final int height = data.height;
-    final int targetSize = data.targetSize; // Use dynamic target size
-
+    final int targetSize = data.targetSize;
     final int cropSize = math.min(width, height);
     final int cropX = (width - cropSize) ~/ 2;
     final int cropY = (height - cropSize) ~/ 2;
 
     final floatInput = Float32List(1 * targetSize * targetSize * 3);
     int pixelIndex = 0;
+
+    final double mean = data.normalizeMinusOneToOne ? 128.0 : 0.0;
+    final double std = data.normalizeMinusOneToOne ? 128.0 : 255.0;
 
     if (data.isYUV) {
       final yBytes = data.planes[0];
@@ -155,10 +157,8 @@ class ModelManager {
         final int srcY = cropY + (y * cropSize ~/ targetSize);
         for (int x = 0; x < targetSize; x++) {
           final int srcX = cropX + (x * cropSize ~/ targetSize);
-
           final int uvX = srcX ~/ 2;
           final int uvY = srcY ~/ 2;
-
           final int indexY = srcY * data.yRowStride + srcX;
           final int indexUV =
               uvY * data.uvRowStride + (uvX * data.uvPixelStride);
@@ -177,21 +177,18 @@ class ModelManager {
               .toInt();
           int b = (yVal + 1.772 * (uVal - 128)).toInt();
 
-          floatInput[pixelIndex++] =
-              (r.clamp(0, 255) - 128) / 128.0; // Normalized -1 to 1 for Recog
-          floatInput[pixelIndex++] = (g.clamp(0, 255) - 128) / 128.0;
-          floatInput[pixelIndex++] = (b.clamp(0, 255) - 128) / 128.0;
+          floatInput[pixelIndex++] = (r.clamp(0, 255) - mean) / std;
+          floatInput[pixelIndex++] = (g.clamp(0, 255) - mean) / std;
+          floatInput[pixelIndex++] = (b.clamp(0, 255) - mean) / std;
         }
       }
     } else {
-      // BGRA logic (iOS/Emulator)
       final bytes = data.planes[0];
       for (int y = 0; y < targetSize; y++) {
         final int srcY = cropY + (y * cropSize ~/ targetSize);
         for (int x = 0; x < targetSize; x++) {
           final int srcX = cropX + (x * cropSize ~/ targetSize);
           final int index = (srcY * data.yRowStride) + (srcX * 4);
-
           if (index + 2 >= bytes.length) {
             pixelIndex += 3;
             continue;
@@ -201,9 +198,9 @@ class ModelManager {
           final g = bytes[index + 1];
           final r = bytes[index + 2];
 
-          floatInput[pixelIndex++] = (r - 128) / 128.0;
-          floatInput[pixelIndex++] = (g - 128) / 128.0;
-          floatInput[pixelIndex++] = (b - 128) / 128.0;
+          floatInput[pixelIndex++] = (r - mean) / std;
+          floatInput[pixelIndex++] = (g - mean) / std;
+          floatInput[pixelIndex++] = (b - mean) / std;
         }
       }
     }
@@ -219,7 +216,8 @@ class _IsolateData {
   final int uvRowStride;
   final int uvPixelStride;
   final bool isYUV;
-  final int targetSize; // Added targetSize
+  final int targetSize;
+  final bool normalizeMinusOneToOne;
 
   _IsolateData({
     required this.planes,
@@ -230,5 +228,6 @@ class _IsolateData {
     required this.uvPixelStride,
     required this.isYUV,
     required this.targetSize,
+    this.normalizeMinusOneToOne = false,
   });
 }
