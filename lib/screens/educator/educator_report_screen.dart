@@ -45,33 +45,91 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: Colors.white),
+    // 1. Define the Background Widget
+    // We define it once so we can use it for loading, error, and content states
+    Widget buildBackground() {
+      return Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFF194B61),
+              Color(0xFF2A7FA3),
+              Color(0xFF267394),
+              Color(0xFF349BC7),
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: Opacity(
+          opacity: 0.3,
+          child: Image.asset(
+            'assets/images/squigglytexture.png', // Ensure this matches your asset path
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+          ),
+        ),
       );
     }
 
-    if (_error != null) {
-      return Center(child: Text('Error loading data: $_error'));
+    // 2. Determine the Content Widget based on state
+    Widget content;
+    
+    if (_isLoading) {
+      content = const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      );
+    } else if (_error != null) {
+      content = Center(
+        child: Text(
+          'Error loading data: $_error',
+          style: const TextStyle(color: Colors.white),
+        ),
+      );
+    } else if (_data == null) {
+      content = const SizedBox();
+    } else {
+      // The actual data content
+      content = SingleChildScrollView(
+        // AlwaysScrollableScrollPhysics allows pull-to-refresh behavior later if needed
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 30.0), // Add padding at bottom
+          child: Column(
+            children: [
+              const SizedBox(height: 16),
+              _buildKPICards(),
+              const SizedBox(height: 16),
+              _buildAttendanceTrendsCard(),
+              const SizedBox(height: 16),
+              _buildClassAttendanceSection(),
+              const SizedBox(height: 16),
+              if (_data!.alerts.isNotEmpty) ...[
+                _buildAttendanceAlertSection(),
+                const SizedBox(height: 16),
+              ],
+            ],
+          ),
+        ),
+      );
     }
 
-    if (_data == null) return const SizedBox();
+    return Scaffold(
 
-    return SingleChildScrollView(
-      child: Column(
+      backgroundColor: Colors.transparent, 
+      body: Stack(
         children: [
-          const SizedBox(height: 16),
-          _buildKPICards(),
-          const SizedBox(height: 16),
-          _buildAttendanceTrendsCard(),
-          const SizedBox(height: 16),
-          _buildClassAttendanceSection(),
-          const SizedBox(height: 16),
-          // Only show alerts section if there are actual alerts
-          if (_data!.alerts.isNotEmpty) ...[
-            _buildAttendanceAlertSection(),
-            const SizedBox(height: 16),
-          ],
+          // LAYER 1: The Background (Fixed to fill screen)
+          Positioned.fill(child: buildBackground()),
+
+          // LAYER 2: The Content (Scrollable)
+          Positioned.fill(
+            child: SafeArea(
+              bottom: false,
+              child: content,
+            ),
+          ),
         ],
       ),
     );
