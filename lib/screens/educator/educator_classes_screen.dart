@@ -429,8 +429,8 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
 
   Widget _buildClassCard(EducatorClassSummary classData) {
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
+      onTap: () async { 
+        final result = await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => EducatorClassroomScreen(
@@ -440,6 +440,9 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
             ),
           ),
         );
+        if (result == true) {
+          _refreshClasses();
+        }
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 20),

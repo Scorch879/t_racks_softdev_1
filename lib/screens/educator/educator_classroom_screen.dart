@@ -97,7 +97,7 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
                 style: const TextStyle(fontSize: 16, color: Colors.grey),
               ),
               const SizedBox(height: 24),
-              
+
               // Option: Present
               _buildAttendanceOption(
                 label: "Present",
@@ -106,7 +106,7 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
                 onTap: () => _submitAttendance(student, "Present"),
               ),
               const SizedBox(height: 12),
-              
+
               // Option: Late
               _buildAttendanceOption(
                 label: "Late",
@@ -115,7 +115,7 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
                 onTap: () => _submitAttendance(student, "Late"),
               ),
               const SizedBox(height: 12),
-              
+
               // Option: Absent
               _buildAttendanceOption(
                 label: "Absent",
@@ -123,11 +123,14 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
                 icon: Icons.cancel_outlined,
                 onTap: () => _submitAttendance(student, "Absent"),
               ),
-              
+
               const SizedBox(height: 16),
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+                child: const Text(
+                  "Cancel",
+                  style: TextStyle(color: Colors.grey),
+                ),
               ),
             ],
           ),
@@ -136,32 +139,41 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
     );
   }
 
-  Future<void> _submitAttendance(StudentAttendanceItem student, String status) async {
+  Future<void> _submitAttendance(
+    StudentAttendanceItem student,
+    String status,
+  ) async {
     Navigator.pop(context); // Close dialog
-    
+
     // Show loading indicator briefly or optimistic update
     ScaffoldMessenger.of(context).showSnackBar(
-       SnackBar(content: Text("Marking ${student.name} as $status..."), duration: const Duration(milliseconds: 500)),
+      SnackBar(
+        content: Text("Marking ${student.name} as $status..."),
+        duration: const Duration(milliseconds: 500),
+      ),
     );
 
     try {
       await _dbService.markManualAttendance(
-        classId: widget.classId, 
-        studentId: student.id, 
-        status: status
+        classId: widget.classId,
+        studentId: student.id,
+        status: status,
       );
       // Refresh list to show new status
-      _fetchClassData(); 
+      _fetchClassData();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Failed to update attendance"), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text("Failed to update attendance"),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
 
   Widget _buildAttendanceOption({
-    required String label, 
-    required Color color, 
+    required String label,
+    required Color color,
     required IconData icon,
     required VoidCallback onTap,
   }) {
@@ -211,6 +223,15 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
           "Classroom",
           style: TextStyle(color: Color.fromARGB(221, 255, 255, 255)),
         ),
+
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: Colors.white70),
+            tooltip: 'Delete Class',
+            onPressed: _confirmDeleteClass,
+          ),
+          const SizedBox(width: 8), // Little padding from right edge
+        ],
       ),
       body: Stack(
         children: [
@@ -454,11 +475,15 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
   Widget _buildStudentTile(StudentAttendanceItem student) {
     // Determine color based on status for better visual feedback
     Color statusColor = Colors.grey;
-    String displayStatus = student.status; // 'Present', 'Absent', or 'Mark Attendance'
-    
-    if (student.status == 'Present') statusColor = const Color(0xFF4CAF50);
-    else if (student.status == 'Absent') statusColor = const Color(0xFFE53935);
-    else if (student.status == 'Late') statusColor = const Color(0xFFFF9800); // Assuming Late is tracked
+    String displayStatus =
+        student.status; // 'Present', 'Absent', or 'Mark Attendance'
+
+    if (student.status == 'Present')
+      statusColor = const Color(0xFF4CAF50);
+    else if (student.status == 'Absent')
+      statusColor = const Color(0xFFE53935);
+    else if (student.status == 'Late')
+      statusColor = const Color(0xFFFF9800); // Assuming Late is tracked
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -484,7 +509,7 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
               ),
             ),
           ),
-          
+
           // --- UPDATED BUTTON ---
           InkWell(
             onTap: () => _showAttendanceDialog(student),
@@ -496,7 +521,9 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
-                displayStatus == "Mark Attendance" ? "Mark Attendance" : displayStatus,
+                displayStatus == "Mark Attendance"
+                    ? "Mark Attendance"
+                    : displayStatus,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 10,
@@ -508,5 +535,65 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
         ],
       ),
     );
+  }
+
+  void _confirmDeleteClass() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Delete Class?"),
+        content: Text(
+          "Are you sure you want to delete '${widget.className}'? This action cannot be undone and will remove all student data associated with this class.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), // Cancel
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              _deleteClass(); // Proceed to delete
+            },
+            child: const Text("Delete", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteClass() async {
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      await _dbService.deleteClass(widget.classId);
+
+      if (mounted) {
+        Navigator.pop(context); // Pop loading dialog
+        Navigator.pop(context, true); // Pop the Classroom Screen to go back to list
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Class deleted successfully"),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Pop loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Failed to delete class: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }

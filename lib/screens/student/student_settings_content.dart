@@ -6,8 +6,8 @@ import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
 
 const _bgTeal = Color(0xFF167C94);
 const _cardSurface = Color(0xFF0C3343);
-const _chipGreen = Color(0xFF37AA82);
-const _statusRed = Color(0xFFDA5454);
+const _chipGreen = Color(0xFF4CAF50);
+const _statusRed = Color(0xFFE53935);
 const _borderTeal = Color(0xFF6AAFBF);
 
 class StudentSettingsContent extends StatefulWidget {
