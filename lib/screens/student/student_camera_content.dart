@@ -13,12 +13,12 @@ enum ChallengeType { smile, blink, turnLeft, turnRight }
 
 class StudentCameraContent extends StatefulWidget {
   final List<CameraDescription> cameras;
-  final List<double> studentSavedVector; // <--- NEW: Accepts the saved face ID
+  final List<double> studentSavedVector;
 
   const StudentCameraContent({
     super.key,
     required this.cameras,
-    required this.studentSavedVector, // <--- Required
+    required this.studentSavedVector,
   });
 
   @override
@@ -32,18 +32,16 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
   late FaceDetector _faceDetector;
   final tflite.ModelManager _tfliteManager = tflite.ModelManager();
 
-  // Liveness Variables
   List<ChallengeType> _challenges = [];
   int _currentChallengeIndex = 0;
   bool _isSessionActive = false;
   String _statusMessage = "Initializing...";
   Color _statusColor = Colors.white;
 
-  // Verification State
   bool _isVerified = false;
   bool _hasFailed = false;
   int _consecutiveFakeFrames = 0;
-  int _consecutiveMatchFrames = 0; // <--- NEW: To confirm identity match
+  int _consecutiveMatchFrames = 0;
 
   @override
   void initState() {
@@ -172,7 +170,6 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
 
   void _checkChallenge(Face face) {
     if (_currentChallengeIndex >= _challenges.length) {
-      // Challenges done, waiting for Identity Verification in _processTFLite
       return;
     }
 
@@ -210,44 +207,62 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
     }
   }
 
+  List<List<double>> _recognitionSamples = [];
+
   Future<void> _processTFLite(CameraImage image) async {
     try {
-      // 1. Check Liveness (Real vs Spoof)
+      // 1. Check Liveness (Fast fail)
       bool isReal = await _tfliteManager.checkLiveness(image);
-
       if (!isReal) {
+        _recognitionSamples.clear(); // Reset if spoof detected
         _consecutiveFakeFrames++;
         if (_consecutiveFakeFrames >= 3) {
           _triggerFailure("⚠️ SPOOF DETECTED");
         }
-        return; // Don't check identity if it's fake
-      } else {
-        _consecutiveFakeFrames = 0;
+        return;
       }
+      _consecutiveFakeFrames = 0;
 
-      // 2. Check Identity (Only if challenges are done)
+      // 2. Collect Samples for Identity
       if (_currentChallengeIndex >= _challenges.length) {
-        // Generate live vector
         List<double> liveVector = await _tfliteManager.generateFaceEmbedding(
           image,
         );
 
-        if (liveVector.isNotEmpty && widget.studentSavedVector.isNotEmpty) {
-          // Compare!
-          double distance = _tfliteManager.compareVectors(
-            widget.studentSavedVector,
-            liveVector,
-          );
+        if (liveVector.isNotEmpty) {
+          _recognitionSamples.add(liveVector);
 
-          // MobileFaceNet Threshold: < 0.80 or 0.85 is a match
-          if (distance < 0.85) {
-            _consecutiveMatchFrames++;
-          } else {
-            _consecutiveMatchFrames = 0;
-          }
+          // Wait until we have 5 consistent frames to make a decision
+          if (_recognitionSamples.length >= 5) {
+            // A. Calculate Average Vector of the 5 frames
+            List<double> averageVector = List.filled(192, 0.0);
+            for (var vec in _recognitionSamples) {
+              for (int i = 0; i < vec.length; i++) {
+                averageVector[i] += vec[i];
+              }
+            }
+            averageVector = averageVector
+                .map((e) => e / _recognitionSamples.length)
+                .toList();
 
-          if (_consecutiveMatchFrames >= 2) {
-            _finalizeVerification();
+            // B. Compare Average vs Database (Much more accurate!)
+            if (widget.studentSavedVector.isNotEmpty) {
+              double distance = _tfliteManager.compareVectors(
+                widget.studentSavedVector,
+                averageVector,
+              );
+
+              print("Avg Distance: $distance"); // Debugging
+
+              // Strict Threshold
+              if (distance < 0.25) {
+                _finalizeVerification();
+              } else {
+                // If average fails, clear and try again (keeps retrying smoothly)
+                _recognitionSamples.clear();
+                // Optional: Show "Face not recognized" warning if it fails often
+              }
+            }
           }
         }
       }
@@ -277,7 +292,7 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
 
         Future.delayed(const Duration(seconds: 2), () {
           if (mounted) {
-            Navigator.of(context).pop(); // Or navigate to success screen
+            Navigator.of(context).pop();
           }
         });
       }
@@ -330,8 +345,7 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
   @override
   void dispose() {
     _faceDetector.close();
-    _tfliteManager
-        .close(); // Careful if you share this instance, might verify where it's created
+    _tfliteManager.close();
     _controller?.stopImageStream();
     _controller?.dispose();
     super.dispose();
@@ -348,22 +362,14 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
             LayoutBuilder(
               builder: (context, constraints) {
                 final size = constraints.biggest;
-
-                // --- FIX: CALCULATE SCALE TO PREVENT SQUISHING ---
-                // Camera aspect ratio is usually landscape (e.g. 4:3)
-                // Screen aspect ratio is portrait (e.g. 9:16)
-                // We calculate how much to scale the width to cover the height.
                 var scale = 1.0;
                 if (_controller!.value.aspectRatio < size.aspectRatio) {
-                  // If camera is "wider" than screen (relative to portrait), scale height
                   scale = 1 / _controller!.value.aspectRatio * size.aspectRatio;
                 } else {
-                  // If camera is "taller", scale width
                   scale = _controller!.value.aspectRatio / size.aspectRatio;
                 }
 
-                // Just use the simple logic from the registration page if this feels off
-                // The most reliable "Cover" mode for portrait front cam:
+                // Fallback for robust cover
                 final double finalScale =
                     1 / (_controller!.value.aspectRatio * size.aspectRatio);
 
@@ -380,7 +386,6 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
           if (_hasFailed || _isVerified)
             Container(color: Colors.black.withOpacity(0.7)),
 
-          // Overlay Gradient
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -397,7 +402,6 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
             ),
           ),
 
-          // Header
           SafeArea(
             child: Column(
               children: [
@@ -449,14 +453,12 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
             ),
           ),
 
-          // Main HUD
           Center(
             child: SizedBox(
               width: 300,
               height: 450,
               child: Stack(
                 children: [
-                  // Corner Brackets
                   Positioned(
                     top: 0,
                     left: 0,
@@ -478,7 +480,6 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
                     child: _CornerBracket(isTop: false, isLeft: false),
                   ),
 
-                  // Status Text
                   Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -507,7 +508,6 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
                     ),
                   ),
 
-                  // Failure State
                   if (_hasFailed)
                     Center(
                       child: Column(
@@ -550,7 +550,6 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
                       ),
                     ),
 
-                  // Success State
                   if (_isVerified)
                     const Center(
                       child: Column(
