@@ -1,10 +1,10 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:t_racks_softdev_1/services/tflite_service.dart' as tflite;
-import 'dart:math' as math;
 
 enum RegistrationStep { center, left, right, done }
 
@@ -17,36 +17,52 @@ class FaceRegistrationPage extends StatefulWidget {
   State<FaceRegistrationPage> createState() => _FaceRegistrationPageState();
 }
 
-class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
+class _FaceRegistrationPageState extends State<FaceRegistrationPage>
+    with TickerProviderStateMixin {
   CameraController? _controller;
   final tflite.ModelManager _modelManager = tflite.ModelManager();
+
   final FaceDetector _faceDetector = FaceDetector(
     options: FaceDetectorOptions(
       enableLandmarks: true,
       performanceMode: FaceDetectorMode.fast,
+      enableClassification: true,
     ),
   );
 
   bool _isCameraInitialized = false;
   RegistrationStep _currentStep = RegistrationStep.center;
 
+  // Data Collection
   List<List<double>> _collectedVectors = [];
   int _samplesForCurrentStep = 0;
   final int _samplesPerStep = 10;
 
+  // Processing
   DateTime _lastFrameTime = DateTime.now();
-  int _processingIntervalMs = 250;
+  final int _processingIntervalMs = 150;
 
-  String _statusMessage = "Initializing...";
-  Color _statusColor = Colors.white;
+  // UI State
+  String _mainInstruction = "Look Straight";
+  String _subInstruction = "Align your face in the circle";
+  Color _ringColor = Colors.white;
+  double _progress = 0.0;
+  bool _isTooFar = false;
+  bool _isTooClose = false;
 
-  bool _isScanning = false;
+  // Animations
+  late AnimationController _pulseController;
 
   @override
   void initState() {
     super.initState();
     _initializeCamera();
     _modelManager.loadModels();
+
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..repeat(reverse: true);
   }
 
   Future<void> _initializeCamera() async {
@@ -58,7 +74,7 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
 
     _controller = CameraController(
       frontCamera,
-      ResolutionPreset.medium,
+      ResolutionPreset.high, // Better quality for full screen
       enableAudio: false,
       imageFormatGroup: Platform.isAndroid
           ? ImageFormatGroup.nv21
@@ -87,109 +103,159 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
         if (inputImage == null) return;
 
         final faces = await _faceDetector.processImage(inputImage);
+
+        if (!mounted) return;
+
         if (faces.isEmpty) {
-          _updateStatus("No Face Detected", Colors.red);
-          _setScanning(false);
+          _updateUI(
+            "No Face Detected",
+            "Please show your face",
+            Colors.redAccent,
+            0.0,
+          );
           return;
         }
 
         final Face face = faces.first;
 
-        // Distance Check
-        double faceWidthRatio =
-            face.boundingBox.width / inputImage.metadata!.size.width;
-        if (faceWidthRatio < 0.20) {
-          _updateStatus("Too Far! Move Closer", Colors.orange);
-          _setScanning(false);
+        // --- 1. DISTANCE CHECK ---
+        final double imageWidth = inputImage.metadata!.size.width;
+        final double faceWidth = face.boundingBox.width;
+        final double ratio = faceWidth / imageWidth;
+
+        // Adjusted thresholds for comfort
+        const double minRatio = 0.15; // Move Closer
+        const double maxRatio = 0.75; // Move Back
+
+        if (ratio < minRatio) {
+          _isTooFar = true;
+          _isTooClose = false;
+          _updateUI(
+            "Move Closer",
+            "Your face is too far away",
+            Colors.orangeAccent,
+            _progress,
+          );
           return;
-        }
-        if (faceWidthRatio > 0.70) {
-          _updateStatus("Too Close! Move Back", Colors.orange);
-          _setScanning(false);
+        } else if (ratio > maxRatio) {
+          _isTooFar = false;
+          _isTooClose = true;
+          _updateUI(
+            "Move Back",
+            "You are too close to the camera",
+            Colors.orangeAccent,
+            _progress,
+          );
           return;
         }
 
-        // 1. Check Angle
+        _isTooFar = false;
+        _isTooClose = false;
+
+        // --- 2. ANGLE & LOGIC ---
         bool isAngleCorrect = _checkHeadAngle(face);
 
         if (isAngleCorrect) {
-          _setScanning(true);
+          // Valid frame! Generate embedding
+          List<double> vector = List<double>.from(
+            await _modelManager.generateFaceEmbedding(
+              image,
+              faceBox: face.boundingBox,
+            ),
+          );
 
-          // 2. Liveness Check (Disabled for Reg, relying on gestures)
-          bool performLiveness = false;
-          bool isReal = true;
+          if (vector.isNotEmpty) {
+            if (_currentStep == RegistrationStep.center) {
+              _collectedVectors.add(vector);
+            }
+            _samplesForCurrentStep++;
 
-          if (performLiveness) {
-            isReal = await _modelManager.checkLiveness(image);
-          }
+            // Calculate Progress
+            int totalSamples = _samplesPerStep * 3;
+            int currentTotal = 0;
+            if (_currentStep == RegistrationStep.center) {
+              currentTotal = _samplesForCurrentStep;
+            }
+            if (_currentStep == RegistrationStep.left) {
+              currentTotal = _samplesPerStep + _samplesForCurrentStep;
+            }
+            if (_currentStep == RegistrationStep.right) {
+              currentTotal = (_samplesPerStep * 2) + _samplesForCurrentStep;
+            }
 
-          if (isReal) {
-            // 3. Generate Vector
-            List<double> vector = List<double>.from(
-              await _modelManager.generateFaceEmbedding(
-                image,
-                faceBox: face.boundingBox,
-              ),
+            double newProgress = (currentTotal / totalSamples).clamp(0.0, 1.0);
+
+            _updateUI(
+              "Scanning...",
+              "Hold still",
+              Colors.greenAccent,
+              newProgress,
             );
 
-            if (vector.isNotEmpty) {
-              if (_currentStep == RegistrationStep.center) {
-                _collectedVectors.add(vector);
-              }
-
-              _samplesForCurrentStep++;
-              if (_samplesForCurrentStep >= _samplesPerStep) {
-                _advanceStep();
-              }
+            if (_samplesForCurrentStep >= _samplesPerStep) {
+              _advanceStep();
             }
           }
-        } else {
-          _setScanning(false);
         }
       } catch (e) {
-        print("Error: $e");
+        debugPrint("Error: $e");
       }
     });
   }
 
-  void _setScanning(bool isScanning) {
-    if (_isScanning != isScanning && mounted) {
+  void _updateUI(
+    String mainText,
+    String subText,
+    Color color,
+    double progress,
+  ) {
+    if (!mounted) return;
+    if (_mainInstruction != mainText ||
+        _subInstruction != subText ||
+        _ringColor != color ||
+        _progress != progress) {
       setState(() {
-        _isScanning = isScanning;
+        _mainInstruction = mainText;
+        _subInstruction = subText;
+        _ringColor = color;
+        _progress = progress;
       });
     }
   }
 
   bool _checkHeadAngle(Face face) {
     double yRotation = face.headEulerAngleY ?? 0;
-    const double centerBound = 12.0;
-    const double turnThreshold = 18.0;
+    const double centerBound = 10.0;
+    const double turnThreshold = 20.0;
 
     switch (_currentStep) {
       case RegistrationStep.center:
-        if (yRotation.abs() < centerBound) {
-          _updateStatus("Scanning...", Colors.green);
-          return true;
-        }
-        _updateStatus("Look Straight", Colors.white);
+        if (yRotation.abs() < centerBound) return true;
+        _updateUI(
+          "Look Straight",
+          "Align face to center",
+          Colors.white,
+          _progress,
+        );
         return false;
-
       case RegistrationStep.left:
-        if (yRotation > turnThreshold) {
-          _updateStatus("Scanning Left...", Colors.green);
-          return true;
-        }
-        _updateStatus("Turn Head Left ⬅️", Colors.blueAccent);
+        if (yRotation > turnThreshold) return true;
+        _updateUI(
+          "Turn Left ⬅️",
+          "Turn your head slowly to the left",
+          Colors.blueAccent,
+          _progress,
+        );
         return false;
-
       case RegistrationStep.right:
-        if (yRotation < -turnThreshold) {
-          _updateStatus("Scanning Right...", Colors.green);
-          return true;
-        }
-        _updateStatus("Turn Head Right ➡️", Colors.blueAccent);
+        if (yRotation < -turnThreshold) return true;
+        _updateUI(
+          "Turn Right ➡️",
+          "Turn your head slowly to the right",
+          Colors.blueAccent,
+          _progress,
+        );
         return false;
-
       default:
         return false;
     }
@@ -201,8 +267,22 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
       setState(() {
         if (_currentStep == RegistrationStep.center) {
           _currentStep = RegistrationStep.left;
+          // Prompt immediately for next step
+          _updateUI(
+            "Turn Left ⬅️",
+            "Turn your head slowly to the left",
+            Colors.blueAccent,
+            _progress,
+          );
         } else if (_currentStep == RegistrationStep.left) {
           _currentStep = RegistrationStep.right;
+          // Prompt immediately for next step
+          _updateUI(
+            "Turn Right ➡️",
+            "Turn your head slowly to the right",
+            Colors.blueAccent,
+            _progress,
+          );
         } else if (_currentStep == RegistrationStep.right) {
           _currentStep = RegistrationStep.done;
           _finishRegistration();
@@ -214,8 +294,18 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
   void _finishRegistration() async {
     await _controller!.stopImageStream();
 
-    List<double> finalVector = List.filled(512, 0.0);
+    // 1. Show Success UI immediately
+    if (mounted) {
+      setState(() {
+        _mainInstruction = "Success!";
+        _subInstruction = "Face successfully scanned.";
+        _ringColor = Colors.green;
+        _progress = 1.0;
+      });
+    }
 
+    // 2. Process final vector
+    List<double> finalVector = List.filled(512, 0.0);
     if (_collectedVectors.isNotEmpty) {
       for (var vec in _collectedVectors) {
         if (vec.length == 512) {
@@ -227,20 +317,18 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
       finalVector = finalVector
           .map((e) => e / _collectedVectors.length)
           .toList();
-
       finalVector = _l2Normalize(finalVector);
     }
 
     try {
-      await Future.delayed(const Duration(milliseconds: 200));
+      // Delay slightly so user sees the "Success" green ring
+      await Future.delayed(const Duration(milliseconds: 800));
       final XFile file = await _controller!.takePicture();
-
       if (mounted) {
-        _updateStatus("Done!", Colors.green);
         widget.onFaceCaptured(File(file.path), finalVector);
       }
     } catch (e) {
-      print("Error capturing: $e");
+      debugPrint("Error capturing final image: $e");
     }
   }
 
@@ -250,15 +338,6 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
     double norm = math.sqrt(sum);
     if (norm == 0) return vector;
     return vector.map((x) => x / norm).toList();
-  }
-
-  void _updateStatus(String msg, Color color) {
-    if (mounted && _statusMessage != msg) {
-      setState(() {
-        _statusMessage = msg;
-        _statusColor = color;
-      });
-    }
   }
 
   InputImage? _inputImageFromCameraImage(CameraImage image) {
@@ -288,6 +367,7 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
   void dispose() {
     _controller?.dispose();
     _faceDetector.close();
+    _pulseController.dispose();
     super.dispose();
   }
 
@@ -307,7 +387,7 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // 1. Camera Preview
+          // 1. CAMERA LAYER
           SizedBox(
             width: size.width,
             height: size.height,
@@ -321,169 +401,179 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
             ),
           ),
 
-          // 2. Header (Top)
-          SafeArea(
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      "Face Registration",
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        shadows: [Shadow(blurRadius: 10, color: Colors.black)],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black45,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        "Remove glasses/masks",
-                        style: TextStyle(color: Colors.white70, fontSize: 13),
-                      ),
-                    ),
-                  ],
+          // 2. OVERLAY LAYER (Darkness + Hole)
+          AnimatedBuilder(
+            animation: _pulseController,
+            builder: (context, child) {
+              return CustomPaint(
+                painter: FaceOverlayPainter(
+                  holeRadius: size.width * 0.35,
+                  progress: _progress,
+                  ringColor: _ringColor,
+                  pulse: _pulseController.value,
+                  isError: _isTooFar || _isTooClose,
                 ),
-              ),
-            ),
+                child: Container(),
+              );
+            },
           ),
 
-          // 3. Scanner Guide (Center)
-          Center(
-            child: Stack(
-              alignment: Alignment.center,
+          // 3. UI TEXT LAYER
+          SafeArea(
+            child: Column(
               children: [
-                // Glow Effect
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: size.width * 0.72,
-                  height: size.width * 0.72, // Square box for face
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: _isScanning
-                          ? Colors.green.withOpacity(0.8)
-                          : Colors.transparent,
-                      width: 6,
-                    ),
-                    boxShadow: _isScanning
-                        ? [
-                            BoxShadow(
-                              color: Colors.green.withOpacity(0.4),
-                              blurRadius: 30,
-                              spreadRadius: 5,
-                            ),
-                          ]
-                        : [],
-                  ),
-                ),
+                const SizedBox(height: 30),
 
-                // Main Guide Box
-                Container(
-                  width: size.width * 0.7,
-                  height: size.width * 0.7,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: _statusColor, width: 4),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Center(
-                    child: _currentStep == RegistrationStep.done
-                        ? const Icon(
-                            Icons.check_circle,
-                            color: Colors.green,
-                            size: 80,
-                          )
-                        : Icon(
-                            Icons.face_retouching_natural,
-                            color: Colors.white.withOpacity(0.3),
-                            size: 60,
-                          ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // 4. Status Panel (Bottom)
-          SafeArea(
-            child: Align(
-              alignment: Alignment.bottomCenter,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                margin: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.black87.withOpacity(0.85),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white10),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _statusMessage,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: _statusColor,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                // TOP: Main Instruction
+                Text(
+                  _mainInstruction.toUpperCase(),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: _ringColor, // Color matches the status ring
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.5,
+                    shadows: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.8),
+                        blurRadius: 10,
+                        spreadRadius: 2,
                       ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                // Sub Instruction
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 30),
+                  child: Text(
+                    _subInstruction,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 16,
+                      shadows: [Shadow(color: Colors.black, blurRadius: 4)],
                     ),
-                    const SizedBox(height: 12),
+                  ),
+                ),
 
-                    // Progress Bar
-                    Stack(
+                const Spacer(), // Pushes content to top/bottom
+                // BOTTOM: Hint or Progress
+                if (_currentStep == RegistrationStep.done)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 50),
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(color: Colors.green, width: 2),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Container(
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[800],
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          height: 8,
-                          width:
-                              ((size.width - 80) *
-                              ((_collectedVectors.length) /
-                                  (_samplesPerStep * 3))),
-                          decoration: BoxDecoration(
-                            color: _isScanning
-                                ? Colors.greenAccent
-                                : const Color(0xFF26A69A),
-                            borderRadius: BorderRadius.circular(4),
+                        Icon(Icons.check_circle, color: Colors.green, size: 30),
+                        SizedBox(width: 10),
+                        Text(
+                          "Face Scanned!",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      "${((_collectedVectors.length / (_samplesPerStep * 3)) * 100).clamp(0, 100).toInt()}%",
-                      style: const TextStyle(
-                        color: Colors.white54,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+                  ),
+
+                const SizedBox(height: 50), // Bottom padding
+              ],
+            ),
+          ),
+
+          // 4. BACK BUTTON (Top Left)
+          Positioned(
+            top: 40,
+            left: 20,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
             ),
           ),
         ],
       ),
     );
+  }
+}
+
+// --- PAINTER CLASS ---
+class FaceOverlayPainter extends CustomPainter {
+  final double holeRadius;
+  final double progress;
+  final Color ringColor;
+  final double pulse;
+  final bool isError;
+
+  FaceOverlayPainter({
+    required this.holeRadius,
+    required this.progress,
+    required this.ringColor,
+    required this.pulse,
+    required this.isError,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+
+    // 1. Draw Semi-Transparent Overlay
+    // I reduced opacity from 0.8 to 0.5 so the camera feels "full screen"
+    final path = Path()..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    double effectiveRadius = holeRadius;
+    if (isError) {
+      effectiveRadius += (pulse * 5);
+    }
+
+    final holePath = Path()
+      ..addOval(Rect.fromCircle(center: center, radius: effectiveRadius));
+
+    final overlayPath = Path.combine(PathOperation.difference, path, holePath);
+
+    final overlayPaint = Paint()
+      ..color = Colors.black
+          .withOpacity(0.55) // Lighter mask
+      ..style = PaintingStyle.fill;
+
+    canvas.drawPath(overlayPath, overlayPaint);
+
+    // 2. Draw Ring
+    final ringPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6.0
+      ..strokeCap = StrokeCap.round;
+
+    // Dim background ring
+    ringPaint.color = Colors.white.withOpacity(0.2);
+    canvas.drawCircle(center, effectiveRadius, ringPaint);
+
+    // Active progress ring
+    ringPaint.color = ringColor;
+    double sweepAngle = 2 * math.pi * progress;
+
+    // Rotate -90 degrees so it starts at top
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: effectiveRadius),
+      -math.pi / 2,
+      sweepAngle,
+      false,
+      ringPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant FaceOverlayPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.ringColor != ringColor ||
+        oldDelegate.pulse != pulse;
   }
 }
