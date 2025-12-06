@@ -2,7 +2,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 final _supabase = Supabase.instance.client;
 
-/// A data class to hold the result of a face match.
 class FaceMatchResult {
   final String studentId;
   final String fullName;
@@ -16,22 +15,15 @@ class FaceMatchResult {
 }
 
 class FaceRecognitionService {
-  /// Finds the closest matching student for a given face embedding.
-  ///
-  /// [faceEmbedding]: The vector generated from the live camera feed.
-  /// Returns a [FaceMatchResult] if a match is found within the threshold, otherwise null.
   Future<FaceMatchResult?> findMatchingStudent(
     List<double> faceEmbedding,
   ) async {
     try {
-      // The vector needs to be passed as a string in the format '[1.2, 3.4, ...]'
       final embeddingString = faceEmbedding.toString();
 
-      // CHANGE: Threshold set to 0.45 for Normalized Vectors
-      // 0.40 = Very Strict
-      // 0.45 = Balanced (Recommended)
-      // 0.50 = Loose (Risk of false positives)
-      const matchThreshold = 0.45;
+      // FIX: TIGHTEN THRESHOLD
+      // 0.40 is strict enough to reject random people
+      const matchThreshold = 0.40;
 
       final response = await _supabase.rpc(
         'match_face',
@@ -41,17 +33,11 @@ class FaceRecognitionService {
         },
       );
 
-      // If the RPC returns an empty list, no match was found.
       if (response == null || (response as List).isEmpty) {
         return null;
       }
 
       final match = (response as List).first;
-
-      // For debugging: print the distance of the found match.
-      print(
-        'Found a match for ${match['full_name']} with distance: ${match['distance']}',
-      );
 
       return FaceMatchResult(
         studentId: match['student_id'],
