@@ -23,7 +23,7 @@ class FaceRecognitionService {
 
       // FIX: TIGHTEN THRESHOLD
       // 0.40 is strict enough to reject random people
-      const matchThreshold = 0.40;
+      const matchThreshold = 0.25;
 
       final response = await _supabase.rpc(
         'match_face',

@@ -207,43 +207,62 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
     }
   }
 
+  List<List<double>> _recognitionSamples = [];
+
   Future<void> _processTFLite(CameraImage image) async {
     try {
-      // 1. Check Liveness
+      // 1. Check Liveness (Fast fail)
       bool isReal = await _tfliteManager.checkLiveness(image);
-
       if (!isReal) {
+        _recognitionSamples.clear(); // Reset if spoof detected
         _consecutiveFakeFrames++;
         if (_consecutiveFakeFrames >= 3) {
           _triggerFailure("⚠️ SPOOF DETECTED");
         }
         return;
-      } else {
-        _consecutiveFakeFrames = 0;
       }
+      _consecutiveFakeFrames = 0;
 
-      // 2. Check Identity
+      // 2. Collect Samples for Identity
       if (_currentChallengeIndex >= _challenges.length) {
         List<double> liveVector = await _tfliteManager.generateFaceEmbedding(
           image,
         );
 
-        if (liveVector.isNotEmpty && widget.studentSavedVector.isNotEmpty) {
-          double distance = _tfliteManager.compareVectors(
-            widget.studentSavedVector,
-            liveVector,
-          );
+        if (liveVector.isNotEmpty) {
+          _recognitionSamples.add(liveVector);
 
-          // FIX: TIGHTEN THRESHOLD FROM 0.85 TO 0.40
-          // 0.40 is the sweet spot for Normalized vectors.
-          if (distance < 0.40) {
-            _consecutiveMatchFrames++;
-          } else {
-            _consecutiveMatchFrames = 0;
-          }
+          // Wait until we have 5 consistent frames to make a decision
+          if (_recognitionSamples.length >= 5) {
+            // A. Calculate Average Vector of the 5 frames
+            List<double> averageVector = List.filled(192, 0.0);
+            for (var vec in _recognitionSamples) {
+              for (int i = 0; i < vec.length; i++) {
+                averageVector[i] += vec[i];
+              }
+            }
+            averageVector = averageVector
+                .map((e) => e / _recognitionSamples.length)
+                .toList();
 
-          if (_consecutiveMatchFrames >= 2) {
-            _finalizeVerification();
+            // B. Compare Average vs Database (Much more accurate!)
+            if (widget.studentSavedVector.isNotEmpty) {
+              double distance = _tfliteManager.compareVectors(
+                widget.studentSavedVector,
+                averageVector,
+              );
+
+              print("Avg Distance: $distance"); // Debugging
+
+              // Strict Threshold
+              if (distance < 0.25) {
+                _finalizeVerification();
+              } else {
+                // If average fails, clear and try again (keeps retrying smoothly)
+                _recognitionSamples.clear();
+                // Optional: Show "Face not recognized" warning if it fails often
+              }
+            }
           }
         }
       }
