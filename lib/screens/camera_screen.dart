@@ -1,3 +1,4 @@
+// ... (Imports same as before)
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
@@ -23,6 +24,7 @@ class AttendanceCameraScreen extends StatefulWidget {
 }
 
 class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
+  // ... (Variables same as before) ...
   CameraController? _controller;
   Future<void>? _initializeControllerFuture;
   bool _isProcessing = false;
@@ -30,18 +32,16 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
   final tflite.ModelManager _tfliteManager = tflite.ModelManager();
   final AttendanceService _attendanceService = AttendanceService();
 
-  // Liveness Variables
   List<ChallengeType> _challenges = [];
   int _currentChallengeIndex = 0;
   bool _isSessionActive = false;
   String _statusMessage = "Initializing...";
   Color _statusColor = Colors.white;
   bool _isVerified = false;
-  bool _hasFailed = false; // New flag for failure state
+  bool _hasFailed = false;
 
-  // TFLite Variables
   bool _isTfliteLoaded = false;
-  int _consecutiveFakeFrames = 0; // Buffer to prevent instant fail
+  int _consecutiveFakeFrames = 0;
 
   @override
   void initState() {
@@ -53,7 +53,6 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
     );
     _faceDetector = FaceDetector(options: options);
 
-    // FIX 1: Updated method name from loadModel to loadModels
     _tfliteManager.loadModels().then((_) {
       if (mounted) {
         setState(() => _isTfliteLoaded = true);
@@ -63,14 +62,13 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
     _initializeCamera();
   }
 
+  // ... (Camera initialization and Liveness logic same as before) ...
   void _initializeCamera() {
     if (widget.cameras.isEmpty) return;
-
     final frontCamera = widget.cameras.firstWhere(
       (c) => c.lensDirection == CameraLensDirection.front,
       orElse: () => widget.cameras[0],
     );
-
     _controller = CameraController(
       frontCamera,
       ResolutionPreset.medium,
@@ -79,7 +77,6 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
           ? ImageFormatGroup.nv21
           : ImageFormatGroup.bgra8888,
     );
-
     _initializeControllerFuture = _controller!.initialize().then((_) {
       if (mounted) {
         setState(() {});
@@ -93,12 +90,9 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
     final random = Random();
     List<ChallengeType> allTypes = ChallengeType.values.toList();
     _challenges = [];
-
-    // Pick 2 random challenges
     for (int i = 0; i < 2; i++) {
       _challenges.add(allTypes[random.nextInt(allTypes.length)]);
     }
-
     setState(() {
       _isSessionActive = true;
       _currentChallengeIndex = 0;
@@ -111,13 +105,11 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
 
   void _updateStatusMessage() {
     if (_isVerified || _hasFailed) return;
-
     if (_currentChallengeIndex >= _challenges.length) {
       _statusMessage = "Verifying Texture...";
       _statusColor = Colors.blueAccent;
       return;
     }
-
     ChallengeType current = _challenges[_currentChallengeIndex];
     switch (current) {
       case ChallengeType.smile:
@@ -150,7 +142,7 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
       try {
         await _processMLKit(image);
 
-        // Run TFLite less frequently (every 10th frame)
+        // Run TFLite less frequently
         if (frameCount % 10 == 0 && _isTfliteLoaded) {
           await _processTFLite(image);
         }
@@ -176,14 +168,14 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
 
   void _checkChallenge(Face face, CameraImage image) {
     if (_currentChallengeIndex >= _challenges.length && !_isVerified) {
-      _finalizeVerification(image);
+      // FIX: Passing the Face object for final verification (cropping)
+      _finalizeVerification(image, face);
       return;
     }
 
+    // ... (Challenge checking logic remains the same) ...
     ChallengeType current = _challenges[_currentChallengeIndex];
     bool passed = false;
-
-    // Thresholds
     double smileThreshold = 0.8;
     double blinkThreshold = 0.1;
     double headRotationThreshold = 15.0;
@@ -217,18 +209,14 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
   }
 
   Future<void> _processTFLite(CameraImage image) async {
+    // (Keep existing Liveness Check Logic)
     try {
-      // FIX 2: Use checkLiveness instead of runInferenceOnCameraImage
-      // This returns TRUE if it's a real face, FALSE if it's a spoof.
       bool isReal = await _tfliteManager.checkLiveness(image);
-
       if (!isReal) {
-        // If it's NOT real (i.e., a spoof), increment the counter
         _consecutiveFakeFrames++;
       } else {
-        _consecutiveFakeFrames = 0; // Reset if we see a good frame
+        _consecutiveFakeFrames = 0;
       }
-
       if (_consecutiveFakeFrames >= 3) {
         if (mounted) {
           setState(() {
@@ -243,69 +231,66 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
     }
   }
 
-  Future<void> _finalizeVerification(CameraImage image) async {
-    // If we made it here without TFLite flagging us, we are good.
-    if (_hasFailed == false) {
-      // 1. Generate the face embedding from the final verified image.
-      final faceEmbedding = await _tfliteManager.generateFaceEmbedding(image);
+  // FIX: Added 'Face face' parameter
+  Future<void> _finalizeVerification(CameraImage image, Face face) async {
+    if (_hasFailed) return;
 
-      if (faceEmbedding.isEmpty) {
-        // Handle case where embedding failed
-        setState(() {
-          _hasFailed = true;
-          _statusMessage = "⚠️ Could not read face. Try again.";
-          _statusColor = Colors.red;
-        });
-        return;
-      }
+    // 1. Generate Embedding
+    // FIX: Pass boundingBox here for accurate cropping!
+    final faceEmbedding = await _tfliteManager.generateFaceEmbedding(
+      image,
+      faceBox: face.boundingBox,
+    );
 
-      // 2. Call the service to find a match in the database.
-      final matchingService = FaceRecognitionService();
-      final matchResult = await matchingService.findMatchingStudent(
-        faceEmbedding,
-      );
-
-      // 3. Update UI based on the result.
+    if (faceEmbedding.isEmpty) {
       setState(() {
-        _isVerified = true; // Stop processing
+        _hasFailed = true;
+        _statusMessage = "⚠️ Could not read face. Try again.";
+        _statusColor = Colors.red;
+      });
+      return;
+    }
+
+    // 2. Server-Side Match (Assuming you updated FaceService as discussed)
+    final matchingService = FaceRecognitionService();
+    final matchResult = await matchingService.findMatchingStudent(
+      faceEmbedding,
+    );
+
+    if (mounted) {
+      setState(() {
+        _isVerified = true;
         if (matchResult != null) {
           _statusMessage = "Verifying class & marking attendance...";
           _statusColor = Colors.blueAccent;
 
-          // Mark Attendance Here for matchResult.studentId
-          _attendanceService
-              .markAttendance(matchResult.studentId)
-              .then((className) {
-                if (mounted) {
-                  setState(() {
-                    _statusMessage = className != null
-                        ? "✅ Welcome, ${matchResult.fullName}!\nAttendance marked for $className."
-                        : "❌ Welcome, ${matchResult.fullName}!\nCould not find an ongoing class.";
-                    _statusColor = className != null
-                        ? Colors.green
-                        : Colors.orange;
-                  });
-                }
-              })
-              .catchError((e) {
-                // ADD THIS CATCH BLOCK
-                if (mounted) {
-                  setState(() {
-                    _statusMessage =
-                        "❌ Error: ${e.toString().replaceAll('Exception:', '').trim()}";
-                    _statusColor = Colors.red;
-                    _hasFailed = true; // Optionally allow them to retry
-                  });
+          // 3. Mark Attendance
+          _attendanceService.markAttendance(matchResult.studentId).then((
+            className,
+          ) {
+            if (mounted) {
+              setState(() {
+                if (className != null) {
+                  _statusMessage =
+                      "✅ Welcome, ${matchResult.fullName}!\nAttendance marked for $className.";
+                  _statusColor = Colors.green;
+                } else {
+                  _statusMessage =
+                      "❌ Welcome, ${matchResult.fullName}!\nCould not find an ongoing class.";
+                  _statusColor = Colors.orange;
                 }
               });
+            }
+          });
         } else {
           _statusMessage = "❌ Student Not Recognized";
-          _statusColor = Colors.orange;
+          _statusColor = Colors.red; // Red for unrecognized
         }
       });
     }
   }
 
+  // ... (Rest of InputImage helper and build method remains the same) ...
   InputImage? _inputImageFromCameraImage(CameraImage image) {
     if (_controller == null) return null;
     final camera = _controller!.description;
@@ -364,6 +349,7 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // (UI Code is identical to your original file, just returning Scaffold...)
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(title: const Text('Secure Attendance')),
@@ -385,11 +371,7 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
                     child: CameraPreview(_controller!),
                   ),
                 ),
-
-                // Dim the screen if failed or verified
                 if (_hasFailed || _isVerified) Container(color: Colors.black54),
-
-                // Main UI Overlay
                 Align(
                   alignment: Alignment.bottomCenter,
                   child: Container(
@@ -408,8 +390,6 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-
-                        // TRY AGAIN BUTTON (Only shows on failure)
                         if (_hasFailed) ...[
                           const SizedBox(height: 20),
                           const Text(
@@ -419,7 +399,7 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
                           ),
                           const SizedBox(height: 20),
                           ElevatedButton.icon(
-                            onPressed: _startLivenessSession, // Restart Logic
+                            onPressed: _startLivenessSession,
                             icon: const Icon(Icons.refresh),
                             label: const Text("TRY AGAIN"),
                             style: ElevatedButton.styleFrom(

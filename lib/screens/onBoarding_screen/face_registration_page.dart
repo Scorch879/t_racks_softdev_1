@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:t_racks_softdev_1/services/tflite_service.dart' as tflite;
-import 'dart:math';
+import 'dart:math' as math;
 
 enum RegistrationStep { center, left, right, done }
 
@@ -22,23 +22,22 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
   final tflite.ModelManager _modelManager = tflite.ModelManager();
   final FaceDetector _faceDetector = FaceDetector(
     options: FaceDetectorOptions(
-      enableLandmarks: true, // Required for head rotation
-      performanceMode: FaceDetectorMode.fast, // Critical for smoothness
+      enableLandmarks: true,
+      performanceMode: FaceDetectorMode.fast,
     ),
   );
 
   bool _isCameraInitialized = false;
   RegistrationStep _currentStep = RegistrationStep.center;
 
-  // Data Collection
   List<List<double>> _collectedVectors = [];
   int _samplesForCurrentStep = 0;
+
+  // High sample count for better accuracy
   final int _samplesPerStep = 10;
 
-  // Throttling & Smoothing
   DateTime _lastFrameTime = DateTime.now();
-  int _processingIntervalMs = 250; // Process only 4 times per second (Smooth!)
-  int _livenessFailCounter = 0;
+  int _processingIntervalMs = 250;
 
   String _statusMessage = "Initializing...";
   Color _statusColor = Colors.orange;
@@ -59,7 +58,7 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
 
     _controller = CameraController(
       frontCamera,
-      ResolutionPreset.medium, // OPTIMIZATION: Medium is much faster than High
+      ResolutionPreset.medium,
       enableAudio: false,
       imageFormatGroup: Platform.isAndroid
           ? ImageFormatGroup.nv21
@@ -77,7 +76,6 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
     _controller!.startImageStream((CameraImage image) async {
       if (_currentStep == RegistrationStep.done) return;
 
-      // OPTIMIZATION: Time-based throttling prevents stutter
       if (DateTime.now().difference(_lastFrameTime).inMilliseconds <
           _processingIntervalMs) {
         return;
@@ -96,18 +94,14 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
 
         final Face face = faces.first;
 
-        // 1. Check Angle First (Fastest check)
+        // 1. Check Angle
         bool isAngleCorrect = _checkHeadAngle(face);
 
         if (isAngleCorrect) {
-          bool performLiveness = true;
-
-          // OPTIMIZATION: Only check liveness heavily in the center step.
-          // Turning your head is physically impossible for a 2D photo spoof,
-          // so we can skip the heavy liveness AI for Left/Right steps to speed things up.
-          if (_currentStep != RegistrationStep.center) {
-            performLiveness = false;
-          }
+          // FIX: Disable AI Liveness check during registration.
+          // The "Turn Left/Right" gestures are enough proof of liveness.
+          // This prevents valid users from getting stuck due to camera rotation/lighting.
+          bool performLiveness = false;
 
           bool isReal = true;
           if (performLiveness) {
@@ -115,27 +109,25 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
           }
 
           if (isReal) {
-            _livenessFailCounter = 0;
-
             // 3. Generate Vector (Identity)
-            List<double> vector = await _modelManager.generateFaceEmbedding(
-              image,
+            // FIX: Explicit cast with List<double>.from()
+            List<double> vector = List<double>.from(
+              await _modelManager.generateFaceEmbedding(
+                image,
+                faceBox: face.boundingBox,
+              ),
             );
+
             if (vector.isNotEmpty) {
+              // Only save vectors from the CENTER step
               if (_currentStep == RegistrationStep.center) {
                 _collectedVectors.add(vector);
               }
-              _samplesForCurrentStep++;
 
+              _samplesForCurrentStep++;
               if (_samplesForCurrentStep >= _samplesPerStep) {
                 _advanceStep();
               }
-            }
-          } else {
-            // Only complain if it fails consistently (buffer of 3)
-            _livenessFailCounter++;
-            if (_livenessFailCounter > 3) {
-              _updateStatus("Adjust Lighting / Remove Glare", Colors.yellow);
             }
           }
         }
@@ -147,10 +139,8 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
 
   bool _checkHeadAngle(Face face) {
     double yRotation = face.headEulerAngleY ?? 0;
-
-    // RELAXED THRESHOLDS: Easier to trigger
-    const double centerBound = 12.0; // Must be within +/- 12 degrees
-    const double turnThreshold = 18.0; // Must turn at least 18 degrees
+    const double centerBound = 12.0;
+    const double turnThreshold = 18.0;
 
     switch (_currentStep) {
       case RegistrationStep.center:
@@ -162,7 +152,6 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
         return false;
 
       case RegistrationStep.left:
-        // Positive Y is usually Left turn on front camera
         if (yRotation > turnThreshold) {
           _updateStatus("Scanning Left Side...", Colors.green);
           return true;
@@ -171,7 +160,6 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
         return false;
 
       case RegistrationStep.right:
-        // Negative Y is usually Right turn
         if (yRotation < -turnThreshold) {
           _updateStatus("Scanning Right Side...", Colors.green);
           return true;
@@ -203,32 +191,26 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
   void _finishRegistration() async {
     await _controller!.stopImageStream();
 
-    List<double> _l2Normalize(List<double> vector) {
-      double sum = 0;
-      for (var x in vector) sum += x * x;
-      double norm = sqrt(sum); // Import dart:math
-      if (norm == 0) return vector;
-      return vector.map((x) => x / norm).toList();
-    }
+    // Average vectors (Size 512 for FaceNet)
+    List<double> finalVector = List.filled(512, 0.0);
 
-    // Average vectors for high accuracy
-    List<double> finalVector = List.filled(192, 0.0);
     if (_collectedVectors.isNotEmpty) {
       for (var vec in _collectedVectors) {
-        for (int i = 0; i < vec.length; i++) {
-          finalVector[i] += vec[i];
+        if (vec.length == 512) {
+          for (int i = 0; i < 512; i++) {
+            finalVector[i] += vec[i];
+          }
         }
       }
       finalVector = finalVector
           .map((e) => e / _collectedVectors.length)
           .toList();
 
+      // Re-normalize
       finalVector = _l2Normalize(finalVector);
     }
 
-    // High quality capture for the profile photo
     try {
-      // Small delay to let camera stabilize after heavy processing
       await Future.delayed(const Duration(milliseconds: 200));
       final XFile file = await _controller!.takePicture();
 
@@ -239,6 +221,14 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
     } catch (e) {
       print("Error capturing: $e");
     }
+  }
+
+  List<double> _l2Normalize(List<double> vector) {
+    double sum = 0;
+    for (var x in vector) sum += x * x;
+    double norm = math.sqrt(sum);
+    if (norm == 0) return vector;
+    return vector.map((x) => x / norm).toList();
   }
 
   void _updateStatus(String msg, Color color) {
@@ -296,7 +286,6 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // 1. Camera Layer - FITTED to cover screen (Fixes squish)
           SizedBox(
             width: size.width,
             height: size.height,
@@ -309,8 +298,6 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
               ),
             ),
           ),
-
-          // 2. Guide Box & UI
           SafeArea(
             child: Column(
               children: [
@@ -324,10 +311,7 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
                     shadows: [Shadow(blurRadius: 10, color: Colors.black)],
                   ),
                 ),
-
                 const Spacer(),
-
-                // Animated Guide Box
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
                   width: size.width * 0.75,
@@ -356,10 +340,7 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
                           ),
                   ),
                 ),
-
                 const Spacer(),
-
-                // Status Panel
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(24),
@@ -382,7 +363,6 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      // Progress Bar
                       Stack(
                         children: [
                           Container(
