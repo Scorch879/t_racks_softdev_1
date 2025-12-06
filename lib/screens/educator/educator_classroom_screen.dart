@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Import for Clipboard
+import 'package:supabase_flutter/supabase_flutter.dart'; // Import Supabase
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_add_student_screen.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
@@ -36,12 +37,26 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
   }
 
   void _fetchClassData() async {
-    // 1. Fetch Students
+    // 1. Fetch Class Code (New Logic)
+    String? fetchedCode;
+    try {
+      final classData = await Supabase.instance.client
+          .from('Classes_Table')
+          .select('class_code')
+          .eq('id', widget.classId)
+          .single();
+      fetchedCode = classData['class_code'];
+    } catch (e) {
+      print("Error fetching class code: $e");
+    }
+
+    // 2. Fetch Students
     final students = await _dbService.getClassStudents(widget.classId);
+
     if (mounted) {
       setState(() {
         studentList = students;
-        _classCode = code;
+        _classCode = fetchedCode; // Fixed: Assign fetched value
         isLoading = false;
       });
     }
@@ -190,9 +205,7 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(
-                        0xFF7FE26B,
-                      ).withOpacity(0.2), // Subtle green bg
+                      color: const Color(0xFF7FE26B).withOpacity(0.2),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: const Color(0xFF7FE26B).withOpacity(0.5),
@@ -207,7 +220,7 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
                           style: const TextStyle(
                             color: Color(0xFF7FE26B), // Bright green text
                             fontWeight: FontWeight.bold,
-                            fontSize: 13, // Smaller font
+                            fontSize: 13,
                             letterSpacing: 1,
                           ),
                         ),
@@ -215,13 +228,12 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
                         const Icon(
                           Icons.copy_rounded,
                           color: Color(0xFF7FE26B),
-                          size: 14, // Smaller icon
+                          size: 14,
                         ),
                       ],
                     ),
                   ),
                 ),
->>>>>>> parent of e8b6f1e (Merge pull request #138 from Scorch879/branch-ni-carlo)
             ],
           ),
 
