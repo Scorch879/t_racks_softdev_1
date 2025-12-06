@@ -261,30 +261,48 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
       setState(() {
         _isVerified = true;
         if (matchResult != null) {
+          // 1. Set loading state
           _statusMessage = "Verifying class & marking attendance...";
           _statusColor = Colors.blueAccent;
 
-          // 3. Mark Attendance
-          _attendanceService.markAttendance(matchResult.studentId).then((
-            className,
-          ) {
-            if (mounted) {
-              setState(() {
-                if (className != null) {
-                  _statusMessage =
-                      "✅ Welcome, ${matchResult.fullName}!\nAttendance marked for $className.";
-                  _statusColor = Colors.green;
-                } else {
-                  _statusMessage =
-                      "❌ Welcome, ${matchResult.fullName}!\nCould not find an ongoing class.";
-                  _statusColor = Colors.orange;
+          // 2. Attempt to mark attendance
+          _attendanceService
+              .markAttendance(matchResult.studentId)
+              .then((className) {
+                if (mounted) {
+                  setState(() {
+                    if (className != null) {
+                      _statusMessage =
+                          "✅ Welcome, ${matchResult.fullName}!\nAttendance marked for $className.";
+                      _statusColor = Colors.green;
+                    }
+                    // Optional: Auto-reset after 3 seconds
+                    Future.delayed(const Duration(seconds: 3), () {
+                      if (mounted) _startLivenessSession();
+                    });
+                  });
+                }
+              })
+              .catchError((e) {
+                // --- THIS FIXES THE BUG ---
+                // We catch the "No ongoing class found" error here
+                print("Attendance Error: $e");
+                if (mounted) {
+                  setState(() {
+                    _statusMessage =
+                        "❌ Hi ${matchResult.fullName}.\nNo active class found for you right now.";
+                    _statusColor = Colors.orange;
+                  });
+
+                  // Allow them to retry after 3 seconds
+                  Future.delayed(const Duration(seconds: 3), () {
+                    if (mounted) _startLivenessSession();
+                  });
                 }
               });
-            }
-          });
         } else {
           _statusMessage = "❌ Student Not Recognized";
-          _statusColor = Colors.red; // Red for unrecognized
+          _statusColor = Colors.red;
         }
       });
     }
