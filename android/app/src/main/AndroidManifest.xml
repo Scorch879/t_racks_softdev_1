@@ -5,7 +5,7 @@
     <application
         android:label="t_racks_softdev_1"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/t_racks">
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -918,6 +918,22 @@ class DatabaseService {
       rethrow;
     }
   }
+
+  Future<void> deleteClass(String classId) async {
+  try {
+    // Assuming you are using Supabase based on the table screenshot
+    await _supabase
+        .from('Classes_Table') // Matches your table name
+        .delete()
+        .eq('id', classId);    // Matches your 'id' column
+    
+    // Note: If you are not using Supabase, replace the above 
+    // with your specific delete query (e.g., Firebase or SQL).
+  } catch (e) {
+    print("Error deleting class: $e");
+    throw e;
+  }
+}
 }
 
 class AccountServices {

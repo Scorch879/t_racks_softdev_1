@@ -4,8 +4,8 @@ import 'package:t_racks_softdev_1/screens/student/student_home_screen.dart';
 const _bgTeal = Color(0xFF167C94);
 const _cardSurface = Color(0xFF173C45);
 const _accentCyan = Color(0xFF93C0D3);
-const _chipGreen = Color(0xFF4DBD88);
-const _statusRed = Color(0xFFDA6A6A);
+const _chipGreen = Color(0xFF4CAF50);
+const _statusRed = Color(0xFFE53935);
 const _borderTeal = Color(0xFF6AAFBF);
 
 class StudentSettingsScreen extends StatefulWidget {
