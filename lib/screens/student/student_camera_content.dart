@@ -7,7 +7,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; // Needed for auth
 import 'package:t_racks_softdev_1/services/tflite_service.dart' as tflite;
+import 'package:t_racks_softdev_1/services/database_service.dart'; // Needed for attendance
 
 enum ChallengeType { smile, blink, turnLeft, turnRight }
 
@@ -26,22 +28,30 @@ class StudentCameraContent extends StatefulWidget {
 }
 
 class _StudentCameraContentState extends State<StudentCameraContent> {
+  // Services
+  final tflite.ModelManager _tfliteManager = tflite.ModelManager();
+  final DatabaseService _databaseService =
+      DatabaseService(); // FIX: Define this
+
   CameraController? _controller;
   Future<void>? _initializeControllerFuture;
   bool _isProcessing = false;
   late FaceDetector _faceDetector;
-  final tflite.ModelManager _tfliteManager = tflite.ModelManager();
 
+  // Liveness Variables
   List<ChallengeType> _challenges = [];
   int _currentChallengeIndex = 0;
   bool _isSessionActive = false;
   String _statusMessage = "Initializing...";
   Color _statusColor = Colors.white;
 
+  // Verification State
   bool _isVerified = false;
   bool _hasFailed = false;
   int _consecutiveFakeFrames = 0;
-  int _consecutiveMatchFrames = 0;
+
+  // Averaging logic for Recognition
+  List<List<double>> _recognitionSamples = [];
 
   @override
   void initState() {
@@ -100,7 +110,7 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
       _isVerified = false;
       _hasFailed = false;
       _consecutiveFakeFrames = 0;
-      _consecutiveMatchFrames = 0;
+      _recognitionSamples.clear(); // Clear old samples
       _updateStatusMessage();
     });
   }
@@ -144,7 +154,7 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
       try {
         await _processMLKit(image);
 
-        // Run heavy AI checks every 5th frame
+        // Run AI checks every 5th frame
         if (frameCount % 5 == 0 && _tfliteManager.areModelsLoaded) {
           await _processTFLite(image);
         }
@@ -207,34 +217,34 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
     }
   }
 
-  List<List<double>> _recognitionSamples = [];
-
   Future<void> _processTFLite(CameraImage image) async {
     try {
-      // 1. Check Liveness (Fast fail)
+      // 1. Check Liveness
       bool isReal = await _tfliteManager.checkLiveness(image);
+
       if (!isReal) {
-        _recognitionSamples.clear(); // Reset if spoof detected
+        _recognitionSamples.clear(); // Reset on spoof
         _consecutiveFakeFrames++;
         if (_consecutiveFakeFrames >= 3) {
           _triggerFailure("⚠️ SPOOF DETECTED");
         }
         return;
+      } else {
+        _consecutiveFakeFrames = 0;
       }
-      _consecutiveFakeFrames = 0;
 
-      // 2. Collect Samples for Identity
+      // 2. Check Identity
       if (_currentChallengeIndex >= _challenges.length) {
         List<double> liveVector = await _tfliteManager.generateFaceEmbedding(
           image,
         );
 
-        if (liveVector.isNotEmpty) {
+        if (liveVector.isNotEmpty && widget.studentSavedVector.isNotEmpty) {
           _recognitionSamples.add(liveVector);
 
-          // Wait until we have 5 consistent frames to make a decision
+          // Wait for 5 samples to average
           if (_recognitionSamples.length >= 5) {
-            // A. Calculate Average Vector of the 5 frames
+            // Calculate Average
             List<double> averageVector = List.filled(192, 0.0);
             for (var vec in _recognitionSamples) {
               for (int i = 0; i < vec.length; i++) {
@@ -245,23 +255,17 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
                 .map((e) => e / _recognitionSamples.length)
                 .toList();
 
-            // B. Compare Average vs Database (Much more accurate!)
-            if (widget.studentSavedVector.isNotEmpty) {
-              double distance = _tfliteManager.compareVectors(
-                widget.studentSavedVector,
-                averageVector,
-              );
+            double distance = _tfliteManager.compareVectors(
+              widget.studentSavedVector,
+              averageVector,
+            );
 
-              print("Avg Distance: $distance"); // Debugging
-
-              // Strict Threshold
-              if (distance < 0.25) {
-                _finalizeVerification();
-              } else {
-                // If average fails, clear and try again (keeps retrying smoothly)
-                _recognitionSamples.clear();
-                // Optional: Show "Face not recognized" warning if it fails often
-              }
+            // 0.25 Threshold
+            if (distance < 0.25) {
+              _finalizeVerification();
+            } else {
+              _recognitionSamples.clear(); // Retry
+              // Optionally warn user
             }
           }
         }
@@ -281,19 +285,47 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
     }
   }
 
-  void _finalizeVerification() {
-    if (!_hasFailed && !_isVerified) {
+  void _finalizeVerification() async {
+    if (_hasFailed || _isVerified) return;
+
+    if (mounted) {
+      setState(() {
+        _isVerified = true;
+        _statusMessage = "Verifying Class...";
+        _statusColor = const Color(0xFF93C0D3);
+      });
+    }
+
+    try {
+      // FIX: Use Current User ID
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) throw "User not logged in";
+
+      // FIX: Call DatabaseService directly
+      final className = await _databaseService.markAttendance(userId);
+
       if (mounted) {
         setState(() {
-          _isVerified = true;
-          _statusMessage = "✅ IDENTITY VERIFIED";
-          _statusColor = const Color(0xFF4DBD88);
+          _statusMessage = className != null
+              ? "✅ Marked Present: $className"
+              : "⚠️ Identity Verified, but no ongoing class found.";
+          _statusColor = className != null
+              ? const Color(0xFF4DBD88)
+              : Colors.orange;
         });
 
-        Future.delayed(const Duration(seconds: 2), () {
+        Future.delayed(const Duration(seconds: 3), () {
           if (mounted) {
             Navigator.of(context).pop();
           }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _statusMessage =
+              "Error: ${e.toString().replaceAll('Exception:', '')}";
+          _statusColor = Colors.red;
         });
       }
     }
@@ -362,14 +394,8 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
             LayoutBuilder(
               builder: (context, constraints) {
                 final size = constraints.biggest;
-                var scale = 1.0;
-                if (_controller!.value.aspectRatio < size.aspectRatio) {
-                  scale = 1 / _controller!.value.aspectRatio * size.aspectRatio;
-                } else {
-                  scale = _controller!.value.aspectRatio / size.aspectRatio;
-                }
 
-                // Fallback for robust cover
+                // Robust Fit logic
                 final double finalScale =
                     1 / (_controller!.value.aspectRatio * size.aspectRatio);
 
@@ -386,6 +412,7 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
           if (_hasFailed || _isVerified)
             Container(color: Colors.black.withOpacity(0.7)),
 
+          // Overlay
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -411,7 +438,6 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
                     vertical: 8.0,
                   ),
                   child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       GestureDetector(
                         onTap: () => Navigator.of(context).pop(),
@@ -422,28 +448,12 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
                         ),
                       ),
                       const SizedBox(width: 16),
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: const Text(
-                            'Attendance Verification',
-                            style: TextStyle(
-                              color: Colors.black87,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
+                      const Text(
+                        'Attendance Verification',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -484,26 +494,25 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (!_hasFailed && !_isVerified)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black54,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              _statusMessage,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: _statusColor,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            _statusMessage,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: _statusColor,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
+                        ),
                       ],
                     ),
                   ),
@@ -519,21 +528,12 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
                             size: 60,
                           ),
                           const SizedBox(height: 16),
-                          Text(
-                            "Verification Failed",
+                          const Text(
+                            "Failed",
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            "Face does not match profile\nor spoof detected.",
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
                             ),
                           ),
                           const SizedBox(height: 24),
@@ -541,33 +541,6 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
                             onPressed: _startLivenessSession,
                             icon: const Icon(Icons.refresh),
                             label: const Text("TRY AGAIN"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: Colors.black,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                  if (_isVerified)
-                    const Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.check_circle_rounded,
-                            color: Color(0xFF4DBD88),
-                            size: 80,
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            "Verified!",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
                           ),
                         ],
                       ),

@@ -421,15 +421,14 @@ class DatabaseService {
           .select('class_name')
           .eq('id', classId)
           .single();
-      
+
       final className = classData['class_name'];
       await _supabase.from('Notification_Table').insert({
-        'user_id': studentId, 
+        'user_id': studentId,
         'title': 'You have been enrolled',
         'subtitle': 'An educator has added you to $className.',
         'timestamp': DateTime.now().toIso8601String(),
       });
-
     } catch (e) {
       print('Error enrolling student: $e');
       rethrow;
@@ -473,16 +472,15 @@ class DatabaseService {
       // 4. Send Notification to Educator [NEW]
       // We don't await this so it doesn't block the UI
       _sendJoinNotification(
-        studentId: userId, 
-        educatorId: educatorId, 
-        className: className
+        studentId: userId,
+        educatorId: educatorId,
+        className: className,
       );
-
     } on PostgrestException catch (e) {
       if (e.code == 'PGRST116') {
         throw 'Invalid class code. Please check the code and try again.';
       }
-      rethrow; 
+      rethrow;
     }
   }
 
@@ -499,7 +497,7 @@ class DatabaseService {
           .select('firstName, lastName')
           .eq('id', studentId)
           .single();
-          
+
       final name = "${profile['firstName']} ${profile['lastName']}";
 
       // Insert notification
@@ -862,6 +860,7 @@ class DatabaseService {
       rethrow;
     }
   }
+
   Future<void> deleteNotification(String notificationId) async {
     try {
       await _supabase
@@ -873,7 +872,7 @@ class DatabaseService {
       // We don't rethrow here so the UI doesn't crash on a background sync
     }
   }
-  
+
   Future<void> markManualAttendance({
     required String classId,
     required String studentId,
@@ -897,11 +896,10 @@ class DatabaseService {
 
       if (existing != null) {
         // Update existing record
-        await _supabase.from('Attendance_Record').update({
-          'isPresent': isPresent,
-          'isLate': isLate,
-          'time': time,
-        }).eq('id', existing['id']);
+        await _supabase
+            .from('Attendance_Record')
+            .update({'isPresent': isPresent, 'isLate': isLate, 'time': time})
+            .eq('id', existing['id']);
       } else {
         // Create new record
         await _supabase.from('Attendance_Record').insert({
@@ -920,20 +918,20 @@ class DatabaseService {
   }
 
   Future<void> deleteClass(String classId) async {
-  try {
-    // Assuming you are using Supabase based on the table screenshot
-    await _supabase
-        .from('Classes_Table') // Matches your table name
-        .delete()
-        .eq('id', classId);    // Matches your 'id' column
-    
-    // Note: If you are not using Supabase, replace the above 
-    // with your specific delete query (e.g., Firebase or SQL).
-  } catch (e) {
-    print("Error deleting class: $e");
-    throw e;
+    try {
+      // Assuming you are using Supabase based on the table screenshot
+      await _supabase
+          .from('Classes_Table') // Matches your table name
+          .delete()
+          .eq('id', classId); // Matches your 'id' column
+
+      // Note: If you are not using Supabase, replace the above
+      // with your specific delete query (e.g., Firebase or SQL).
+    } catch (e) {
+      print("Error deleting class: $e");
+      throw e;
+    }
   }
-}
 }
 
 class AccountServices {
@@ -1106,62 +1104,37 @@ class AttendanceService {
   /// Returns the name of the class if successful, otherwise null.
   Future<String?> markAttendance(String studentId) async {
     try {
-      // 1. Find the ongoing class for the student.
-      final ongoingClass = await _findOngoingClass(studentId);
-      if (ongoingClass == null) {
-        throw 'No ongoing class found to mark attendance for.';
+      // 1. Find the class currently happening
+      final sClass = await _findOngoingClass(studentId);
+
+      if (sClass == null) {
+        throw "No class is currently ongoing for your schedule.";
       }
 
-      // 2. Check if attendance has already been marked for this class today.
-      final today = DateTime.now().toIso8601String().split('T')[0];
-      final existingRecord = await _supabase
-          .from('Attendance_Record')
-          .select('id')
-          .eq('student_id', studentId)
-          .eq('class_id', ongoingClass.id)
-          .eq('date', today)
-          .maybeSingle();
+      // 2. Prepare Data
+      final now = DateTime.now();
+      final date = now.toIso8601String().split('T')[0]; // YYYY-MM-DD
+      final time = DateFormat.Hms().format(now); // HH:MM:SS
 
-      if (existingRecord != null) {
-        print('Attendance already marked for ${ongoingClass.name} today.');
-        return ongoingClass.name; // Already marked, treat as success.
-      }
-
-      // 3. Determine if the student is late.
-      final status = getDynamicStatus(
-        ongoingClass,
-        Colors.green, // Dummy color
-        Colors.red, // Dummy color
-        Colors.orange, // Dummy color
-        Colors.blue, // Dummy color
-        Colors.grey, // Dummy color
-      );
-      final bool isLate = status.text == 'Late';
-
-      // 4. Create the new attendance record.
-      final attendanceData = {
+      // 3. Insert/Update Attendance Record
+      await _supabase.from('Attendance_Record').upsert({
         'student_id': studentId,
-        'class_id': ongoingClass.id,
-        'date': today,
+        'class_id': sClass.id,
+        'date': date,
+        'time': time,
         'isPresent': true,
-        'time': DateFormat.Hms().format(DateTime.now()),
-        'isLate': isLate,
-      };
+      });
 
-      await _supabase.from('Attendance_Record').insert(attendanceData);
-      print(
-        'Successfully marked attendance for $studentId in class ${ongoingClass.id}',
-      );
-
-      return ongoingClass.name;
+      return sClass.className;
     } catch (e) {
-      print('Error marking attendance: $e');
-      rethrow; // Rethrow to be handled by the UI.
+      print("Error marking attendance: $e");
+      rethrow;
     }
   }
 
   /// Helper to find the first class that is currently 'Ongoing' or 'Late'.
   Future<StudentClass?> _findOngoingClass(String studentId) async {
+    // Get all classes with details
     final response = await _supabase.rpc(
       'get_student_classes_with_details',
       params: {'p_student_id': studentId},
@@ -1171,16 +1144,34 @@ class AttendanceService {
         .map((json) => StudentClass.fromJson(json))
         .toList();
 
+    // Check each class to see if "Now" is inside its schedule
+    final now = DateTime.now();
+    final todayWeekday = now.weekday;
+
     return classes.firstWhereOrNull((sClass) {
-      final status = getDynamicStatus(
-        sClass,
-        Colors.green,
-        Colors.red,
-        Colors.orange,
-        Colors.blue,
-        Colors.grey,
-      );
-      return status.text == 'Ongoing' || status.text == 'Late';
+      final scheduleDay = sClass.day?.toLowerCase().replaceAll(' ', '');
+      if (scheduleDay == null || scheduleDay.isEmpty) return false;
+
+      // 1. Check Day
+      if (!_isClassScheduledForToday(scheduleDay, todayWeekday)) return false;
+
+      // 2. Check Time
+      if (sClass.time == null || !sClass.time!.contains('-')) return false;
+
+      try {
+        final timeRange = sClass.time!.split('-');
+        final classStartTime = _parseTimeHelper(timeRange[0].trim(), now);
+        final classEndTime = _parseTimeHelper(timeRange[1].trim(), now);
+
+        if (classStartTime == null || classEndTime == null) return false;
+
+        // Allow marking attendance 15 mins before start until end time
+        final earlyStart = classStartTime.subtract(const Duration(minutes: 15));
+
+        return now.isAfter(earlyStart) && now.isBefore(classEndTime);
+      } catch (e) {
+        return false;
+      }
     });
   }
 }
