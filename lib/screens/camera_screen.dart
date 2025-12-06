@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math';
+import 'dart:math' as math; // FIX: Aliased to avoid conflicts
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
@@ -9,7 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:t_racks_softdev_1/services/tflite_service.dart' as tflite;
 import 'package:t_racks_softdev_1/services/face_service.dart';
-import 'package:t_racks_softdev_1/services/database_service.dart';
+import 'package:t_racks_softdev_1/services/database_service.dart'; // FIX: Import DatabaseService
 
 enum ChallengeType { smile, blink, turnLeft, turnRight }
 
@@ -28,7 +28,9 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
   bool _isProcessing = false;
   late FaceDetector _faceDetector;
   final tflite.ModelManager _tfliteManager = tflite.ModelManager();
-  final AttendanceService _attendanceService = AttendanceService();
+
+  // FIX: Use DatabaseService instead of AttendanceService
+  final DatabaseService _databaseService = DatabaseService();
 
   // Liveness Variables
   List<ChallengeType> _challenges = [];
@@ -37,11 +39,11 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
   String _statusMessage = "Initializing...";
   Color _statusColor = Colors.white;
   bool _isVerified = false;
-  bool _hasFailed = false; // New flag for failure state
+  bool _hasFailed = false;
 
   // TFLite Variables
   bool _isTfliteLoaded = false;
-  int _consecutiveFakeFrames = 0; // Buffer to prevent instant fail
+  int _consecutiveFakeFrames = 0;
 
   @override
   void initState() {
@@ -53,7 +55,6 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
     );
     _faceDetector = FaceDetector(options: options);
 
-    // FIX 1: Updated method name from loadModel to loadModels
     _tfliteManager.loadModels().then((_) {
       if (mounted) {
         setState(() => _isTfliteLoaded = true);
@@ -90,7 +91,7 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
   }
 
   void _startLivenessSession() {
-    final random = Random();
+    final random = math.Random(); // FIX: Explicitly use math.Random
     List<ChallengeType> allTypes = ChallengeType.values.toList();
     _challenges = [];
 
@@ -183,7 +184,6 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
     ChallengeType current = _challenges[_currentChallengeIndex];
     bool passed = false;
 
-    // Thresholds
     double smileThreshold = 0.8;
     double blinkThreshold = 0.1;
     double headRotationThreshold = 15.0;
@@ -218,15 +218,12 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
 
   Future<void> _processTFLite(CameraImage image) async {
     try {
-      // FIX 2: Use checkLiveness instead of runInferenceOnCameraImage
-      // This returns TRUE if it's a real face, FALSE if it's a spoof.
       bool isReal = await _tfliteManager.checkLiveness(image);
 
       if (!isReal) {
-        // If it's NOT real (i.e., a spoof), increment the counter
         _consecutiveFakeFrames++;
       } else {
-        _consecutiveFakeFrames = 0; // Reset if we see a good frame
+        _consecutiveFakeFrames = 0;
       }
 
       if (_consecutiveFakeFrames >= 3) {
@@ -244,13 +241,10 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
   }
 
   Future<void> _finalizeVerification(CameraImage image) async {
-    // If we made it here without TFLite flagging us, we are good.
     if (_hasFailed == false) {
-      // 1. Generate the face embedding from the final verified image.
       final faceEmbedding = await _tfliteManager.generateFaceEmbedding(image);
 
       if (faceEmbedding.isEmpty) {
-        // Handle case where embedding failed
         setState(() {
           _hasFailed = true;
           _statusMessage = "⚠️ Could not read face. Try again.";
@@ -259,20 +253,21 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
         return;
       }
 
-      // 2. Call the service to find a match in the database.
       final matchingService = FaceRecognitionService();
-      final matchResult =
-          await matchingService.findMatchingStudent(faceEmbedding);
+      final matchResult = await matchingService.findMatchingStudent(
+        faceEmbedding,
+      );
 
-      // 3. Update UI based on the result.
       setState(() {
         _isVerified = true; // Stop processing
         if (matchResult != null) {
           _statusMessage = "Verifying class & marking attendance...";
           _statusColor = Colors.blueAccent;
 
-          // Mark Attendance Here for matchResult.studentId
-          _attendanceService.markAttendance(matchResult.studentId).then((className) {
+          // FIX: Use _databaseService to mark attendance
+          _databaseService.markAttendance(matchResult.studentId).then((
+            className,
+          ) {
             if (mounted) {
               setState(() {
                 _statusMessage = className != null
@@ -284,7 +279,7 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
           });
         } else {
           _statusMessage = "❌ Student Not Recognized";
-          _statusColor = Colors.orange;
+          _statusColor = Colors.redAccent;
         }
       });
     }
@@ -370,10 +365,8 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
                   ),
                 ),
 
-                // Dim the screen if failed or verified
                 if (_hasFailed || _isVerified) Container(color: Colors.black54),
 
-                // Main UI Overlay
                 Align(
                   alignment: Alignment.bottomCenter,
                   child: Container(
@@ -393,7 +386,6 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
                           ),
                         ),
 
-                        // TRY AGAIN BUTTON (Only shows on failure)
                         if (_hasFailed) ...[
                           const SizedBox(height: 20),
                           const Text(
