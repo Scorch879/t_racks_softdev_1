@@ -84,10 +84,11 @@ flutter:
     - assets/models/model.tflite
     - assets/models/labels.txt
     - assets/models/mobilefacenet.tflite
+    - assets/models/facenet_512.tflite
 
 flutter_launcher_icons:
   android: "t_racks" # The name of the icon file on Android
-  ios: true                # Generate iOS icons
+  ios: true # Generate iOS icons
   image_path: "assets/images/t_racks.png" # Path to your source image
   min_sdk_android: 21
   # An image asset can refer to one or more resolution-specific "variants", see

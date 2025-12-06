@@ -32,15 +32,15 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
 
   List<List<double>> _collectedVectors = [];
   int _samplesForCurrentStep = 0;
-
-  // High sample count for better accuracy
   final int _samplesPerStep = 10;
 
   DateTime _lastFrameTime = DateTime.now();
   int _processingIntervalMs = 250;
 
   String _statusMessage = "Initializing...";
-  Color _statusColor = Colors.orange;
+  Color _statusColor = Colors.white;
+
+  bool _isScanning = false;
 
   @override
   void initState() {
@@ -89,28 +89,42 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
         final faces = await _faceDetector.processImage(inputImage);
         if (faces.isEmpty) {
           _updateStatus("No Face Detected", Colors.red);
+          _setScanning(false);
           return;
         }
 
         final Face face = faces.first;
 
+        // Distance Check
+        double faceWidthRatio =
+            face.boundingBox.width / inputImage.metadata!.size.width;
+        if (faceWidthRatio < 0.20) {
+          _updateStatus("Too Far! Move Closer", Colors.orange);
+          _setScanning(false);
+          return;
+        }
+        if (faceWidthRatio > 0.70) {
+          _updateStatus("Too Close! Move Back", Colors.orange);
+          _setScanning(false);
+          return;
+        }
+
         // 1. Check Angle
         bool isAngleCorrect = _checkHeadAngle(face);
 
         if (isAngleCorrect) {
-          // FIX: Disable AI Liveness check during registration.
-          // The "Turn Left/Right" gestures are enough proof of liveness.
-          // This prevents valid users from getting stuck due to camera rotation/lighting.
-          bool performLiveness = false;
+          _setScanning(true);
 
+          // 2. Liveness Check (Disabled for Reg, relying on gestures)
+          bool performLiveness = false;
           bool isReal = true;
+
           if (performLiveness) {
             isReal = await _modelManager.checkLiveness(image);
           }
 
           if (isReal) {
-            // 3. Generate Vector (Identity)
-            // FIX: Explicit cast with List<double>.from()
+            // 3. Generate Vector
             List<double> vector = List<double>.from(
               await _modelManager.generateFaceEmbedding(
                 image,
@@ -119,7 +133,6 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
             );
 
             if (vector.isNotEmpty) {
-              // Only save vectors from the CENTER step
               if (_currentStep == RegistrationStep.center) {
                 _collectedVectors.add(vector);
               }
@@ -130,11 +143,21 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
               }
             }
           }
+        } else {
+          _setScanning(false);
         }
       } catch (e) {
         print("Error: $e");
       }
     });
+  }
+
+  void _setScanning(bool isScanning) {
+    if (_isScanning != isScanning && mounted) {
+      setState(() {
+        _isScanning = isScanning;
+      });
+    }
   }
 
   bool _checkHeadAngle(Face face) {
@@ -145,26 +168,26 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
     switch (_currentStep) {
       case RegistrationStep.center:
         if (yRotation.abs() < centerBound) {
-          _updateStatus("Scanning Center...", Colors.green);
+          _updateStatus("Scanning...", Colors.green);
           return true;
         }
-        _updateStatus("Look Straight Ahead", Colors.orange);
+        _updateStatus("Look Straight", Colors.white);
         return false;
 
       case RegistrationStep.left:
         if (yRotation > turnThreshold) {
-          _updateStatus("Scanning Left Side...", Colors.green);
+          _updateStatus("Scanning Left...", Colors.green);
           return true;
         }
-        _updateStatus("Turn Head Left ->", Colors.blue);
+        _updateStatus("Turn Head Left ⬅️", Colors.blueAccent);
         return false;
 
       case RegistrationStep.right:
         if (yRotation < -turnThreshold) {
-          _updateStatus("Scanning Right Side...", Colors.green);
+          _updateStatus("Scanning Right...", Colors.green);
           return true;
         }
-        _updateStatus("<- Turn Head Right", Colors.blue);
+        _updateStatus("Turn Head Right ➡️", Colors.blueAccent);
         return false;
 
       default:
@@ -191,7 +214,6 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
   void _finishRegistration() async {
     await _controller!.stopImageStream();
 
-    // Average vectors (Size 512 for FaceNet)
     List<double> finalVector = List.filled(512, 0.0);
 
     if (_collectedVectors.isNotEmpty) {
@@ -206,7 +228,6 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
           .map((e) => e / _collectedVectors.length)
           .toList();
 
-      // Re-normalize
       finalVector = _l2Normalize(finalVector);
     }
 
@@ -215,7 +236,7 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
       final XFile file = await _controller!.takePicture();
 
       if (mounted) {
-        _updateStatus("Registration Complete!", Colors.green);
+        _updateStatus("Done!", Colors.green);
         widget.onFaceCaptured(File(file.path), finalVector);
       }
     } catch (e) {
@@ -286,6 +307,7 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
       body: Stack(
         fit: StackFit.expand,
         children: [
+          // 1. Camera Preview
           SizedBox(
             width: size.width,
             height: size.height,
@@ -298,107 +320,166 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
               ),
             ),
           ),
+
+          // 2. Header (Top)
           SafeArea(
-            child: Column(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      "Face Registration",
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        shadows: [Shadow(blurRadius: 10, color: Colors.black)],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black45,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        "Remove glasses/masks",
+                        style: TextStyle(color: Colors.white70, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // 3. Scanner Guide (Center)
+          Center(
+            child: Stack(
+              alignment: Alignment.center,
               children: [
-                const SizedBox(height: 30),
-                const Text(
-                  "Face Registration",
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    shadows: [Shadow(blurRadius: 10, color: Colors.black)],
+                // Glow Effect
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: size.width * 0.72,
+                  height: size.width * 0.72, // Square box for face
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: _isScanning
+                          ? Colors.green.withOpacity(0.8)
+                          : Colors.transparent,
+                      width: 6,
+                    ),
+                    boxShadow: _isScanning
+                        ? [
+                            BoxShadow(
+                              color: Colors.green.withOpacity(0.4),
+                              blurRadius: 30,
+                              spreadRadius: 5,
+                            ),
+                          ]
+                        : [],
                   ),
                 ),
-                const Spacer(),
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  width: size.width * 0.75,
-                  height: size.width * 0.9,
+
+                // Main Guide Box
+                Container(
+                  width: size.width * 0.7,
+                  height: size.width * 0.7,
                   decoration: BoxDecoration(
                     border: Border.all(color: _statusColor, width: 4),
                     borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _statusColor.withOpacity(0.3),
-                        blurRadius: 20,
-                      ),
-                    ],
                   ),
                   child: Center(
                     child: _currentStep == RegistrationStep.done
                         ? const Icon(
                             Icons.check_circle,
                             color: Colors.green,
-                            size: 100,
+                            size: 80,
                           )
                         : Icon(
                             Icons.face_retouching_natural,
                             color: Colors.white.withOpacity(0.3),
-                            size: 80,
+                            size: 60,
                           ),
                   ),
                 ),
-                const Spacer(),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(24),
-                  margin: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.black87.withOpacity(0.8),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white10),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _statusMessage,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: _statusColor,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Stack(
-                        children: [
-                          Container(
-                            height: 10,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[800],
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                          ),
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            height: 10,
-                            width:
-                                ((size.width - 80) *
-                                ((_collectedVectors.length) /
-                                    (_samplesPerStep * 3))),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF26A69A),
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        "${((_collectedVectors.length / (_samplesPerStep * 3)) * 100).toInt()}% Complete",
-                        style: const TextStyle(
-                          color: Colors.white54,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
               ],
+            ),
+          ),
+
+          // 4. Status Panel (Bottom)
+          SafeArea(
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                margin: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.black87.withOpacity(0.85),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white10),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _statusMessage,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: _statusColor,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Progress Bar
+                    Stack(
+                      children: [
+                        Container(
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[800],
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          height: 8,
+                          width:
+                              ((size.width - 80) *
+                              ((_collectedVectors.length) /
+                                  (_samplesPerStep * 3))),
+                          decoration: BoxDecoration(
+                            color: _isScanning
+                                ? Colors.greenAccent
+                                : const Color(0xFF26A69A),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      "${((_collectedVectors.length / (_samplesPerStep * 3)) * 100).clamp(0, 100).toInt()}%",
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
