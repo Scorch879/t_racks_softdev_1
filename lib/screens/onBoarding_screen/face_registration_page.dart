@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:t_racks_softdev_1/services/tflite_service.dart' as tflite;
+import 'dart:math';
 
 enum RegistrationStep { center, left, right, done }
 
@@ -32,7 +33,7 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
   // Data Collection
   List<List<double>> _collectedVectors = [];
   int _samplesForCurrentStep = 0;
-  final int _samplesPerStep = 5;
+  final int _samplesPerStep = 10;
 
   // Throttling & Smoothing
   DateTime _lastFrameTime = DateTime.now();
@@ -121,7 +122,9 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
               image,
             );
             if (vector.isNotEmpty) {
-              _collectedVectors.add(vector);
+              if (_currentStep == RegistrationStep.center) {
+                _collectedVectors.add(vector);
+              }
               _samplesForCurrentStep++;
 
               if (_samplesForCurrentStep >= _samplesPerStep) {
@@ -200,6 +203,14 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
   void _finishRegistration() async {
     await _controller!.stopImageStream();
 
+    List<double> _l2Normalize(List<double> vector) {
+      double sum = 0;
+      for (var x in vector) sum += x * x;
+      double norm = sqrt(sum); // Import dart:math
+      if (norm == 0) return vector;
+      return vector.map((x) => x / norm).toList();
+    }
+
     // Average vectors for high accuracy
     List<double> finalVector = List.filled(192, 0.0);
     if (_collectedVectors.isNotEmpty) {
@@ -211,6 +222,8 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage> {
       finalVector = finalVector
           .map((e) => e / _collectedVectors.length)
           .toList();
+
+      finalVector = _l2Normalize(finalVector);
     }
 
     // High quality capture for the profile photo

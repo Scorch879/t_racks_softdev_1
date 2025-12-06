@@ -261,8 +261,9 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
 
       // 2. Call the service to find a match in the database.
       final matchingService = FaceRecognitionService();
-      final matchResult =
-          await matchingService.findMatchingStudent(faceEmbedding);
+      final matchResult = await matchingService.findMatchingStudent(
+        faceEmbedding,
+      );
 
       // 3. Update UI based on the result.
       setState(() {
@@ -272,16 +273,31 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
           _statusColor = Colors.blueAccent;
 
           // Mark Attendance Here for matchResult.studentId
-          _attendanceService.markAttendance(matchResult.studentId).then((className) {
-            if (mounted) {
-              setState(() {
-                _statusMessage = className != null
-                    ? "✅ Welcome, ${matchResult.fullName}!\nAttendance marked for $className."
-                    : "❌ Welcome, ${matchResult.fullName}!\nCould not find an ongoing class.";
-                _statusColor = className != null ? Colors.green : Colors.orange;
+          _attendanceService
+              .markAttendance(matchResult.studentId)
+              .then((className) {
+                if (mounted) {
+                  setState(() {
+                    _statusMessage = className != null
+                        ? "✅ Welcome, ${matchResult.fullName}!\nAttendance marked for $className."
+                        : "❌ Welcome, ${matchResult.fullName}!\nCould not find an ongoing class.";
+                    _statusColor = className != null
+                        ? Colors.green
+                        : Colors.orange;
+                  });
+                }
+              })
+              .catchError((e) {
+                // ADD THIS CATCH BLOCK
+                if (mounted) {
+                  setState(() {
+                    _statusMessage =
+                        "❌ Error: ${e.toString().replaceAll('Exception:', '').trim()}";
+                    _statusColor = Colors.red;
+                    _hasFailed = true; // Optionally allow them to retry
+                  });
+                }
               });
-            }
-          });
         } else {
           _statusMessage = "❌ Student Not Recognized";
           _statusColor = Colors.orange;

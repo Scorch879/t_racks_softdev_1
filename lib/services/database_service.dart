@@ -421,15 +421,14 @@ class DatabaseService {
           .select('class_name')
           .eq('id', classId)
           .single();
-      
+
       final className = classData['class_name'];
       await _supabase.from('Notification_Table').insert({
-        'user_id': studentId, 
+        'user_id': studentId,
         'title': 'You have been enrolled',
         'subtitle': 'An educator has added you to $className.',
         'timestamp': DateTime.now().toIso8601String(),
       });
-
     } catch (e) {
       print('Error enrolling student: $e');
       rethrow;
@@ -473,16 +472,15 @@ class DatabaseService {
       // 4. Send Notification to Educator [NEW]
       // We don't await this so it doesn't block the UI
       _sendJoinNotification(
-        studentId: userId, 
-        educatorId: educatorId, 
-        className: className
+        studentId: userId,
+        educatorId: educatorId,
+        className: className,
       );
-
     } on PostgrestException catch (e) {
       if (e.code == 'PGRST116') {
         throw 'Invalid class code. Please check the code and try again.';
       }
-      rethrow; 
+      rethrow;
     }
   }
 
@@ -499,7 +497,7 @@ class DatabaseService {
           .select('firstName, lastName')
           .eq('id', studentId)
           .single();
-          
+
       final name = "${profile['firstName']} ${profile['lastName']}";
 
       // Insert notification
@@ -862,6 +860,7 @@ class DatabaseService {
       rethrow;
     }
   }
+
   Future<void> deleteNotification(String notificationId) async {
     try {
       await _supabase
@@ -873,7 +872,7 @@ class DatabaseService {
       // We don't rethrow here so the UI doesn't crash on a background sync
     }
   }
-  
+
   Future<void> markManualAttendance({
     required String classId,
     required String studentId,
@@ -897,11 +896,10 @@ class DatabaseService {
 
       if (existing != null) {
         // Update existing record
-        await _supabase.from('Attendance_Record').update({
-          'isPresent': isPresent,
-          'isLate': isLate,
-          'time': time,
-        }).eq('id', existing['id']);
+        await _supabase
+            .from('Attendance_Record')
+            .update({'isPresent': isPresent, 'isLate': isLate, 'time': time})
+            .eq('id', existing['id']);
       } else {
         // Create new record
         await _supabase.from('Attendance_Record').insert({
@@ -920,20 +918,20 @@ class DatabaseService {
   }
 
   Future<void> deleteClass(String classId) async {
-  try {
-    // Assuming you are using Supabase based on the table screenshot
-    await _supabase
-        .from('Classes_Table') // Matches your table name
-        .delete()
-        .eq('id', classId);    // Matches your 'id' column
-    
-    // Note: If you are not using Supabase, replace the above 
-    // with your specific delete query (e.g., Firebase or SQL).
-  } catch (e) {
-    print("Error deleting class: $e");
-    throw e;
+    try {
+      // Assuming you are using Supabase based on the table screenshot
+      await _supabase
+          .from('Classes_Table') // Matches your table name
+          .delete()
+          .eq('id', classId); // Matches your 'id' column
+
+      // Note: If you are not using Supabase, replace the above
+      // with your specific delete query (e.g., Firebase or SQL).
+    } catch (e) {
+      print("Error deleting class: $e");
+      throw e;
+    }
   }
-}
 }
 
 class AccountServices {
@@ -1180,7 +1178,14 @@ class AttendanceService {
         Colors.blue,
         Colors.grey,
       );
-      return status.text == 'Ongoing' || status.text == 'Late';
+      // OLD CODE:
+      // return status.text == 'Ongoing' || status.text == 'Late';
+
+      // NEW CODE: Allow Present and Absent statuses so the app finds the class
+      return status.text == 'Ongoing' ||
+          status.text == 'Late' ||
+          status.text == 'Present' ||
+          status.text == 'Absent';
     });
   }
 }
