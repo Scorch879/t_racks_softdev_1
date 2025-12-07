@@ -1,6 +1,6 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:math';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
@@ -41,7 +41,9 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
   bool _isVerified = false;
   bool _hasFailed = false;
   int _consecutiveFakeFrames = 0;
-  int _consecutiveMatchFrames = 0;
+
+  // Storage for multi-frame averaging
+  final List<List<double>> _recognitionSamples = [];
 
   @override
   void initState() {
@@ -90,6 +92,7 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
     final random = Random();
     List<ChallengeType> allTypes = ChallengeType.values.toList();
     _challenges = [];
+    // Pick 2 random challenges
     for (int i = 0; i < 2; i++) {
       _challenges.add(allTypes[random.nextInt(allTypes.length)]);
     }
@@ -100,7 +103,7 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
       _isVerified = false;
       _hasFailed = false;
       _consecutiveFakeFrames = 0;
-      _consecutiveMatchFrames = 0;
+      _recognitionSamples.clear();
       _updateStatusMessage();
     });
   }
@@ -142,11 +145,23 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
       _isProcessing = true;
 
       try {
-        await _processMLKit(image);
+        // 1. Convert Image for ML Kit
+        final inputImage = _inputImageFromCameraImage(image);
+        if (inputImage != null) {
+          // 2. Detect Faces
+          final List<Face> faces = await _faceDetector.processImage(inputImage);
 
-        // Run heavy AI checks every 5th frame
-        if (frameCount % 5 == 0 && _tfliteManager.areModelsLoaded) {
-          await _processTFLite(image);
+          if (faces.isNotEmpty) {
+            final Face face = faces.first;
+
+            // 3. Check Challenges (Smile/Blink/Turn)
+            _checkChallenge(face);
+
+            // 4. Run Identity/Liveness Check (Throttled)
+            if (frameCount % 5 == 0 && _tfliteManager.areModelsLoaded) {
+              await _processTFLite(image, face);
+            }
+          }
         }
         frameCount++;
       } catch (e) {
@@ -155,17 +170,6 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
         _isProcessing = false;
       }
     });
-  }
-
-  Future<void> _processMLKit(CameraImage image) async {
-    final inputImage = _inputImageFromCameraImage(image);
-    if (inputImage == null) return;
-
-    final List<Face> faces = await _faceDetector.processImage(inputImage);
-    if (faces.isEmpty) return;
-
-    final Face face = faces.first;
-    _checkChallenge(face);
   }
 
   void _checkChallenge(Face face) {
@@ -207,14 +211,12 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
     }
   }
 
-  List<List<double>> _recognitionSamples = [];
-
-  Future<void> _processTFLite(CameraImage image) async {
+  Future<void> _processTFLite(CameraImage image, Face face) async {
     try {
-      // 1. Check Liveness (Fast fail)
+      // 1. Check Liveness (Spoof Detection)
       bool isReal = await _tfliteManager.checkLiveness(image);
       if (!isReal) {
-        _recognitionSamples.clear(); // Reset if spoof detected
+        _recognitionSamples.clear(); // Reset progress if spoof detected
         _consecutiveFakeFrames++;
         if (_consecutiveFakeFrames >= 3) {
           _triggerFailure("⚠️ SPOOF DETECTED");
@@ -223,45 +225,55 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
       }
       _consecutiveFakeFrames = 0;
 
-      // 2. Collect Samples for Identity
+      // 2. Check Identity (Only if challenges are done)
       if (_currentChallengeIndex >= _challenges.length) {
+        // FIX: Pass 'faceBox' for accurate cropping
         List<double> liveVector = await _tfliteManager.generateFaceEmbedding(
           image,
+          faceBox: face.boundingBox,
         );
 
+        // FIX: Ensure vector isn't empty before using
         if (liveVector.isNotEmpty) {
           _recognitionSamples.add(liveVector);
 
-          // Wait until we have 5 consistent frames to make a decision
-          if (_recognitionSamples.length >= 5) {
-            // A. Calculate Average Vector of the 5 frames
-            List<double> averageVector = List.filled(192, 0.0);
-            for (var vec in _recognitionSamples) {
-              for (int i = 0; i < vec.length; i++) {
-                averageVector[i] += vec[i];
+          // Wait for 3 consistent frames to average (Speed vs Accuracy balance)
+          if (_recognitionSamples.length >= 3) {
+            // A. Calculate Average
+            List<double> averageVector = List.filled(
+              512,
+              0.0,
+            ); // 512 for FaceNet
+            // Safety check for vector length
+            if (averageVector.length == liveVector.length) {
+              for (var vec in _recognitionSamples) {
+                for (int i = 0; i < vec.length; i++) {
+                  averageVector[i] += vec[i];
+                }
               }
-            }
-            averageVector = averageVector
-                .map((e) => e / _recognitionSamples.length)
-                .toList();
+              averageVector = averageVector
+                  .map((e) => e / _recognitionSamples.length)
+                  .toList();
 
-            // B. Compare Average vs Database (Much more accurate!)
-            if (widget.studentSavedVector.isNotEmpty) {
+              // B. Compare with Stored Vector
+              // FIX: Use the 'compareVectors' method you just added
               double distance = _tfliteManager.compareVectors(
                 widget.studentSavedVector,
                 averageVector,
               );
 
-              print("Avg Distance: $distance"); // Debugging
+              print("Avg Distance: $distance");
 
-              // Strict Threshold
+              // Threshold (0.25 is strict, 0.40 is looser)
               if (distance < 0.25) {
                 _finalizeVerification();
               } else {
-                // If average fails, clear and try again (keeps retrying smoothly)
+                // If match failed, clear samples and try again
                 _recognitionSamples.clear();
-                // Optional: Show "Face not recognized" warning if it fails often
               }
+            } else {
+              // Vector size mismatch (Old profile vs New Model)
+              _triggerFailure("Profile Outdated.\nPlease Re-register Face.");
             }
           }
         }
@@ -290,9 +302,9 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
           _statusColor = const Color(0xFF4DBD88);
         });
 
-        Future.delayed(const Duration(seconds: 2), () {
+        Future.delayed(const Duration(seconds: 1), () {
           if (mounted) {
-            Navigator.of(context).pop();
+            Navigator.of(context).pop(); // Return success
           }
         });
       }
@@ -353,6 +365,7 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
 
   @override
   Widget build(BuildContext context) {
+    // Basic Layout same as before
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -368,11 +381,8 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
                 } else {
                   scale = _controller!.value.aspectRatio / size.aspectRatio;
                 }
-
-                // Fallback for robust cover
                 final double finalScale =
                     1 / (_controller!.value.aspectRatio * size.aspectRatio);
-
                 return Transform.scale(
                   scale: finalScale,
                   alignment: Alignment.topCenter,
@@ -386,22 +396,7 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
           if (_hasFailed || _isVerified)
             Container(color: Colors.black.withOpacity(0.7)),
 
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withOpacity(0.3),
-                  Colors.transparent,
-                  Colors.transparent,
-                  Colors.black.withOpacity(0.5),
-                ],
-                stops: const [0.0, 0.2, 0.8, 1.0],
-              ),
-            ),
-          ),
-
+          // Top Bar
           SafeArea(
             child: Column(
               children: [
@@ -428,13 +423,6 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
                           ),
                           child: const Text(
                             'Attendance Verification',
@@ -453,161 +441,59 @@ class _StudentCameraContentState extends State<StudentCameraContent> {
             ),
           ),
 
+          // Center Status Box
           Center(
-            child: SizedBox(
-              width: 300,
-              height: 450,
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    child: _CornerBracket(isTop: true, isLeft: true),
-                  ),
-                  Positioned(
-                    top: 0,
-                    right: 0,
-                    child: _CornerBracket(isTop: true, isLeft: false),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    child: _CornerBracket(isTop: false, isLeft: true),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: _CornerBracket(isTop: false, isLeft: false),
-                  ),
-
-                  Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (!_hasFailed && !_isVerified)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black54,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              _statusMessage,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: _statusColor,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                      ],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (!_hasFailed && !_isVerified)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
                     ),
-                  ),
-
-                  if (_hasFailed)
-                    Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.warning_amber_rounded,
-                            color: Color(0xFFDA6A6A),
-                            size: 60,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            "Verification Failed",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            "Face does not match profile\nor spoof detected.",
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          ElevatedButton.icon(
-                            onPressed: _startLivenessSession,
-                            icon: const Icon(Icons.refresh),
-                            label: const Text("TRY AGAIN"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: Colors.black,
-                            ),
-                          ),
-                        ],
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _statusMessage,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: _statusColor,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
+                  ),
 
-                  if (_isVerified)
-                    const Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.check_circle_rounded,
-                            color: Color(0xFF4DBD88),
-                            size: 80,
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            "Verified!",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
+                if (_hasFailed)
+                  Column(
+                    children: [
+                      const Icon(
+                        Icons.warning_amber_rounded,
+                        color: Color(0xFFDA6A6A),
+                        size: 60,
                       ),
-                    ),
-                ],
-              ),
+                      const SizedBox(height: 10),
+                      Text(
+                        _statusMessage,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: _startLivenessSession,
+                        child: const Text("TRY AGAIN"),
+                      ),
+                    ],
+                  ),
+              ],
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _CornerBracket extends StatelessWidget {
-  final bool isTop;
-  final bool isLeft;
-
-  const _CornerBracket({required this.isTop, required this.isLeft});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        border: Border(
-          top: isTop
-              ? const BorderSide(color: Colors.white, width: 2)
-              : BorderSide.none,
-          bottom: !isTop
-              ? const BorderSide(color: Colors.white, width: 2)
-              : BorderSide.none,
-          left: isLeft
-              ? const BorderSide(color: Colors.white, width: 2)
-              : BorderSide.none,
-          right: !isLeft
-              ? const BorderSide(color: Colors.white, width: 2)
-              : BorderSide.none,
-        ),
       ),
     );
   }
