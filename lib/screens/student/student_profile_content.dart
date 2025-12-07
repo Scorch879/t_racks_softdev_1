@@ -326,7 +326,7 @@ class _ProfileHeader extends StatelessWidget {
                           width: 4 * scale,
                         ),
                         image: const DecorationImage(
-                          image: AssetImage('assets/images/placeholder.png'),
+                          image: AssetImage('assets/images/t_racks.png'),
                           fit: BoxFit.cover,
                         ),
                         boxShadow: [
