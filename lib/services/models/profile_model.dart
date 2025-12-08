@@ -5,6 +5,7 @@ class Profile {
   final String lastName;
   final String email;
   final String role;
+  final String? profilePictureUrl;
 
   Profile({
     required this.id,
@@ -13,6 +14,7 @@ class Profile {
     required this.lastName,
     required this.email,
     required this.role,
+    this.profilePictureUrl,
   });
 
   // A factory constructor for creating a new Profile instance from a map.
@@ -25,6 +27,7 @@ class Profile {
       lastName: json['lastName'] as String? ??'',
       email : json['email'] as String? ??'',
       role: json['role'] as String? ??'',
+      profilePictureUrl: json['profile_picture_url'] as String?,
     );  
   }
 

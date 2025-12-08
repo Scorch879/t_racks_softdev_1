@@ -148,11 +148,17 @@ class DatabaseService {
   Future<void> updateStudentData({
     required String firstName,
     required String lastName,
-    required String? institution,
+    String? institution,
+    String? profilePictureUrl,
   }) async {
     try {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) throw 'User not logged in';
+
+      // Add profilePictureUrl to the update map if it's not null
+      if (profilePictureUrl != null) {
+        await _supabase.from('profiles').update({'profile_picture_url': profilePictureUrl}).eq('id', userId);
+      }
 
       // 1. Update the 'profiles' table
       final profileUpdate = {'firstName': firstName, 'lastName': lastName};
@@ -171,6 +177,14 @@ class DatabaseService {
     }
   }
 
+  Future<void> updateProfilePicture(String url) async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) throw 'User not logged in';
+
+    await _supabase
+        .from('profiles')
+        .update({'profile_picture_url': url}).eq('id', userId);
+  }
   /// Fetches the complete data for an educator user.
   Future<Educator?> getEducatorData() async {
     try {
@@ -184,6 +198,11 @@ class DatabaseService {
           .select('*, educator_data:Educator_Table(*)')
           .eq('id', userId)
           .single();
+
+      final userEmail = _supabase.auth.currentUser?.email;
+      if (userEmail != null) {
+        data['email'] = userEmail;
+      }
 
       return Educator.fromJson(data);
     } catch (e) {
@@ -816,11 +835,17 @@ class DatabaseService {
   Future<void> updateEducatorProfile({
     required String firstName,
     required String lastName,
-    required String bio,
+    String? bio,
+    String? profilePictureUrl,
   }) async {
     try {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) throw 'User not logged in';
+
+      // Update profile picture URL if provided
+      if (profilePictureUrl != null) {
+        await _supabase.from('profiles').update({'profile_picture_url': profilePictureUrl}).eq('id', userId);
+      }
 
       // 1. Update the 'profiles' table (Always safe to update)
       await _supabase
@@ -837,11 +862,13 @@ class DatabaseService {
 
       if (existingEducator != null) {
         // CASE A: Profile exists -> UPDATE ONLY
-        // We only send 'bio' so we don't accidentally overwrite their real age with a default.
-        await _supabase
-            .from('Educator_Table')
-            .update({'bio': bio})
-            .eq('id', userId);
+        if (bio != null) {
+          // We only send 'bio' so we don't accidentally overwrite their real age with a default.
+          await _supabase
+              .from('Educator_Table')
+              .update({'bio': bio})
+              .eq('id', userId);
+        }
       } else {
         // CASE B: Profile is missing -> INSERT WITH DEFAULTS
         // We MUST provide 'age', 'institution', etc. to satisfy the "Not Null" database rules.

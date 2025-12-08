@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
+import 'package:t_racks_softdev_1/services/image_service.dart';
+import 'package:t_racks_softdev_1/services/models/educator_model.dart';
 
 // Educator Theme Colors
 const _bgDarkBlue = Color(0xFF0F3951);
@@ -17,11 +19,14 @@ class EducatorProfileScreen extends StatefulWidget {
 
 class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
   final DatabaseService _databaseService = DatabaseService();
+  final ImageService _imageService = ImageService();
 
   // Logic State
   late TextEditingController _firstNameController;
   late TextEditingController _lastNameController;
   late TextEditingController _bioController;
+
+  Educator? _educator;
 
   String _initialFirstName = '';
   String _initialLastName = '';
@@ -57,15 +62,16 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
       final educator = await _databaseService.getEducatorData();
 
       if (mounted && educator != null) {
-        _initialFirstName = educator.profile.firstName;
-        _initialLastName = educator.profile.lastName;
-        _initialBio = educator.bio; 
-        
-        _firstNameController.text = _initialFirstName;
-        _lastNameController.text = _initialLastName;
-        _bioController.text = _initialBio;
-
         setState(() {
+          _educator = educator;
+          _initialFirstName = educator.profile.firstName;
+          _initialLastName = educator.profile.lastName;
+          _initialBio = educator.bio;
+
+          _firstNameController.text = _initialFirstName;
+          _lastNameController.text = _initialLastName;
+          _bioController.text = _initialBio;
+
           _hasChanges = false;
           _isLoading = false;
         });
@@ -101,7 +107,7 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
       await _databaseService.updateEducatorProfile(
         firstName: _firstNameController.text.trim(),
         lastName: _lastNameController.text.trim(),
-        bio: _bioController.text.trim(),
+        bio: _bioController.text.trim(), // Changed to named parameter
       );
 
       if (mounted) {
@@ -131,6 +137,31 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
     }
   }
 
+  Future<void> _changeProfilePicture() async {
+    try {
+      final imageUrl = await _imageService.pickAndUploadImage();
+      await _databaseService.updateProfilePicture(imageUrl);
+
+      // Refresh the local data to show the new image
+      final updatedEducator = await _databaseService.getEducatorData();
+      if (mounted && updatedEducator != null) {
+        setState(() {
+          _educator = updatedEducator;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile picture updated!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Failed to update picture: $e'),
+              backgroundColor: _statusRed),
+        );
+      }
+    }
+  }
   Future<bool> _onWillPop() async {
     if (!_hasChanges) return true;
 
@@ -170,7 +201,7 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  _ProfileHeader(scale: scale),
+                  _ProfileHeader(scale: scale, profilePictureUrl: _educator?.profile.profilePictureUrl, onCameraTap: _changeProfilePicture,),
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 24 * scale),
                     child: Column(
@@ -259,9 +290,15 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
 
 // ... Keep the private classes (_ProfileHeader, _ProfileTextField, etc.) exactly as they were ...
 class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({required this.scale});
+  const _ProfileHeader({
+    required this.scale,
+    this.profilePictureUrl,
+    required this.onCameraTap,
+  });
 
   final double scale;
+  final String? profilePictureUrl;
+  final VoidCallback onCameraTap;
 
   @override
   Widget build(BuildContext context) {
@@ -323,9 +360,12 @@ class _ProfileHeader extends StatelessWidget {
                     Container(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 4 * scale),
-                        image: const DecorationImage(
-                          image: AssetImage('assets/images/t_racks.png'),
+                        border:
+                            Border.all(color: Colors.white, width: 4 * scale),
+                        image: DecorationImage(
+                          image: (profilePictureUrl != null
+                                  ? NetworkImage(profilePictureUrl!)
+                                  : const AssetImage('assets/images/t_racks.png')) as ImageProvider,
                           fit: BoxFit.cover,
                         ),
                         boxShadow: [
@@ -341,12 +381,7 @@ class _ProfileHeader extends StatelessWidget {
                       bottom: 4 * scale,
                       right: 4 * scale,
                       child: GestureDetector(
-                        onTap: () {
-                          showDialog(
-                            context: context,
-                            builder: (context) => const _PermissionDialog(),
-                          );
-                        },
+                        onTap: onCameraTap,
                         child: Container(
                           width: 36 * scale,
                           height: 36 * scale,

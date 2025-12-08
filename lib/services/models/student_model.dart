@@ -9,7 +9,6 @@ class Student {
   final String? program;
   final String? educationalLevel;
   final String? gradeYearLevel;
-
   Student({
     required this.profile,
     this.birthDate,
