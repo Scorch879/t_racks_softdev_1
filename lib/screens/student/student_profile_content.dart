@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/models/student_model.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
-import 'package:camera/camera.dart';
+import 'package:t_racks_softdev_1/services/image_service.dart';
 
 const _bgTeal = Color(0xFF167C94);
 //const _headerTeal = Color(0xFF1B4A55);
@@ -27,12 +27,16 @@ class StudentProfileContent extends StatefulWidget {
 class _StudentProfileContentState extends State<StudentProfileContent> {
   //final _formKey = GlobalKey<FormState>();
   final _databaseService = DatabaseService();
+  final _imageService = ImageService();
 
   // Controllers
   late TextEditingController _firstNameController;
   late TextEditingController _lastNameController;
   late TextEditingController _emailController;
   late TextEditingController _institutionController;
+
+  // State for holding student data to allow for updates
+  late Student _student;
 
   // Initial values to check for changes
   late String? _initialFirstName;
@@ -46,6 +50,7 @@ class _StudentProfileContentState extends State<StudentProfileContent> {
   @override
   void initState() {
     super.initState();
+    _student = widget.student; // Initialize with the initial student data
     _initializeControllersAndValues();
 
     // Add listeners to check for any changes in the text fields
@@ -70,7 +75,7 @@ class _StudentProfileContentState extends State<StudentProfileContent> {
   }
 
   void _initializeControllersAndValues() {
-    final student = widget.student;
+    final student = _student;
     _initialFirstName = student.profile?.firstName;
     _initialLastName = student.profile?.lastName;
     _initialEmail = student.profile?.email;
@@ -118,7 +123,7 @@ class _StudentProfileContentState extends State<StudentProfileContent> {
       await _databaseService.updateStudentData(
         firstName: _firstNameController.text,
         lastName: _lastNameController.text,
-        institution: _institutionController.text,
+        institution: _institutionController.text, // Changed to named parameter
       );
 
       // Update initial values to reflect the saved state
@@ -145,6 +150,31 @@ class _StudentProfileContentState extends State<StudentProfileContent> {
     }
   }
 
+  Future<void> _changeProfilePicture() async {
+    try {
+      final imageUrl = await _imageService.pickAndUploadImage();
+      await _databaseService.updateProfilePicture(imageUrl);
+
+      // Refresh the local data to show the new image
+      final updatedStudent = await _databaseService.getStudentData();
+      if (mounted && updatedStudent != null) {
+        setState(() {
+          _student = updatedStudent;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile picture updated!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Failed to update picture: $e'),
+              backgroundColor: _statusRed),
+        );
+      }
+    }
+  }
   @override
   Widget build(BuildContext context) {
     final scale = widget.scale;
@@ -162,7 +192,11 @@ class _StudentProfileContentState extends State<StudentProfileContent> {
       child: SingleChildScrollView(
         child: Column(
           children: [
-            _ProfileHeader(scale: scale),
+            _ProfileHeader(
+              scale: scale,
+              profilePictureUrl: _student.profile?.profilePictureUrl,
+              onCameraTap: _changeProfilePicture,
+            ),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 24 * scale),
               child: Column(
@@ -171,7 +205,7 @@ class _StudentProfileContentState extends State<StudentProfileContent> {
                     height: 10 * scale,
                   ), // Reduced space for tighter layout
                   Text(
-                    widget.student.fullName,
+                    _student.fullName,
                     style: TextStyle(
                       color: _textDarkBlue,
                       fontSize: 28 * scale,
@@ -180,7 +214,7 @@ class _StudentProfileContentState extends State<StudentProfileContent> {
                   ),
                   SizedBox(height: 8 * scale),
                   Text(
-                    '${widget.student.educationalLevel ?? 'Student'} | ${widget.student.gradeYearLevel ?? ''}',
+                    '${_student.educationalLevel ?? 'Student'} | ${_student.gradeYearLevel ?? ''}',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: _textTeal,
@@ -257,9 +291,15 @@ class _StudentProfileContentState extends State<StudentProfileContent> {
 }
 
 class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({required this.scale});
+  const _ProfileHeader({
+    required this.scale,
+    this.profilePictureUrl,
+    required this.onCameraTap,
+  });
 
   final double scale;
+  final String? profilePictureUrl;
+  final VoidCallback onCameraTap;
 
   @override
   Widget build(BuildContext context) {
@@ -325,8 +365,10 @@ class _ProfileHeader extends StatelessWidget {
                           color: Colors.white,
                           width: 4 * scale,
                         ),
-                        image: const DecorationImage(
-                          image: AssetImage('assets/images/t_racks.png'),
+                        image: DecorationImage(
+                          image: (profilePictureUrl != null
+                                  ? NetworkImage(profilePictureUrl!)
+                                  : const AssetImage('assets/images/t_racks.png')) as ImageProvider,
                           fit: BoxFit.cover,
                         ),
                         boxShadow: [
@@ -341,21 +383,24 @@ class _ProfileHeader extends StatelessWidget {
                     Positioned(
                       bottom: 4 * scale,
                       right: 4 * scale,
-                      child: Container(
-                        width: 36 * scale,
-                        height: 36 * scale,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF93C0D3),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.white,
-                            width: 2.5 * scale,
+                      child: GestureDetector(
+                        onTap: onCameraTap,
+                        child: Container(
+                          width: 36 * scale,
+                          height: 36 * scale,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF93C0D3),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white,
+                              width: 2.5 * scale,
+                            ),
                           ),
-                        ),
-                        child: Icon(
-                          Icons.camera_alt_outlined,
-                          color: Colors.white,
-                          size: 20 * scale,
+                          child: Icon(
+                            Icons.camera_alt_outlined,
+                            color: Colors.white,
+                            size: 20 * scale,
+                          ),
                         ),
                       ),
                     ),
