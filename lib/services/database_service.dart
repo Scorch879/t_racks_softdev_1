@@ -993,14 +993,6 @@ DynamicStatus getDynamicStatus(
   Color darkBlue,
   Color grey,
 ) {
-  // Attendance for today has been recorded
-  if (sClass.todaysAttendance != null) {
-    return sClass.todaysAttendance == true || sClass.todaysAttendance == 'true'
-        ? DynamicStatus('Present', green)
-        : DynamicStatus('Absent', red);
-  }
-
-  // No attendance yet, determine status based on time
   final now = DateTime.now();
   final todayWeekday = now.weekday; // Monday=1, Sunday=7
 
@@ -1028,12 +1020,23 @@ DynamicStatus getDynamicStatus(
 
     if (classStartTime == null || classEndTime == null)
       return DynamicStatus('Invalid Time', grey);
-    if (now.isBefore(classStartTime))
-      return DynamicStatus('Upcoming', darkBlue);
+
+    // If attendance is marked, check if class is over.
+    if (sClass.todaysAttendance != null) {
+      if (sClass.todaysAttendance == true || sClass.todaysAttendance == 'true') {
+        // If present, it's 'Ongoing' until it's done, then it's 'Present'.
+        return now.isAfter(classEndTime) ? DynamicStatus('Present', green) : DynamicStatus('Ongoing', green);
+      } else {
+        // If absent, it's always 'Absent'.
+        return DynamicStatus('Absent', red);
+      }
+    }
+
+    // No attendance marked, determine status by time.
+    if (now.isBefore(classStartTime)) return DynamicStatus('Upcoming', darkBlue);
     if (now.isAfter(classEndTime)) return DynamicStatus('Done', grey);
-    if (now.difference(classStartTime).inMinutes > 15)
-      return DynamicStatus('Late', orange);
-    return DynamicStatus('Ongoing', green);
+    if (now.difference(classStartTime).inMinutes > 15) return DynamicStatus('Late', orange);
+    return DynamicStatus('Ongoing', green); // Default for a class in session.
   } catch (e) {
     return DynamicStatus('Upcoming', darkBlue);
   }
@@ -1209,10 +1212,9 @@ class AttendanceService {
       // return status.text == 'Ongoing' || status.text == 'Late';
 
       // NEW CODE: Allow Present and Absent statuses so the app finds the class
-      return status.text == 'Ongoing' ||
-          status.text == 'Late' ||
-          status.text == 'Present' ||
-          status.text == 'Absent';
+           // A class is only "ongoing" if its status is currently 'Ongoing' or 'Late'.
+      // Including 'Present' or 'Absent' causes inconsistencies with the home screen display.
+      return status.text == 'Ongoing' || status.text == 'Late';
     });
   }
 }
