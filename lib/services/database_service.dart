@@ -1021,22 +1021,30 @@ DynamicStatus getDynamicStatus(
     if (classStartTime == null || classEndTime == null)
       return DynamicStatus('Invalid Time', grey);
 
-    // If attendance is marked, check if class is over.
+    // --- CORRECTED LOGIC FOR LIST VIEW ---
+    // 1. If attendance has been marked, that is the definitive status.
     if (sClass.todaysAttendance != null) {
-      if (sClass.todaysAttendance == true || sClass.todaysAttendance == 'true') {
-        // If present, it's 'Ongoing' until it's done, then it's 'Present'.
-        return now.isAfter(classEndTime) ? DynamicStatus('Present', green) : DynamicStatus('Ongoing', green);
-      } else {
-        // If absent, it's always 'Absent'.
-        return DynamicStatus('Absent', red);
-      }
+      return (sClass.todaysAttendance == true || sClass.todaysAttendance == 'true')
+          ? DynamicStatus('Present', green)
+          : DynamicStatus('Absent', red);
     }
 
-    // No attendance marked, determine status by time.
-    if (now.isBefore(classStartTime)) return DynamicStatus('Upcoming', darkBlue);
-    if (now.isAfter(classEndTime)) return DynamicStatus('Done', grey);
-    if (now.difference(classStartTime).inMinutes > 15) return DynamicStatus('Late', orange);
-    return DynamicStatus('Ongoing', green); // Default for a class in session.
+    // 2. If no attendance is marked yet, determine the live status based on time.
+    if (now.isAfter(classStartTime) && now.isBefore(classEndTime)) {
+      // Check if the current time is past the late window.
+      if (now.difference(classStartTime).inMinutes > 15) {
+        return DynamicStatus('Late', orange);
+      }
+      return DynamicStatus('Ongoing', green);
+    }
+
+    // 3. If the class is in the future.
+    if (now.isBefore(classStartTime)) {
+      return DynamicStatus('Upcoming', darkBlue);
+    }
+
+    // 4. If class is over and no attendance was ever marked, it's an absence.
+    return DynamicStatus('Absent', red);
   } catch (e) {
     return DynamicStatus('Upcoming', darkBlue);
   }
