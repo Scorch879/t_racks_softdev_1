@@ -127,15 +127,20 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
 
             // Find the first ongoing class
             StudentClass? ongoingClass;
-            for (var sClass in classes) {
-              final status = getDynamicStatus(
-                  sClass,
-                  _chipGreen, // Ongoing
-                  _statusRed, // Absent
-                  _statusOrange, // Late
-                  _cardSurface, // Upcoming
-                  Colors.grey.shade600); // Done
-              if (status.text == 'Ongoing' || status.text == 'Late') {
+            final now = DateTime.now();
+
+            for (final sClass in classes) {
+              if (sClass.time == null || !sClass.time!.contains('-')) continue;
+
+              final timeRange = sClass.time!.split('-');
+              final startTime = _parseTime(timeRange[0].trim(), now);
+              final endTime = _parseTime(timeRange[1].trim(), now);
+
+              if (startTime == null || endTime == null) continue;
+
+              // For the welcome card, a class is "ongoing" if the current time is
+              // between its start and end time, regardless of attendance status.
+              if (now.isAfter(startTime) && now.isBefore(endTime)) {
                 ongoingClass = sClass;
                 break;
               }
