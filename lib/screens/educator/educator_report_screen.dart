@@ -61,54 +61,68 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
       ),
     );
 
-        try {
-          // Permissions are no longer needed for this saving method.
-          // 1. Fetch Data
-          final reportData =
-              await _databaseService.getAttendanceForReport(selectedClass.id);
-    
-          final students = reportData['students'] as List;
-          final dates = reportData['dates'] as List;
-          final matrix = reportData['attendanceMatrix'] as Map<String, dynamic>;
-    
-          if (students.isEmpty) {
-            throw 'This class has no students to report on.';
-          }
-    
-          // 2. Create Excel File
-          final excel = Excel.createExcel();
-          final String sheetName = selectedClass.className.replaceAll(
-              RegExp(r'[^a-zA-Z0-9]'), '_'); // Sanitize sheet name
-          final Sheet sheet = excel[sheetName];
-          excel.delete(excel.getDefaultSheet()!);
-    
-          // 3. Build Header Row
-          final header = ['Student Name', ...dates];
-          sheet.appendRow(header
-              .map((e) => TextCellValue(e.toString()))
-              .toList()); // Use TextCellValue
-    
-          // 4. Build Student Rows
-          for (final student in students) {
-            final studentId = student['id'];
-            final row = [
-              TextCellValue(student['name'])
-            ]; // Use TextCellValue for name
-            for (final date in dates) {
-              final status =
-                  matrix[studentId]?[date] ?? 'N/A'; // Default to N/A
-              row.add(TextCellValue(status)); // Use TextCellValue for status
-            }
-            sheet.appendRow(row);
-          }
-    
-          // 5. Save the file
-          final Directory dir = await getApplicationDocumentsDirectory();
-    
-          final fileName =
-              '${selectedClass.className}_Attendance_${DateFormat('yyyy-MM-dd').format(DateTime.now())}.xlsx';
-          final filePath = '${dir.path}/$fileName';
-          final fileBytes = excel.save();
+    try {
+      // Permissions are no longer needed for this saving method.
+      // 1. Fetch Data
+      final reportData = await _databaseService.getAttendanceForReport(
+        selectedClass.id,
+      );
+
+      final students = reportData['students'] as List;
+      final dates = reportData['dates'] as List;
+      final matrix = reportData['attendanceMatrix'] as Map<String, dynamic>;
+
+      if (students.isEmpty) {
+        throw 'This class has no students to report on.';
+      }
+
+      // 2. Create Excel File
+      final excel = Excel.createExcel();
+      final String sheetName = selectedClass.className.replaceAll(
+        RegExp(r'[^a-zA-Z0-9]'),
+        '_',
+      ); // Sanitize sheet name
+      final Sheet sheet = excel[sheetName];
+      excel.delete(excel.getDefaultSheet()!);
+
+      // 3. Build Header Row
+      final header = ['Student Name', ...dates];
+      sheet.appendRow(
+        header.map((e) => TextCellValue(e.toString())).toList(),
+      ); // Use TextCellValue
+
+      // 4. Build Student Rows
+      for (final student in students) {
+        final studentId = student['id'];
+        final row = [
+          TextCellValue(student['name']),
+        ]; // Use TextCellValue for name
+        for (final date in dates) {
+          final status = matrix[studentId]?[date] ?? 'N/A'; // Default to N/A
+          row.add(TextCellValue(status)); // Use TextCellValue for status
+        }
+        sheet.appendRow(row);
+      }
+
+      // 5. Save the file
+      final Directory? downloadsDir = await getDownloadsDirectory();
+      if (downloadsDir == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Error: Could not access the Downloads folder.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return; // Stop if we can't get the directory
+      }
+
+      final fileName =
+          '${selectedClass.className}_Attendance_${DateFormat('yyyy-MM-dd').format(DateTime.now())}.xlsx';
+      final filePath = '${downloadsDir.path}/$fileName';
+      final fileBytes = excel.save();
+
       if (fileBytes != null) {
         final file = File(filePath);
         await file.writeAsBytes(fileBytes);
@@ -116,11 +130,18 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Report saved to $filePath'),
+              content: Text('Report saved to Downloads folder as "$fileName"'),
               backgroundColor: Colors.green,
+              action: SnackBarAction(
+                label: "OPEN",
+                textColor: Colors.white,
+                onPressed: () {
+                  OpenFile.open(filePath);
+                },
+              ),
             ),
           );
-          // 8. Open the file
+          // Open the file automatically
           OpenFile.open(filePath);
         }
       } else {
@@ -218,7 +239,10 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: _generateReport,
         backgroundColor: const Color(0xFF0F3951),
-        child: const Icon(Icons.description),
+        child: const Icon(
+          Icons.description,
+          color: Color.fromARGB(255, 255, 255, 255),
+        ),
       ),
     );
   }
