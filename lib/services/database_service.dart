@@ -148,11 +148,17 @@ class DatabaseService {
   Future<void> updateStudentData({
     required String firstName,
     required String lastName,
-    required String? institution,
+    String? institution,
+    String? profilePictureUrl,
   }) async {
     try {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) throw 'User not logged in';
+
+      // Add profilePictureUrl to the update map if it's not null
+      if (profilePictureUrl != null) {
+        await _supabase.from('profiles').update({'profile_picture_url': profilePictureUrl}).eq('id', userId);
+      }
 
       // 1. Update the 'profiles' table
       final profileUpdate = {'firstName': firstName, 'lastName': lastName};
@@ -171,6 +177,14 @@ class DatabaseService {
     }
   }
 
+  Future<void> updateProfilePicture(String url) async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) throw 'User not logged in';
+
+    await _supabase
+        .from('profiles')
+        .update({'profile_picture_url': url}).eq('id', userId);
+  }
   /// Fetches the complete data for an educator user.
   Future<Educator?> getEducatorData() async {
     try {
@@ -184,6 +198,11 @@ class DatabaseService {
           .select('*, educator_data:Educator_Table(*)')
           .eq('id', userId)
           .single();
+
+      final userEmail = _supabase.auth.currentUser?.email;
+      if (userEmail != null) {
+        data['email'] = userEmail;
+      }
 
       return Educator.fromJson(data);
     } catch (e) {
@@ -816,11 +835,17 @@ class DatabaseService {
   Future<void> updateEducatorProfile({
     required String firstName,
     required String lastName,
-    required String bio,
+    String? bio,
+    String? profilePictureUrl,
   }) async {
     try {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) throw 'User not logged in';
+
+      // Update profile picture URL if provided
+      if (profilePictureUrl != null) {
+        await _supabase.from('profiles').update({'profile_picture_url': profilePictureUrl}).eq('id', userId);
+      }
 
       // 1. Update the 'profiles' table (Always safe to update)
       await _supabase
@@ -837,11 +862,13 @@ class DatabaseService {
 
       if (existingEducator != null) {
         // CASE A: Profile exists -> UPDATE ONLY
-        // We only send 'bio' so we don't accidentally overwrite their real age with a default.
-        await _supabase
-            .from('Educator_Table')
-            .update({'bio': bio})
-            .eq('id', userId);
+        if (bio != null) {
+          // We only send 'bio' so we don't accidentally overwrite their real age with a default.
+          await _supabase
+              .from('Educator_Table')
+              .update({'bio': bio})
+              .eq('id', userId);
+        }
       } else {
         // CASE B: Profile is missing -> INSERT WITH DEFAULTS
         // We MUST provide 'age', 'institution', etc. to satisfy the "Not Null" database rules.
@@ -966,14 +993,6 @@ DynamicStatus getDynamicStatus(
   Color darkBlue,
   Color grey,
 ) {
-  // Attendance for today has been recorded
-  if (sClass.todaysAttendance != null) {
-    return sClass.todaysAttendance == true || sClass.todaysAttendance == 'true'
-        ? DynamicStatus('Present', green)
-        : DynamicStatus('Absent', red);
-  }
-
-  // No attendance yet, determine status based on time
   final now = DateTime.now();
   final todayWeekday = now.weekday; // Monday=1, Sunday=7
 
@@ -1001,12 +1020,31 @@ DynamicStatus getDynamicStatus(
 
     if (classStartTime == null || classEndTime == null)
       return DynamicStatus('Invalid Time', grey);
-    if (now.isBefore(classStartTime))
+
+    // --- CORRECTED LOGIC FOR LIST VIEW ---
+    // 1. If attendance has been marked, that is the definitive status.
+    if (sClass.todaysAttendance != null) {
+      return (sClass.todaysAttendance == true || sClass.todaysAttendance == 'true')
+          ? DynamicStatus('Present', green)
+          : DynamicStatus('Absent', red);
+    }
+
+    // 2. If no attendance is marked yet, determine the live status based on time.
+    if (now.isAfter(classStartTime) && now.isBefore(classEndTime)) {
+      // Check if the current time is past the late window.
+      if (now.difference(classStartTime).inMinutes > 15) {
+        return DynamicStatus('Late', orange);
+      }
+      return DynamicStatus('Ongoing', green);
+    }
+
+    // 3. If the class is in the future.
+    if (now.isBefore(classStartTime)) {
       return DynamicStatus('Upcoming', darkBlue);
-    if (now.isAfter(classEndTime)) return DynamicStatus('Done', grey);
-    if (now.difference(classStartTime).inMinutes > 15)
-      return DynamicStatus('Late', orange);
-    return DynamicStatus('Ongoing', green);
+    }
+
+    // 4. If class is over and no attendance was ever marked, it's an absence.
+    return DynamicStatus('Absent', red);
   } catch (e) {
     return DynamicStatus('Upcoming', darkBlue);
   }
@@ -1182,10 +1220,9 @@ class AttendanceService {
       // return status.text == 'Ongoing' || status.text == 'Late';
 
       // NEW CODE: Allow Present and Absent statuses so the app finds the class
-      return status.text == 'Ongoing' ||
-          status.text == 'Late' ||
-          status.text == 'Present' ||
-          status.text == 'Absent';
+           // A class is only "ongoing" if its status is currently 'Ongoing' or 'Late'.
+      // Including 'Present' or 'Absent' causes inconsistencies with the home screen display.
+      return status.text == 'Ongoing' || status.text == 'Late';
     });
   }
 }
