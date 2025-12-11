@@ -1,7 +1,14 @@
+import 'dart:io';
+import 'package:excel/excel.dart' hide Border;
 import 'package:flutter/material.dart';
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:t_racks_softdev_1/screens/educator/class_selection_dialog.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/models/report_model.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 
 class EducatorReportScreen extends StatefulWidget {
   const EducatorReportScreen({super.key});
@@ -11,7 +18,6 @@ class EducatorReportScreen extends StatefulWidget {
 }
 
 class _EducatorReportScreenState extends State<EducatorReportScreen> {
-  // Use the existing DatabaseService
   final DatabaseService _databaseService = DatabaseService();
 
   bool _isLoading = true;
@@ -43,10 +49,120 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
     }
   }
 
+  Future<void> _generateReport() async {
+    // 1. Show class selection dialog
+    final selectedClass = await showClassSelectionDialog(context);
+    if (selectedClass == null || !mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Generating report for ${selectedClass.className}...'),
+        backgroundColor: Colors.blue,
+      ),
+    );
+
+    try {
+      // Permissions are no longer needed for this saving method.
+      // 1. Fetch Data
+      final reportData = await _databaseService.getAttendanceForReport(
+        selectedClass.id,
+      );
+
+      final students = reportData['students'] as List;
+      final dates = reportData['dates'] as List;
+      final matrix = reportData['attendanceMatrix'] as Map<String, dynamic>;
+
+      if (students.isEmpty) {
+        throw 'This class has no students to report on.';
+      }
+
+      // 2. Create Excel File
+      final excel = Excel.createExcel();
+      final String sheetName = selectedClass.className.replaceAll(
+        RegExp(r'[^a-zA-Z0-9]'),
+        '_',
+      ); // Sanitize sheet name
+      final Sheet sheet = excel[sheetName];
+      excel.delete(excel.getDefaultSheet()!);
+
+      // 3. Build Header Row
+      final header = ['Student Name', ...dates];
+      sheet.appendRow(
+        header.map((e) => TextCellValue(e.toString())).toList(),
+      ); // Use TextCellValue
+
+      // 4. Build Student Rows
+      for (final student in students) {
+        final studentId = student['id'];
+        final row = [
+          TextCellValue(student['name']),
+        ]; // Use TextCellValue for name
+        for (final date in dates) {
+          final status = matrix[studentId]?[date] ?? 'N/A'; // Default to N/A
+          row.add(TextCellValue(status)); // Use TextCellValue for status
+        }
+        sheet.appendRow(row);
+      }
+
+      // 5. Save the file
+      final Directory? downloadsDir = await getDownloadsDirectory();
+      if (downloadsDir == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Error: Could not access the Downloads folder.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return; // Stop if we can't get the directory
+      }
+
+      final fileName =
+          '${selectedClass.className}_Attendance_${DateFormat('yyyy-MM-dd').format(DateTime.now())}.xlsx';
+      final filePath = '${downloadsDir.path}/$fileName';
+      final fileBytes = excel.save();
+
+      if (fileBytes != null) {
+        final file = File(filePath);
+        await file.writeAsBytes(fileBytes);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Report saved to Downloads folder as "$fileName"'),
+              backgroundColor: Colors.green,
+              action: SnackBarAction(
+                label: "OPEN",
+                textColor: Colors.white,
+                onPressed: () {
+                  OpenFile.open(filePath);
+                },
+              ),
+            ),
+          );
+          // Open the file automatically
+          OpenFile.open(filePath);
+        }
+      } else {
+        throw 'Failed to save Excel file.';
+      }
+    } catch (e, s) {
+      debugPrint('Error generating report: $e');
+      debugPrint('Stack trace: $s');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error generating report: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // 1. Define the Background Widget
-    // We define it once so we can use it for loading, error, and content states
     Widget buildBackground() {
       return Container(
         decoration: const BoxDecoration(
@@ -64,7 +180,7 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
         child: Opacity(
           opacity: 0.3,
           child: Image.asset(
-            'assets/images/squigglytexture.png', // Ensure this matches your asset path
+            'assets/images/squigglytexture.png',
             fit: BoxFit.cover,
             width: double.infinity,
             height: double.infinity,
@@ -73,9 +189,8 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
       );
     }
 
-    // 2. Determine the Content Widget based on state
     Widget content;
-    
+
     if (_isLoading) {
       content = const Center(
         child: CircularProgressIndicator(color: Colors.white),
@@ -90,12 +205,10 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
     } else if (_data == null) {
       content = const SizedBox();
     } else {
-      // The actual data content
       content = SingleChildScrollView(
-        // AlwaysScrollableScrollPhysics allows pull-to-refresh behavior later if needed
         physics: const AlwaysScrollableScrollPhysics(),
         child: Padding(
-          padding: const EdgeInsets.only(bottom: 30.0), // Add padding at bottom
+          padding: const EdgeInsets.only(bottom: 30.0),
           child: Column(
             children: [
               const SizedBox(height: 16),
@@ -116,21 +229,20 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
     }
 
     return Scaffold(
-
-      backgroundColor: Colors.transparent, 
+      backgroundColor: Colors.transparent,
       body: Stack(
         children: [
-          // LAYER 1: The Background (Fixed to fill screen)
           Positioned.fill(child: buildBackground()),
-
-          // LAYER 2: The Content (Scrollable)
-          Positioned.fill(
-            child: SafeArea(
-              bottom: false,
-              child: content,
-            ),
-          ),
+          Positioned.fill(child: SafeArea(bottom: false, child: content)),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _generateReport,
+        backgroundColor: const Color(0xFF0F3951),
+        child: const Icon(
+          Icons.description,
+          color: Color.fromARGB(255, 255, 255, 255),
+        ),
       ),
     );
   }
@@ -198,10 +310,7 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
     );
   }
 
-  // inside lib/educator_report_screen.dart
-
   Widget _buildAttendanceTrendsCard() {
-    // If no data, show a simple message
     if (_data?.trendData == null || _data!.trendData.isEmpty) {
       return Container(
         margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -246,7 +355,6 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
             ],
           ),
           const SizedBox(height: 24),
-          // THE GRAPH CONTAINER
           Container(
             height: 200,
             padding: const EdgeInsets.only(right: 16),
@@ -258,12 +366,10 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
                     sideTitles: SideTitles(
                       showTitles: true,
                       getTitlesWidget: (value, meta) {
-                        // Only show specific indices to avoid clutter
                         int index = value.toInt();
                         if (index < 0 || index >= _data!.trendData.length)
                           return const SizedBox();
 
-                        // Show date every few days depending on data size
                         if (index % 5 != 0 &&
                             index != _data!.trendData.length - 1)
                           return const SizedBox();
@@ -272,7 +378,7 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
                         return Padding(
                           padding: const EdgeInsets.only(top: 8.0),
                           child: Text(
-                            "${date.month}/${date.day}", // e.g. 10/27
+                            "${date.month}/${date.day}",
                             style: const TextStyle(
                               color: Colors.white70,
                               fontSize: 10,
@@ -319,15 +425,13 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
                       return FlSpot(e.key.toDouble(), e.value.percentage);
                     }).toList(),
                     isCurved: true,
-                    color: const Color(0xFF4CAF50), // Green Line
+                    color: const Color(0xFF4CAF50),
                     barWidth: 3,
                     isStrokeCapRound: true,
                     dotData: FlDotData(show: false),
                     belowBarData: BarAreaData(
                       show: true,
-                      color: const Color(
-                        0xFF4CAF50,
-                      ).withOpacity(0.2), // Gradient fill
+                      color: const Color(0xFF4CAF50).withOpacity(0.2),
                     ),
                   ),
                 ],
@@ -374,7 +478,6 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
               "No classes found",
               style: TextStyle(color: Colors.white70),
             ),
-
           ..._data!.classMetrics.map(
             (metric) => Column(
               children: [

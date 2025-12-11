@@ -43,12 +43,15 @@ dependencies:
   supabase_flutter: ^2.10.3
   flutter_dotenv: ^5.1.0
   tflite_flutter: ^0.12.1
-  image: ^4.5.4
+  image: ^4.3.0
   image_picker: ^1.0.7 # Or the latest version
   camera: ^0.11.3
   google_mlkit_face_detection: ^0.11.0
   permission_handler: ^11.3.1
   intl: ^0.20.2
+  excel: ^4.0.3
+  path_provider: ^2.0.11
+  open_file: ^3.2.1
 
 dev_dependencies:
   flutter_test:
