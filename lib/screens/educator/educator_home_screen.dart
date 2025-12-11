@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
+import 'package:t_racks_softdev_1/services/models/report_model.dart';
 
 class EducatorHomeScreen extends StatefulWidget {
   const EducatorHomeScreen({super.key});
@@ -416,22 +417,53 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
   }
 
   Widget _buildSummaryCards() {
-    // If All Classes (null) selected, show empty or aggregate stats?
-    // User requested "only show list when class selected", but cards usually show something.
-    // Let's show "0" if All Classes is selected to match your previous screenshot logic.
-
     if (selectedClass == null) {
-      return _buildSummaryGrid(
-        present: '0',
-        absent: '0',
-        rate: '0%',
-        late: '0',
+      // "All Classes" is selected. Use FutureBuilder to get dashboard data.
+      return FutureBuilder<DashboardData>(
+        future: _dbService.getEducatorDashboardData(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            // Show a loading state for the cards
+            return _buildSummaryGrid(
+              present: '...',
+              absent: '...',
+              rate: '...',
+              late: '...',
+            );
+          }
+          if (snapshot.hasError) {
+            // Handle error
+            return _buildSummaryGrid(
+              present: 'Err',
+              absent: 'Err',
+              rate: 'Err',
+              late: 'Err',
+            );
+          }
+          if (snapshot.hasData) {
+            final data = snapshot.data!;
+            return _buildSummaryGrid(
+              present: data.presentToday,
+              absent: data.absentToday,
+              rate: data.overallAttendance,
+              late: data.lateToday,
+            );
+          }
+          // Default empty state
+          return _buildSummaryGrid(
+            present: '0',
+            absent: '0',
+            rate: '0%',
+            late: '0',
+          );
+        },
       );
     }
 
     // If Class Selected, calculate from studentList
     int presentCount = studentList.where((s) => s.status == 'Present').length;
     int absentCount = studentList.where((s) => s.status == 'Absent').length;
+    int lateCount = studentList.where((s) => s.status == 'Late').length;
     int total = studentList.length;
 
     String rate = total == 0
@@ -442,7 +474,7 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
       present: '$presentCount',
       absent: '$absentCount',
       rate: rate,
-      late: '0', // Late logic needs DB support
+      late: '$lateCount', // Late logic needs DB support
     );
   }
 

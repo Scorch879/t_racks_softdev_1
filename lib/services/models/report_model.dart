@@ -1,6 +1,8 @@
 class DashboardData {
   final String overallAttendance;
   final String presentToday;
+  final String absentToday;
+  final String lateToday;
   final List<ClassMetric> classMetrics;
   final List<AttendanceAlert> alerts;
   final List<GraphPoint> trendData;
@@ -8,6 +10,8 @@ class DashboardData {
   DashboardData({
     required this.overallAttendance,
     required this.presentToday,
+    required this.absentToday,
+    required this.lateToday,
     required this.classMetrics,
     required this.alerts,
     required this.trendData,
