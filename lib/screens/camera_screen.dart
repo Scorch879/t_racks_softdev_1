@@ -31,11 +31,12 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
   // UI State
   String _statusMessage = "Align face to scan";
   Color _statusColor = Colors.white;
-  bool _isVerified = false; // Stops scanning once verified
+  bool _isVerified = false;
   bool _canScan = true;
 
-  // --- NEW: Cooldown State ---
-  DateTime? _lockoutUntil; // Timestamp when scanning can resume
+  // --- STABILITY CHECK ---
+  int _stableFrames = 0;
+  final int _requiredStableFrames = 3; // Face must be stable for ~3 checks
 
   @override
   void initState() {
@@ -78,19 +79,7 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
     int frameCount = 0;
 
     _controller!.startImageStream((CameraImage image) async {
-      // 1. Check if verified or busy
       if (_isProcessing || !_canScan || _isVerified) return;
-
-      // 2. Check Security Lockout (The Cooldown)
-      if (_lockoutUntil != null) {
-        if (DateTime.now().isBefore(_lockoutUntil!)) {
-          // Still in cooldown - Do not process
-          return;
-        } else {
-          // Cooldown over - Reset state silently
-          _lockoutUntil = null;
-        }
-      }
 
       // Process every 5th frame to save CPU
       frameCount++;
@@ -113,11 +102,10 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
 
     final List<Face> faces = await _faceDetector.processImage(inputImage);
 
-    // If no face found, reset UI (unless locked out)
+    // If no face found, reset stability
     if (faces.isEmpty) {
-      if (mounted &&
-          _statusMessage != "Align face to scan" &&
-          _lockoutUntil == null) {
+      _stableFrames = 0;
+      if (mounted && _statusMessage != "Align face to scan") {
         setState(() {
           _statusMessage = "Align face to scan";
           _statusColor = Colors.white;
@@ -126,7 +114,6 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
       return;
     }
 
-    // Find Largest Face
     Face mainFace = faces.first;
     double maxArea = 0;
     for (var face in faces) {
@@ -141,7 +128,8 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
     double faceRatio =
         mainFace.boundingBox.width / inputImage.metadata!.size.width;
     if (faceRatio < 0.15) {
-      if (mounted && _lockoutUntil == null)
+      _stableFrames = 0; // Reset if too far
+      if (mounted)
         setState(() {
           _statusMessage = "Move Closer";
           _statusColor = Colors.orange;
@@ -149,21 +137,22 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
       return;
     }
 
-    // --- Liveness Check with Cooldown ---
-    bool isReal = await _tfliteManager.checkLiveness(image);
-    if (!isReal) {
+    // --- STABILITY LOGIC ---
+    // Instead of checking for Spoof, we check for Stability.
+    // This forces the user to "Hold Still" which fixes the blurry/wrong face issue.
+    if (_stableFrames < _requiredStableFrames) {
+      _stableFrames++;
       if (mounted) {
         setState(() {
-          // Trigger Lockout
-          _lockoutUntil = DateTime.now().add(const Duration(seconds: 3));
-          _statusMessage = "⚠️ SPOOF DETECTED ⚠️\nLocked for 3s";
-          _statusColor = Colors.redAccent;
+          _statusMessage =
+              "Hold still... (${_stableFrames}/${_requiredStableFrames})";
+          _statusColor = Colors.yellowAccent;
         });
       }
-      return; // STOP here
+      return; // Not stable yet, skip verification
     }
 
-    // Verify (Only happens if real)
+    // If we reach here, face is stable. Proceed to Verify.
     await _verifyStudent(image, mainFace);
   }
 
@@ -183,7 +172,6 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
     if (!mounted) return;
 
     if (matchResult != null) {
-      // MATCH FOUND
       setState(() {
         _isVerified = true;
         _statusMessage = "Hi ${matchResult.fullName}!\nMarking attendance...";
@@ -204,11 +192,12 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
                 }
               });
 
-              // Reset after success
+              // Reset after 3 seconds
               Future.delayed(const Duration(seconds: 3), () {
                 if (mounted) {
                   setState(() {
                     _isVerified = false;
+                    _stableFrames = 0;
                     _statusMessage = "Align face to scan";
                     _statusColor = Colors.white;
                   });
@@ -227,15 +216,19 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
                 if (mounted)
                   setState(() {
                     _isVerified = false;
+                    _stableFrames = 0;
                   });
               });
             }
           });
     } else {
       // NO MATCH FOUND
-      if (mounted && _lockoutUntil == null) {
+      // Reset stability so it retries from scratch (prevents locking onto a wrong match)
+      _stableFrames = 0;
+      if (mounted) {
         setState(() {
-          _statusMessage = "Scanning...";
+          _statusMessage = "Face not recognized. Try again.";
+          _statusColor = Colors.redAccent;
         });
       }
     }
