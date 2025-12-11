@@ -42,7 +42,7 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
 
   DateTime _lastFrameTime = DateTime.now();
   bool _isProcessingFrame = false;
-  bool _shouldCaptureFrame = false;
+  bool _isCapturing = false;
 
   // UI State
   String _feedbackText = "Align Face";
@@ -88,7 +88,6 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
         _startImageStream();
       }
     } catch (e) {
-      debugPrint("Camera Init Error: $e");
       if (mounted) _updateFeedback("Camera Error", Colors.red, 0.0);
     }
   }
@@ -97,15 +96,40 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
     if (_controller == null) return;
 
     _controller!.startImageStream((CameraImage image) async {
-      // 1. Capture Logic
-      if (_shouldCaptureFrame) {
-        _shouldCaptureFrame = false;
-        await _processCapture(image);
+      // 1. CAPTURE LOGIC
+      if (_state == _RegistrationState.processing && !_isCapturing) {
+        _isCapturing = true;
+        try {
+          // Deep copy immediately to safe memory
+          final rawData = _RawImageData(
+            planes: image.planes
+                .map((p) => Uint8List.fromList(p.bytes))
+                .toList(),
+            width: image.width,
+            height: image.height,
+            yRowStride: image.planes[0].bytesPerRow,
+            uvRowStride: image.planes.length > 1
+                ? image.planes[1].bytesPerRow
+                : 0,
+            uvPixelStride: image.planes.length > 1
+                ? (image.planes[1].bytesPerPixel ?? 1)
+                : 0,
+          );
+
+          // Run save in background
+          Future.microtask(() => _handleFinalSave(rawData));
+        } catch (e) {
+          print("Copy Error: $e");
+          _isCapturing = false;
+        }
         return;
       }
 
-      // 2. Scan Logic
-      if (_state != _RegistrationState.scanning || _isProcessingFrame) return;
+      // 2. SCANNING LOGIC
+      if (_state != _RegistrationState.scanning ||
+          _isProcessingFrame ||
+          _isCapturing)
+        return;
 
       final now = DateTime.now();
       if (now.difference(_lastFrameTime).inMilliseconds < 100) return;
@@ -130,7 +154,6 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
         final double faceWidth = face.boundingBox.width;
         final double ratio = faceWidth / imageWidth;
 
-        // Validation Checks
         if (ratio < 0.20) {
           _updateFeedback("Move Closer", Colors.orangeAccent, 0.0);
           return;
@@ -145,7 +168,6 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
           return;
         }
 
-        // Generate Embedding
         List<double> vector = await _modelManager.generateFaceEmbedding(
           image,
           faceBox: face.boundingBox,
@@ -154,7 +176,6 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
         if (vector.isNotEmpty) {
           if (_state == _RegistrationState.scanning) {
             _collectedVectors.add(vector);
-
             double newProgress = _collectedVectors.length / _requiredSamples;
             _updateFeedback(
               "Scanning...",
@@ -166,7 +187,7 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
               HapticFeedback.selectionClick();
 
             if (_collectedVectors.length >= _requiredSamples) {
-              _initiateFinish();
+              _triggerProcessingState();
             }
           }
         }
@@ -178,86 +199,58 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
     });
   }
 
-  void _initiateFinish() {
-    if (_state != _RegistrationState.scanning) return;
-
-    _shouldCaptureFrame = true;
-
-    if (mounted) {
-      setState(() {
-        _state = _RegistrationState.processing;
-        _feedbackText = "Saving...";
-      });
-    }
+  void _triggerProcessingState() {
+    if (!mounted) return;
+    setState(() {
+      _state = _RegistrationState.processing;
+      _feedbackText = "Saving...";
+    });
   }
 
-  // --- Process Capture Safely ---
-  Future<void> _processCapture(CameraImage image) async {
+  Future<void> _handleFinalSave(_RawImageData rawData) async {
     try {
       HapticFeedback.mediumImpact();
 
-      // 1. Copy Image Data
-      final int width = image.width;
-      final int height = image.height;
-      final planes = image.planes
-          .map((p) => Uint8List.fromList(p.bytes))
-          .toList();
-      final yRowStride = image.planes[0].bytesPerRow;
-      final uvRowStride = image.planes.length > 1
-          ? image.planes[1].bytesPerRow
-          : 0;
-      final uvPixelStride = image.planes.length > 1
-          ? (image.planes[1].bytesPerPixel ?? 1)
-          : 0;
-
-      // 2. Stop Camera Safely
-      if (_controller != null && _controller!.value.isStreamingImages) {
-        await _controller!.stopImageStream();
-      }
-
-      // 3. Average Vectors
+      // Average Vectors
       List<double> finalVector = List.filled(512, 0.0);
-      if (_collectedVectors.isNotEmpty) {
-        for (var vec in _collectedVectors) {
-          for (int i = 0; i < 512; i++) {
-            finalVector[i] += vec[i];
-          }
-        }
-        finalVector = finalVector
-            .map((e) => e / _collectedVectors.length)
-            .toList();
-        finalVector = _l2Normalize(finalVector);
-      } else {
-        throw Exception("No face vectors collected");
-      }
+      if (_collectedVectors.isEmpty) throw Exception("No face data collected");
 
-      // 4. Encode Image in Background
+      for (var vec in _collectedVectors) {
+        for (int i = 0; i < 512; i++) {
+          finalVector[i] += vec[i];
+        }
+      }
+      finalVector = finalVector
+          .map((e) => e / _collectedVectors.length)
+          .toList();
+      finalVector = _l2Normalize(finalVector);
+
+      // Encode Image
+      final directory = await getTemporaryDirectory();
+      final String savePath =
+          '${directory.path}/profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
       final File profileImage = await compute(
         _encodeImageFromCamera,
-        _IsolateImageReq(
-          planes: planes,
-          width: width,
-          height: height,
-          yRowStride: yRowStride,
-          uvRowStride: uvRowStride,
-          uvPixelStride: uvPixelStride,
-        ),
+        _IsolateImageReq(data: rawData, savePath: savePath),
       );
 
-      // 5. Send Result
       if (mounted) {
-        setState(() => _state = _RegistrationState.done);
+        setState(() {
+          _state = _RegistrationState.done;
+          _feedbackText = "Face Captured!";
+          _statusColor = Colors.green;
+        });
         widget.onFaceCaptured(profileImage, finalVector);
       }
     } catch (e) {
-      print("Process Capture Error: $e");
+      print("Save Failed: $e");
       if (mounted) {
         _updateFeedback("Error Saving. Retrying...", Colors.red, 0.0);
-
         await Future.delayed(const Duration(seconds: 2));
         _collectedVectors.clear();
+        _isCapturing = false;
         setState(() => _state = _RegistrationState.scanning);
-        _startImageStream();
       }
     }
   }
@@ -274,68 +267,110 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
     }
   }
 
-  // --- FIXED: Variable Names Corrected Here ---
   static Future<File> _encodeImageFromCamera(_IsolateImageReq req) async {
-    img.Image image;
+    try {
+      img.Image image;
+      final data = req.data;
+      final int w = data.width;
+      final int h = data.height;
 
-    if (req.planes.length == 1) {
-      // BGRA
-      final bytes = req.planes[0];
-      image = img.Image.fromBytes(
-        width: req.width,
-        height: req.height,
-        bytes: bytes.buffer,
-        order: img.ChannelOrder.bgra,
-      );
-    } else {
-      // YUV
-      image = img.Image(width: req.width, height: req.height);
-      final yBuffer = req.planes[0];
-      final uBuffer = req.planes[1];
-      final vBuffer = req.planes[2];
+      // Smart Detection: BGRA vs YUV
+      // BGRA requires 4 bytes per pixel.
+      // If buffer is too small, it MUST be YUV (1.5 bytes per pixel)
+      bool isYUV = false;
+      if (data.planes.length == 1) {
+        if (data.planes[0].lengthInBytes < (w * h * 4)) {
+          isYUV = true;
+        }
+      } else {
+        isYUV = true; // Multiple planes is always YUV
+      }
 
-      for (int y = 0; y < req.height; y++) {
-        for (int x = 0; x < req.width; x++) {
-          final int yIndex = y * req.yRowStride + x;
-          final int uvIndex =
-              (y ~/ 2) * req.uvRowStride + (x ~/ 2) * req.uvPixelStride;
+      if (!isYUV && data.planes.length == 1) {
+        // Standard BGRA (iOS/Simulators)
+        image = img.Image.fromBytes(
+          width: w,
+          height: h,
+          bytes: data.planes[0].buffer,
+          order: img.ChannelOrder.bgra,
+        );
+      } else {
+        // YUV (Android Real Device)
+        image = img.Image(width: w, height: h);
+        final yBuffer = data.planes[0];
+        // Handle single-plane YUV (NV21) where UV follows Y
+        final Uint8List uBuffer;
+        final Uint8List vBuffer;
 
-          if (yIndex >= yBuffer.length ||
-              uvIndex >= uBuffer.length ||
-              uvIndex >= vBuffer.length)
-            continue;
+        if (data.planes.length > 1) {
+          uBuffer = data.planes[1];
+          vBuffer = data.planes[2];
+        } else {
+          // Single plane YUV: UV starts after Y (w*h)
+          uBuffer = yBuffer;
+          vBuffer = yBuffer;
+        }
 
-          final int yVal = yBuffer[yIndex];
-          final int uVal = uBuffer[uvIndex];
-          final int vVal = vBuffer[uvIndex];
+        final int yStride = data.yRowStride;
+        final int uvStride = data.uvRowStride > 0
+            ? data.uvRowStride
+            : data.yRowStride;
+        final int uvPixelStride = data.uvPixelStride > 0
+            ? data.uvPixelStride
+            : 2;
 
-          // FIXED: Used uVal and vVal correctly below
-          int r = (yVal + 1.370705 * (vVal - 128)).toInt();
-          int g = (yVal - 0.337633 * (uVal - 128) - 0.698001 * (vVal - 128))
-              .toInt();
-          int b = (yVal + 1.732446 * (uVal - 128)).toInt();
+        // Safe loop with Bounds Checking
+        for (int y = 0; y < h; y++) {
+          for (int x = 0; x < w; x++) {
+            final int yIndex = y * yStride + x;
+            final int uvRow = (y ~/ 2);
+            final int uvCol = (x ~/ 2);
+            final int uvIndexRaw = uvRow * uvStride + uvCol * uvPixelStride;
 
-          image.setPixelRgb(
-            x,
-            y,
-            r.clamp(0, 255),
-            g.clamp(0, 255),
-            b.clamp(0, 255),
-          );
+            // Adjust offset for single-plane NV21
+            final int uvBase = (data.planes.length == 1) ? (yStride * h) : 0;
+            final int uvIndex = uvBase + uvIndexRaw;
+
+            if (yIndex >= yBuffer.length) continue;
+
+            final int yVal = yBuffer[yIndex];
+
+            // Default gray if UV out of bounds
+            int uVal = 128;
+            int vVal = 128;
+
+            // NV21 is V then U. NV12 is U then V. Android often uses NV21.
+            // We check both bounds to be safe.
+            if (uvIndex < uBuffer.length - 1) {
+              // -1 because we need 2 bytes
+              vVal = vBuffer[uvIndex];
+              uVal = uBuffer[uvIndex + 1];
+            }
+
+            int r = (yVal + 1.370705 * (vVal - 128)).toInt();
+            int g = (yVal - 0.337633 * (uVal - 128) - 0.698001 * (vVal - 128))
+                .toInt();
+            int b = (yVal + 1.732446 * (uVal - 128)).toInt();
+
+            image.setPixelRgb(
+              x,
+              y,
+              r.clamp(0, 255),
+              g.clamp(0, 255),
+              b.clamp(0, 255),
+            );
+          }
         }
       }
+
+      final img.Image rotated = img.copyRotate(image, angle: -90);
+      final file = File(req.savePath);
+      await file.writeAsBytes(img.encodeJpg(rotated, quality: 85));
+      return file;
+    } catch (e) {
+      print("Encode Error: $e");
+      rethrow;
     }
-
-    // Fix Rotation
-    final img.Image rotated = img.copyRotate(image, angle: -90);
-
-    final directory = await getTemporaryDirectory();
-    final path =
-        '${directory.path}/profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
-    final file = File(path);
-    await file.writeAsBytes(img.encodeJpg(rotated, quality: 85));
-
-    return file;
   }
 
   List<double> _l2Normalize(List<double> vector) {
@@ -504,7 +539,7 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
   }
 }
 
-class _IsolateImageReq {
+class _RawImageData {
   final List<Uint8List> planes;
   final int width;
   final int height;
@@ -512,7 +547,7 @@ class _IsolateImageReq {
   final int uvRowStride;
   final int uvPixelStride;
 
-  _IsolateImageReq({
+  _RawImageData({
     required this.planes,
     required this.width,
     required this.height,
@@ -520,6 +555,13 @@ class _IsolateImageReq {
     required this.uvRowStride,
     required this.uvPixelStride,
   });
+}
+
+class _IsolateImageReq {
+  final _RawImageData data;
+  final String savePath;
+
+  _IsolateImageReq({required this.data, required this.savePath});
 }
 
 class HolePunchPainter extends CustomPainter {

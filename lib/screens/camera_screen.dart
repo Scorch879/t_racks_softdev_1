@@ -31,9 +31,8 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen>
   String _topStatus = "Scanning for students...";
   Color _scannerColor = const Color(0xFF2A7FA3); // Default Blue
   bool _isVerified = false;
-  Face? _detectedFace; // To draw bounding box
+  Face? _detectedFace;
 
-  // Animation
   late AnimationController _scanLineController;
 
   @override
@@ -58,9 +57,9 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen>
   void _initializeCamera() async {
     if (widget.cameras.isEmpty) return;
 
-    // Default to back camera for Educator scanner
+    // Use back camera for scanning students
     final camera = widget.cameras.firstWhere(
-      (c) => c.lensDirection == CameraLensDirection.back,
+      (c) => c.lensDirection == CameraLensDirection.front,
       orElse: () => widget.cameras[0],
     );
 
@@ -97,7 +96,8 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen>
             final mainFace = faces.first;
             setState(() {
               _detectedFace = mainFace;
-              _scannerColor = Colors.yellowAccent; // Face Found
+              _scannerColor =
+                  Colors.yellowAccent; // Found face, checking identity
             });
             await _verifyStudent(image, mainFace);
           } else {
@@ -117,43 +117,73 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen>
   }
 
   Future<void> _verifyStudent(CameraImage image, Face face) async {
+    // 1. Get Vector
     final vector = await _tfliteManager.generateFaceEmbedding(
       image,
       faceBox: face.boundingBox,
     );
     if (vector.isEmpty) return;
 
+    // 2. Find Match in Database
     final service = FaceRecognitionService();
     final match = await service.findMatchingStudent(vector);
 
     if (!mounted) return;
 
     if (match != null) {
-      // SUCCESS
+      // --- MATCH FOUND ---
       HapticFeedback.heavyImpact();
+
       setState(() {
         _isVerified = true;
-        _scannerColor = const Color(0xFF7FE26B); // Success Green
-        _topStatus = "Match Found!";
+        _scannerColor = const Color(0xFF7FE26B); // Green
+        _topStatus = "Identified: ${match.fullName}";
       });
 
-      // Mark Attendance
-      final className = await _attendanceService.markAttendance(
-        match.studentId,
-      );
-
-      _showSuccessSheet(match.fullName, className ?? "Checked In");
+      // 3. Try to Mark Attendance
+      try {
+        final className = await _attendanceService.markAttendance(
+          match.studentId,
+        );
+        // SUCCESS: Enrolled and Class is Ongoing
+        _showSuccessSheet(
+          name: match.fullName,
+          status: "Present: $className",
+          isSuccess: true,
+        );
+      } catch (e) {
+        // ERROR: Identified, but not in a class (or other error)
+        print("Attendance Logic: $e");
+        _showSuccessSheet(
+          name: match.fullName,
+          status: "Not in any class right now.",
+          isSuccess: false, // Shows orange warning instead of green check
+        );
+      }
     } else {
-      // NO MATCH
+      // --- UNKNOWN FACE ---
       if (mounted)
         setState(() {
-          _scannerColor = const Color(0xFFDA6A6A); // Error Red
+          _scannerColor = const Color(0xFFDA6A6A); // Red
+          _topStatus = "Unknown Face";
         });
     }
   }
 
-  // --- Show Bottom Sheet on Success ---
-  void _showSuccessSheet(String name, String status) {
+  // --- Updated Success/Info Sheet ---
+  void _showSuccessSheet({
+    required String name,
+    required String status,
+    required bool isSuccess,
+  }) {
+    // Determine colors based on result
+    final Color mainColor = isSuccess
+        ? const Color(0xFF7FE26B)
+        : Colors.orangeAccent;
+    final IconData icon = isSuccess
+        ? Icons.check_circle
+        : Icons.warning_amber_rounded;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -165,12 +195,12 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen>
         decoration: BoxDecoration(
           color: const Color(0xFF133A53),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFF7FE26B), width: 2),
+          border: Border.all(color: mainColor, width: 2),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.check_circle, color: Color(0xFF7FE26B), size: 50),
+            Icon(icon, color: mainColor, size: 50),
             const SizedBox(height: 16),
             Text(
               name,
@@ -179,17 +209,23 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen>
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
               ),
+              textAlign: TextAlign.center,
             ),
+            const SizedBox(height: 8),
             Text(
               status,
-              style: const TextStyle(color: Colors.white70, fontSize: 16),
+              style: TextStyle(
+                color: isSuccess ? Colors.white70 : Colors.orange[200],
+                fontSize: 16,
+              ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF7FE26B),
+                  backgroundColor: mainColor,
                   foregroundColor: Colors.black,
                 ),
                 onPressed: () {
@@ -214,10 +250,7 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen>
     final camera = _controller!.description;
     final sensorOrientation = camera.sensorOrientation;
     final rotation = InputImageRotationValue.fromRawValue(
-      Platform.isAndroid
-          ? (sensorOrientation + 0) %
-                360 // Adjusted for back camera usually
-          : sensorOrientation,
+      Platform.isAndroid ? (sensorOrientation + 0) % 360 : sensorOrientation,
     );
     if (rotation == null) return null;
     final format = InputImageFormatValue.fromRawValue(image.format.raw);
@@ -273,7 +306,7 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen>
             ),
           ),
 
-          // 2. Scanner Overlay (Scanner lines, corners)
+          // 2. Scanner Overlay
           CustomPaint(
             painter: ScannerOverlayPainter(
               color: _scannerColor,
@@ -313,11 +346,14 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen>
                       ),
                     ),
                     const SizedBox(width: 10),
-                    Text(
-                      _topStatus,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
+                    Flexible(
+                      child: Text(
+                        _topStatus,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -366,15 +402,12 @@ class ScannerOverlayPainter extends CustomPainter {
     final rect = Rect.fromLTRB(margin, h / 4, w - margin, h / 1.5);
 
     // Draw Corners
-    // Top Left
     canvas.drawLine(rect.topLeft, rect.topLeft + Offset(cornerLen, 0), paint);
     canvas.drawLine(rect.topLeft, rect.topLeft + Offset(0, cornerLen), paint);
 
-    // Top Right
     canvas.drawLine(rect.topRight, rect.topRight - Offset(cornerLen, 0), paint);
     canvas.drawLine(rect.topRight, rect.topRight + Offset(0, cornerLen), paint);
 
-    // Bottom Left
     canvas.drawLine(
       rect.bottomLeft,
       rect.bottomLeft + Offset(cornerLen, 0),
@@ -386,7 +419,6 @@ class ScannerOverlayPainter extends CustomPainter {
       paint,
     );
 
-    // Bottom Right
     canvas.drawLine(
       rect.bottomRight,
       rect.bottomRight - Offset(cornerLen, 0),
