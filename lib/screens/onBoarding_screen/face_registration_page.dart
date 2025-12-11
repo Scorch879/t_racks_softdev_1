@@ -1,9 +1,15 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
+import 'dart:ui';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:image/image.dart' as img;
 import 'package:t_racks_softdev_1/services/tflite_service.dart' as tflite;
 
 class FaceRegistrationPage extends StatefulWidget {
@@ -31,165 +37,185 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
 
   bool _isCameraInitialized = false;
   _RegistrationState _state = _RegistrationState.scanning;
-
-  // Data Collection
   List<List<double>> _collectedVectors = [];
-  final int _requiredSamples = 20;
+  final int _requiredSamples = 10;
 
-  // Processing Throttling
   DateTime _lastFrameTime = DateTime.now();
-  final int _processingIntervalMs = 50;
+  bool _isProcessingFrame = false;
+  bool _shouldCaptureFrame = false;
 
   // UI State
   String _feedbackText = "Align Face";
-  Color _ringColor = Colors.white;
+  Color _statusColor = Colors.white;
   double _progress = 0.0;
-  bool _isTooFar = false;
-  bool _isTooClose = false;
 
-  // Animations
-  late AnimationController _pulseController;
+  late AnimationController _progressController;
 
   @override
   void initState() {
     super.initState();
-    _initializeCameraAndModels();
-
-    _pulseController = AnimationController(
+    _progressController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    )..repeat(reverse: true);
+      duration: const Duration(milliseconds: 300),
+    );
+    _initializeCameraAndModels();
   }
 
   Future<void> _initializeCameraAndModels() async {
-    // It's more efficient to load models and initialize the camera in parallel.
     await _modelManager.loadModels();
-    
-    final cameras = await availableCameras();
-    final frontCamera = cameras.firstWhere(
-      (c) => c.lensDirection == CameraLensDirection.front,
-      orElse: () => cameras.first,
-    );
 
-    _controller = CameraController(
-      frontCamera,
-      ResolutionPreset.medium,
-      enableAudio: false,
-      imageFormatGroup: Platform.isAndroid
-          ? ImageFormatGroup.nv21
-          : ImageFormatGroup.bgra8888,
-    );
+    try {
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) throw Exception("No cameras found");
 
-    await _controller!.initialize();
-    if (mounted) {
-      setState(() => _isCameraInitialized = true);
-      _startImageStream();
+      final frontCamera = cameras.firstWhere(
+        (c) => c.lensDirection == CameraLensDirection.front,
+        orElse: () => cameras.first,
+      );
+
+      _controller = CameraController(
+        frontCamera,
+        ResolutionPreset.medium,
+        enableAudio: false,
+        imageFormatGroup: Platform.isAndroid
+            ? ImageFormatGroup.nv21
+            : ImageFormatGroup.bgra8888,
+      );
+
+      await _controller!.initialize();
+      if (mounted) {
+        setState(() => _isCameraInitialized = true);
+        _startImageStream();
+      }
+    } catch (e) {
+      debugPrint("Camera Init Error: $e");
+      if (mounted) _updateFeedback("Camera Error", Colors.red, 0.0);
     }
   }
 
   void _startImageStream() {
-    debugPrint("Starting image stream...");
+    if (_controller == null) return;
+
     _controller!.startImageStream((CameraImage image) async {
-      if (_state != _RegistrationState.scanning) {
-        // debugPrint("Skipping frame, state is not scanning.");
+      // 1. Capture Logic
+      if (_shouldCaptureFrame) {
+        _shouldCaptureFrame = false;
+        await _processCapture(image);
         return;
       }
 
+      // 2. Scan Logic
+      if (_state != _RegistrationState.scanning || _isProcessingFrame) return;
+
       final now = DateTime.now();
-      if (now.difference(_lastFrameTime).inMilliseconds <
-          _processingIntervalMs) {
-        return;
-      }
+      if (now.difference(_lastFrameTime).inMilliseconds < 100) return;
       _lastFrameTime = now;
+
+      _isProcessingFrame = true;
 
       try {
         final inputImage = _inputImageFromCameraImage(image);
         if (inputImage == null) return;
 
         final faces = await _faceDetector.processImage(inputImage);
-
         if (!mounted) return;
 
         if (faces.isEmpty) {
-          if (_collectedVectors.isNotEmpty) {
-            debugPrint("Face lost, clearing ${_collectedVectors.length} vectors.");
-            _collectedVectors.clear();
-          }
-          _updateFeedback("Face Lost - Resetting...", Colors.redAccent, 0.0);
+          _updateFeedback("Position Face in Circle", Colors.white, 0.0);
           return;
         }
 
         final Face face = faces.first;
-
         final double imageWidth = inputImage.metadata!.size.width;
         final double faceWidth = face.boundingBox.width;
         final double ratio = faceWidth / imageWidth;
 
-        if (ratio < 0.20 || ratio > 0.70) {
-          _collectedVectors.clear();
-          _updateFeedback(
-              ratio < 0.20 ? "Move Closer" : "Move Back", Colors.orangeAccent, 0.0);
+        // Validation Checks
+        if (ratio < 0.20) {
+          _updateFeedback("Move Closer", Colors.orangeAccent, 0.0);
           return;
         }
-        if ((face.headEulerAngleY ?? 0).abs() > 12 ||
-            (face.headEulerAngleZ ?? 0).abs() > 12) {
-          _collectedVectors.clear();
+        if (ratio > 0.80) {
+          _updateFeedback("Move Back", Colors.orangeAccent, 0.0);
+          return;
+        }
+        if ((face.headEulerAngleY ?? 0).abs() > 25 ||
+            (face.headEulerAngleZ ?? 0).abs() > 25) {
           _updateFeedback("Look Straight", Colors.yellowAccent, 0.0);
           return;
         }
 
-        List<double> vector = List<double>.from(
-          await _modelManager.generateFaceEmbedding(
-            image,
-            faceBox: face.boundingBox,
-          ),
+        // Generate Embedding
+        List<double> vector = await _modelManager.generateFaceEmbedding(
+          image,
+          faceBox: face.boundingBox,
         );
 
-        if (vector.isNotEmpty && _state == _RegistrationState.scanning) {
-          _collectedVectors.add(vector);
-          debugPrint("Collected vector #${_collectedVectors.length}");
+        if (vector.isNotEmpty) {
+          if (_state == _RegistrationState.scanning) {
+            _collectedVectors.add(vector);
 
-          double newProgress = _collectedVectors.length / _requiredSamples;
-          _updateFeedback("Hold still...", Colors.greenAccent, newProgress);
+            double newProgress = _collectedVectors.length / _requiredSamples;
+            _updateFeedback(
+              "Scanning...",
+              const Color(0xFF4DBD88),
+              newProgress,
+            );
 
-          if (_collectedVectors.length >= _requiredSamples) {
-            debugPrint("--> Attempting to finish registration...");
-            _finishRegistration();
+            if (_collectedVectors.length % 2 == 0)
+              HapticFeedback.selectionClick();
+
+            if (_collectedVectors.length >= _requiredSamples) {
+              _initiateFinish();
+            }
           }
-        } else {
-          debugPrint("Skipping vector: (isNotEmpty: ${vector.isNotEmpty}, state: $_state)");
         }
       } catch (e) {
-        debugPrint("Error in image stream: $e");
+        debugPrint("Stream Error: $e");
+      } finally {
+        _isProcessingFrame = false;
       }
     });
   }
 
-  void _updateFeedback(String text, Color color, double progress) {
-    if (!mounted) return;
-    if (_feedbackText != text || _ringColor != color || _progress != progress) {
+  void _initiateFinish() {
+    if (_state != _RegistrationState.scanning) return;
+
+    _shouldCaptureFrame = true;
+
+    if (mounted) {
       setState(() {
-        _feedbackText = text;
-        _ringColor = color;
-        _progress = progress.clamp(0.0, 1.0);
+        _state = _RegistrationState.processing;
+        _feedbackText = "Saving...";
       });
     }
   }
 
-  void _finishRegistration() async {
-    debugPrint("==> _finishRegistration called. Current state: $_state");
-    if (_state != _RegistrationState.scanning) return;
-    
-    debugPrint("State transition: scanning -> processing");
-    _state = _RegistrationState.processing;
-    
-    _updateFeedback("Processing...", Colors.green, 1.0);
-
+  // --- Process Capture Safely ---
+  Future<void> _processCapture(CameraImage image) async {
     try {
-      // It's often better to NOT stop the stream manually before taking a picture,
-      // as the controller should handle pausing it. Stopping it can lead to race conditions.
-      // await _controller!.stopImageStream(); 
-      
+      HapticFeedback.mediumImpact();
+
+      // 1. Copy Image Data
+      final int width = image.width;
+      final int height = image.height;
+      final planes = image.planes
+          .map((p) => Uint8List.fromList(p.bytes))
+          .toList();
+      final yRowStride = image.planes[0].bytesPerRow;
+      final uvRowStride = image.planes.length > 1
+          ? image.planes[1].bytesPerRow
+          : 0;
+      final uvPixelStride = image.planes.length > 1
+          ? (image.planes[1].bytesPerPixel ?? 1)
+          : 0;
+
+      // 2. Stop Camera Safely
+      if (_controller != null && _controller!.value.isStreamingImages) {
+        await _controller!.stopImageStream();
+      }
+
+      // 3. Average Vectors
       List<double> finalVector = List.filled(512, 0.0);
       if (_collectedVectors.isNotEmpty) {
         for (var vec in _collectedVectors) {
@@ -201,28 +227,115 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
             .map((e) => e / _collectedVectors.length)
             .toList();
         finalVector = _l2Normalize(finalVector);
-        debugPrint("Calculated average vector.");
+      } else {
+        throw Exception("No face vectors collected");
       }
 
-      // A short delay can still be helpful for the camera to finalize focus.
-      await Future.delayed(const Duration(milliseconds: 400));
-      
-      debugPrint("Taking picture...");
-      final XFile file = await _controller!.takePicture();
-      debugPrint("Picture taken at ${file.path}");
-      
-      debugPrint("State transition: processing -> done");
-      _state = _RegistrationState.done;
+      // 4. Encode Image in Background
+      final File profileImage = await compute(
+        _encodeImageFromCamera,
+        _IsolateImageReq(
+          planes: planes,
+          width: width,
+          height: height,
+          yRowStride: yRowStride,
+          uvRowStride: uvRowStride,
+          uvPixelStride: uvPixelStride,
+        ),
+      );
 
+      // 5. Send Result
       if (mounted) {
-        widget.onFaceCaptured(File(file.path), finalVector);
+        setState(() => _state = _RegistrationState.done);
+        widget.onFaceCaptured(profileImage, finalVector);
       }
     } catch (e) {
-      debugPrint("Error during registration finalization: $e");
+      print("Process Capture Error: $e");
       if (mounted) {
-        _updateFeedback("Error", Colors.red, _progress);
+        _updateFeedback("Error Saving. Retrying...", Colors.red, 0.0);
+
+        await Future.delayed(const Duration(seconds: 2));
+        _collectedVectors.clear();
+        setState(() => _state = _RegistrationState.scanning);
+        _startImageStream();
       }
     }
+  }
+
+  void _updateFeedback(String text, Color color, double progress) {
+    if (!mounted) return;
+    if (_feedbackText != text || (_progress - progress).abs() > 0.01) {
+      setState(() {
+        _feedbackText = text;
+        _statusColor = color;
+        _progress = progress.clamp(0.0, 1.0);
+      });
+      _progressController.animateTo(progress);
+    }
+  }
+
+  // --- FIXED: Variable Names Corrected Here ---
+  static Future<File> _encodeImageFromCamera(_IsolateImageReq req) async {
+    img.Image image;
+
+    if (req.planes.length == 1) {
+      // BGRA
+      final bytes = req.planes[0];
+      image = img.Image.fromBytes(
+        width: req.width,
+        height: req.height,
+        bytes: bytes.buffer,
+        order: img.ChannelOrder.bgra,
+      );
+    } else {
+      // YUV
+      image = img.Image(width: req.width, height: req.height);
+      final yBuffer = req.planes[0];
+      final uBuffer = req.planes[1];
+      final vBuffer = req.planes[2];
+
+      for (int y = 0; y < req.height; y++) {
+        for (int x = 0; x < req.width; x++) {
+          final int yIndex = y * req.yRowStride + x;
+          final int uvIndex =
+              (y ~/ 2) * req.uvRowStride + (x ~/ 2) * req.uvPixelStride;
+
+          if (yIndex >= yBuffer.length ||
+              uvIndex >= uBuffer.length ||
+              uvIndex >= vBuffer.length)
+            continue;
+
+          final int yVal = yBuffer[yIndex];
+          final int uVal = uBuffer[uvIndex];
+          final int vVal = vBuffer[uvIndex];
+
+          // FIXED: Used uVal and vVal correctly below
+          int r = (yVal + 1.370705 * (vVal - 128)).toInt();
+          int g = (yVal - 0.337633 * (uVal - 128) - 0.698001 * (vVal - 128))
+              .toInt();
+          int b = (yVal + 1.732446 * (uVal - 128)).toInt();
+
+          image.setPixelRgb(
+            x,
+            y,
+            r.clamp(0, 255),
+            g.clamp(0, 255),
+            b.clamp(0, 255),
+          );
+        }
+      }
+    }
+
+    // Fix Rotation
+    final img.Image rotated = img.copyRotate(image, angle: -90);
+
+    final directory = await getTemporaryDirectory();
+    final path =
+        '${directory.path}/profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final file = File(path);
+    await file.writeAsBytes(img.encodeJpg(rotated, quality: 85));
+
+    return file;
   }
 
   List<double> _l2Normalize(List<double> vector) {
@@ -234,6 +347,8 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
   }
 
   InputImage? _inputImageFromCameraImage(CameraImage image) {
+    if (_controller == null) return null;
+
     final camera = _controller!.description;
     final sensorOrientation = camera.sensorOrientation;
     final rotation = InputImageRotationValue.fromRawValue(
@@ -242,6 +357,9 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
     if (rotation == null) return null;
     final format = InputImageFormatValue.fromRawValue(image.format.raw);
     if (format == null) return null;
+
+    if (image.planes.isEmpty) return null;
+
     final plane = image.planes.first;
     return InputImage.fromBytes(
       bytes: Uint8List.fromList(
@@ -258,9 +376,9 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
 
   @override
   void dispose() {
-    _controller?.dispose();
     _faceDetector.close();
-    _pulseController.dispose();
+    _controller?.dispose();
+    _progressController.dispose();
     super.dispose();
   }
 
@@ -274,6 +392,7 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
     }
 
     final size = MediaQuery.of(context).size;
+    final double holeRadius = size.width * 0.38;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -292,114 +411,170 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
               ),
             ),
           ),
-          AnimatedBuilder(
-            animation: _pulseController,
-            builder: (context, child) {
-              return CustomPaint(
-                painter: FaceOverlayPainter(
-                  holeRadius: size.width * 0.35,
-                  progress: _progress,
-                  ringColor: _ringColor,
-                  pulse: _pulseController.value,
-                  isError: _isTooFar || _isTooClose,
-                ),
-                child: Container(),
-              );
-            },
+
+          CustomPaint(
+            painter: HolePunchPainter(holeRadius: holeRadius),
+            child: Container(),
           ),
+
+          Center(
+            child: SizedBox(
+              width: holeRadius * 2 + 20,
+              height: holeRadius * 2 + 20,
+              child: AnimatedBuilder(
+                animation: _progressController,
+                builder: (context, child) {
+                  return CustomPaint(
+                    painter: ProgressRingPainter(
+                      progress: _progressController.value,
+                      color: _statusColor,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+
           Positioned(
-            bottom: 100,
+            bottom: 120,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: _statusColor == Colors.white
+                      ? Colors.black54
+                      : _statusColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(
+                    color: _statusColor == Colors.white
+                        ? Colors.white30
+                        : _statusColor,
+                    width: 1.5,
+                  ),
+                ),
+                child: Text(
+                  _feedbackText,
+                  style: TextStyle(
+                    color: _statusColor == Colors.white
+                        ? Colors.white
+                        : _statusColor,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          Positioned(
+            top: 60,
             left: 0,
             right: 0,
             child: Column(
               children: [
                 Text(
-                  _feedbackText.toUpperCase(),
-                  textAlign: TextAlign.center,
+                  "Face Registration",
                   style: TextStyle(
-                    color: _ringColor,
-                    fontSize: 24,
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 22,
                     fontWeight: FontWeight.bold,
-                    shadows: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.8),
-                        blurRadius: 8,
-                        spreadRadius: 4,
-                      ),
-                    ],
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  "Align face within circle",
-                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                Text(
+                  "Hold camera eye level & look straight",
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.6),
+                    fontSize: 14,
+                  ),
                 ),
               ],
             ),
           ),
-
-          // --- BACK BUTTON (Commented out based on your request) ---
-          /*
-          Positioned(
-            top: 50, left: 20,
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ),
-          */
         ],
       ),
     );
   }
 }
 
-class FaceOverlayPainter extends CustomPainter {
-  final double holeRadius;
-  final double progress;
-  final Color ringColor;
-  final double pulse;
-  final bool isError;
+class _IsolateImageReq {
+  final List<Uint8List> planes;
+  final int width;
+  final int height;
+  final int yRowStride;
+  final int uvRowStride;
+  final int uvPixelStride;
 
-  FaceOverlayPainter({
-    required this.holeRadius,
-    required this.progress,
-    required this.ringColor,
-    required this.pulse,
-    required this.isError,
+  _IsolateImageReq({
+    required this.planes,
+    required this.width,
+    required this.height,
+    required this.yRowStride,
+    required this.uvRowStride,
+    required this.uvPixelStride,
   });
+}
+
+class HolePunchPainter extends CustomPainter {
+  final double holeRadius;
+  HolePunchPainter({required this.holeRadius});
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final path = Path()..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
-    double effectiveRadius = holeRadius + (isError ? (pulse * 10) : 0);
+    final bgPath = Path()
+      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
     final holePath = Path()
-      ..addOval(Rect.fromCircle(center: center, radius: effectiveRadius));
-    final overlayPath = Path.combine(PathOperation.difference, path, holePath);
+      ..addOval(Rect.fromCircle(center: center, radius: holeRadius));
+    final path = Path.combine(PathOperation.difference, bgPath, holePath);
+    canvas.drawPath(path, Paint()..color = Colors.black.withOpacity(0.85));
+  }
 
-    canvas.drawPath(
-      overlayPath,
-      Paint()
-        ..color = Colors.black.withOpacity(0.65)
-        ..style = PaintingStyle.fill,
-    );
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
 
-    final ringPaint = Paint()
+class ProgressRingPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+
+  ProgressRingPainter({required this.progress, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+
+    final trackPaint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 6.0
+      ..strokeWidth = 4
+      ..color = Colors.white.withOpacity(0.1);
+    canvas.drawArc(rect, 0, math.pi * 2, false, trackPaint);
+
+    final progressPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6
       ..strokeCap = StrokeCap.round
-      ..color = ringColor;
+      ..color = color;
 
     canvas.drawArc(
-      Rect.fromCircle(center: center, radius: effectiveRadius),
+      rect,
       -math.pi / 2,
-      2 * math.pi * progress,
+      math.pi * 2 * progress,
       false,
-      ringPaint,
+      progressPaint,
     );
   }
 
   @override
-  bool shouldRepaint(covariant FaceOverlayPainter oldDelegate) => true;
+  bool shouldRepaint(ProgressRingPainter old) =>
+      old.progress != progress || old.color != color;
 }
