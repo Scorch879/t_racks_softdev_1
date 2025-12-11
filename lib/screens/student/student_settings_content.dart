@@ -29,7 +29,9 @@ class _StudentSettingsContentState extends State<StudentSettingsContent> {
     );
   }
 
-  void onAccountSettingsPressed() {}
+  void onAccountSettingsPressed() {
+    showAccountSettingsDialog(context);
+  }
 
   void onDeleteAccountPressed() {}
 

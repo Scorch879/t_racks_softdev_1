@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
 import 'package:t_racks_softdev_1/screens/student/student_home_screen.dart';
 
 const _bgTeal = Color(0xFF167C94);
@@ -21,9 +22,11 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen> {
 
   void onProfileSettingsPressed() {}
 
-  void onAccountSettingsPressed() {}
+  void onAccountSettingsPressed() {
+    showAccountSettingsDialog(context);
+  }
 
-  void onDeleteAccountPressed() {}
+
 
   void onNotificationsPressed() => _showNotifications(full: false);
 
@@ -161,7 +164,6 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen> {
                             radius: cardRadius,
                             onProfileSettingsPressed: onProfileSettingsPressed,
                             onAccountSettingsPressed: onAccountSettingsPressed,
-                            onDeleteAccountPressed: onDeleteAccountPressed,
                           ),
                         ],
                       ),
@@ -190,13 +192,11 @@ class _SettingsCard extends StatefulWidget {
     required this.radius,
     required this.onProfileSettingsPressed,
     required this.onAccountSettingsPressed,
-    required this.onDeleteAccountPressed,
   });
   final double scale;
   final double radius;
   final VoidCallback onProfileSettingsPressed;
   final VoidCallback onAccountSettingsPressed;
-  final VoidCallback onDeleteAccountPressed;
 
   @override
   State<_SettingsCard> createState() => _SettingsCardState();
@@ -245,14 +245,6 @@ class _SettingsCardState extends State<_SettingsCard> {
               color: _chipGreen,
               scale: scale,
               onTap: widget.onAccountSettingsPressed,
-            ),
-            SizedBox(height: 14 * scale),
-            _SettingsPill(
-              label: 'Delete Account',
-              icon: Icons.person_off,
-              color: _statusRed,
-              scale: scale,
-              onTap: widget.onDeleteAccountPressed,
             ),
           ],
         ),

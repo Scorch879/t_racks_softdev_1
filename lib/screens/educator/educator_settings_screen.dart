@@ -78,7 +78,9 @@ class _EducatorSettingsScreenState extends State<EducatorSettingsScreen> {
                           ),
                         );
                       },
-                      onAccountSettingsPressed: () {},
+                      onAccountSettingsPressed: () {
+                        showAccountSettingsDialog(context);
+                      },
                       onLogoutPressed: _handleLogout,
                     ),
                   ],
