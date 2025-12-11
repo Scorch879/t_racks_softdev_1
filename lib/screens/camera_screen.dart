@@ -32,7 +32,10 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
   String _statusMessage = "Align face to scan";
   Color _statusColor = Colors.white;
   bool _isVerified = false; // Stops scanning once verified
-  bool _canScan = true; // Debounce for failed scans
+  bool _canScan = true;
+
+  // --- NEW: Cooldown State ---
+  DateTime? _lockoutUntil; // Timestamp when scanning can resume
 
   @override
   void initState() {
@@ -75,8 +78,19 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
     int frameCount = 0;
 
     _controller!.startImageStream((CameraImage image) async {
-      // Skip frames if busy, verified, or cooling down
+      // 1. Check if verified or busy
       if (_isProcessing || !_canScan || _isVerified) return;
+
+      // 2. Check Security Lockout (The Cooldown)
+      if (_lockoutUntil != null) {
+        if (DateTime.now().isBefore(_lockoutUntil!)) {
+          // Still in cooldown - Do not process
+          return;
+        } else {
+          // Cooldown over - Reset state silently
+          _lockoutUntil = null;
+        }
+      }
 
       // Process every 5th frame to save CPU
       frameCount++;
@@ -99,8 +113,11 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
 
     final List<Face> faces = await _faceDetector.processImage(inputImage);
 
+    // If no face found, reset UI (unless locked out)
     if (faces.isEmpty) {
-      if (mounted && _statusMessage != "Align face to scan") {
+      if (mounted &&
+          _statusMessage != "Align face to scan" &&
+          _lockoutUntil == null) {
         setState(() {
           _statusMessage = "Align face to scan";
           _statusColor = Colors.white;
@@ -124,7 +141,7 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
     double faceRatio =
         mainFace.boundingBox.width / inputImage.metadata!.size.width;
     if (faceRatio < 0.15) {
-      if (mounted)
+      if (mounted && _lockoutUntil == null)
         setState(() {
           _statusMessage = "Move Closer";
           _statusColor = Colors.orange;
@@ -132,21 +149,21 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
       return;
     }
 
-    // --- NEW: Liveness Check ---
-    // We check if the face is real before processing identification
+    // --- Liveness Check with Cooldown ---
     bool isReal = await _tfliteManager.checkLiveness(image);
     if (!isReal) {
       if (mounted) {
         setState(() {
-          _statusMessage = "⚠️ SPOOF DETECTED ⚠️\nReal face required";
+          // Trigger Lockout
+          _lockoutUntil = DateTime.now().add(const Duration(seconds: 3));
+          _statusMessage = "⚠️ SPOOF DETECTED ⚠️\nLocked for 3s";
           _statusColor = Colors.redAccent;
         });
       }
-      // Stop here if fake
-      return;
+      return; // STOP here
     }
 
-    // Verify
+    // Verify (Only happens if real)
     await _verifyStudent(image, mainFace);
   }
 
@@ -173,7 +190,6 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
         _statusColor = Colors.blueAccent;
       });
 
-      // Mark Attendance with catchError
       _attendanceService
           .markAttendance(matchResult.studentId)
           .then((className) {
@@ -187,7 +203,8 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
                   _statusColor = Colors.green;
                 }
               });
-              // Reset
+
+              // Reset after success
               Future.delayed(const Duration(seconds: 3), () {
                 if (mounted) {
                   setState(() {
@@ -215,11 +232,12 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
             }
           });
     } else {
-      // NO MATCH FOUND - Debounce to avoid flickering error
-      setState(() {
-        _statusMessage = "Scanning..."; // Neutral message while searching
-        // Or "Unknown Face" if you want strict feedback
-      });
+      // NO MATCH FOUND
+      if (mounted && _lockoutUntil == null) {
+        setState(() {
+          _statusMessage = "Scanning...";
+        });
+      }
     }
   }
 
