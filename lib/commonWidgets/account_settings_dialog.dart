@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:t_racks_softdev_1/commonWidgets/show_snackbar.dart';
+import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/auth_service.dart';
 
@@ -56,7 +56,9 @@ class AccountSettingsDialog extends StatelessWidget {
                     onPressed: () {
                       Navigator.of(context).pop();
                       showCustomSnackBar(
-                          context, 'Change Password is not implemented yet.');
+                        context,
+                        'Change Password is not implemented yet.',
+                      );
                     },
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Color(0xFFBFD5E3)),
@@ -80,24 +82,37 @@ class AccountSettingsDialog extends StatelessWidget {
                   height: 52,
                   child: OutlinedButton(
                     onPressed: () async {
-                      try {
-                        await AccountServices().deleteProfile();
-                        await AuthService().logoutAndNavigateToLogin(context);
-                        showCustomSnackBar(
-                            context, 'Profile deleted successfully.');
-                      } catch (e) {
-                        showCustomSnackBar(context, 'Error deleting profile: $e');
+                      final confirmed =
+                          await showDeleteAccountConfirmationDialog(context);
+                      if (confirmed) {
+                        try {
+                          // Note: This only deletes the profile from the database, not the auth user.
+                          // A Supabase Edge Function is required to delete the auth user.
+                          await AccountServices().deleteProfile();
+                          await AuthService().logoutAndNavigateToLogin(context);
+                          showCustomSnackBar(
+                            context,
+                            'Profile deleted successfully.',
+                          );
+                        } catch (e) {
+                          showCustomSnackBar(
+                            context,
+                            'Error deleting profile: $e',
+                          );
+                        }
                       }
                     },
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFFE53935)), // Red border
+                      side: const BorderSide(
+                        color: Color(0xFFE53935),
+                      ), // Red border
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
                       foregroundColor: const Color(0xFFE53935), // Red text
                     ),
                     child: const Text(
-                      'Delete Account',
+                      'Delete Profile',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
