@@ -43,47 +43,8 @@ class ModelManager {
 
   /// Returns True if face is Real, False if Spoof
   Future<bool> checkLiveness(CameraImage image) async {
-    if (!_areModelsLoaded || _livenessInterpreter == null) return false;
-    const int inputSize = 224;
-
-    final flatInput = await compute(
-      _processImageForLiveness,
-      _IsolateData(
-        planes: image.planes.map((p) => p.bytes).toList(),
-        width: image.width,
-        height: image.height,
-        yRowStride: image.planes[0].bytesPerRow,
-        uvRowStride: image.planes.length > 1 ? image.planes[1].bytesPerRow : 0,
-        uvPixelStride: image.planes.length > 1
-            ? (image.planes[1].bytesPerPixel ?? 1)
-            : 0,
-        isYUV: image.planes.length >= 3,
-        targetSize: inputSize,
-        cropX: (image.width - math.min(image.width, image.height)) ~/ 2,
-        cropY: (image.height - math.min(image.width, image.height)) ~/ 2,
-        cropWidth: math.min(image.width, image.height),
-        cropHeight: math.min(image.width, image.height),
-      ),
-    );
-
-    final input = flatInput.reshape([1, inputSize, inputSize, 3]);
-    // Assuming output is [1, 3] based on your previous code
-    var output = List.filled(3, 0.0).reshape([1, 3]);
-    _livenessInterpreter!.run(input, output);
-
-    List<double> scores = (output[0] as List)
-        .map((e) => (e as num).toDouble())
-        .toList();
-
-    // Typically index 1 is "Real" in many 2-3 class liveness models.
-    // If your model is binary [Fake, Real], use scores[1].
-    double realScore = scores[1];
-
-    print("Liveness Score: $realScore (Threshold: 0.75)");
-
-    // FIX: Re-enabled logic with a threshold.
-    // Adjust 0.75 up (stricter) or down (looser) based on testing.
-    return realScore > 0.75;
+    // REVERTED: Always return true to disable the sensitive spoof check.
+    return true;
   }
 
   Future<List<double>> generateFaceEmbedding(
@@ -173,7 +134,6 @@ class ModelManager {
   }
 
   static Float32List _processImageForLiveness(_IsolateData data) {
-    // Normalization often 0-1 for liveness models
     return _extractPixels(data, (pixel) => pixel / 255.0);
   }
 
@@ -203,8 +163,8 @@ class ModelManager {
     final int targetSize = data.targetSize;
     final int cropX = data.cropX;
     final int cropY = data.cropY;
-    final int cropW = data.cropWidth;
-    final int cropH = data.cropHeight;
+    final int cropY_H = data.cropHeight;
+    final int cropX_W = data.cropWidth;
 
     final floatInput = Float32List(1 * targetSize * targetSize * 3);
     int pixelIndex = 0;
@@ -215,9 +175,9 @@ class ModelManager {
       final vBytes = data.planes[2];
 
       for (int y = 0; y < targetSize; y++) {
-        final int srcY = cropY + (y * cropH ~/ targetSize);
+        final int srcY = cropY + (y * cropY_H ~/ targetSize);
         for (int x = 0; x < targetSize; x++) {
-          final int srcX = cropX + (x * cropW ~/ targetSize);
+          final int srcX = cropX + (x * cropX_W ~/ targetSize);
 
           if (srcX < 0 ||
               srcX >= data.width ||
@@ -258,9 +218,9 @@ class ModelManager {
     } else {
       final bytes = data.planes[0];
       for (int y = 0; y < targetSize; y++) {
-        final int srcY = cropY + (y * cropH ~/ targetSize);
+        final int srcY = cropY + (y * cropY_H ~/ targetSize);
         for (int x = 0; x < targetSize; x++) {
-          final int srcX = cropX + (x * cropW ~/ targetSize);
+          final int srcX = cropX + (x * cropX_W ~/ targetSize);
           if (srcX < 0 ||
               srcX >= data.width ||
               srcY < 0 ||

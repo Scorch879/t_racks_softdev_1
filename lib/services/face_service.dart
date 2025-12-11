@@ -21,7 +21,8 @@ class FaceRecognitionService {
     try {
       final embeddingString = faceEmbedding.toString();
 
-      const matchThreshold = 0.30;
+      // FIX: Lowered from 0.30 to 0.25 to prevent "not even close" faces from matching.
+      const matchThreshold = 0.25;
 
       final response = await _supabase.rpc(
         'match_face',
