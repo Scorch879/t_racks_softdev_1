@@ -238,7 +238,7 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _generateReport,
-        backgroundColor: const Color(0xFF0F3951),
+        backgroundColor: const Color(0xFF7FE26B),
         child: const Icon(
           Icons.description,
           color: Color.fromARGB(255, 255, 255, 255),

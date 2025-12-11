@@ -809,6 +809,8 @@ class DatabaseService {
         return DashboardData(
           overallAttendance: '0%',
           presentToday: '0',
+          absentToday: '0',
+          lateToday: '0',
           classMetrics: [],
           alerts: [],
           trendData: [], // Return empty list
@@ -824,7 +826,7 @@ class DatabaseService {
       // 3. Fetch Today's Attendance
       final todayAttendanceResponse = await _supabase
           .from('Attendance_Record')
-          .select('class_id, isPresent')
+          .select('class_id, isPresent, isLate')
           .inFilter('class_id', classIds)
           .eq('date', todayStr);
 
@@ -875,10 +877,14 @@ class DatabaseService {
           ? 0.0
           : (totalHistoryPresent / historyList.length) * 100;
 
-      // C. Present Today
-      final presentTodayCount = (todayAttendanceResponse as List)
-          .where((r) => r['isPresent'] == true)
-          .length;
+      // C. Present, Absent, Late Today
+      final todayAttendanceList = todayAttendanceResponse as List;
+      final presentTodayCount =
+          todayAttendanceList.where((r) => r['isPresent'] == true).length;
+      final absentTodayCount =
+          todayAttendanceList.where((r) => r['isPresent'] == false).length;
+      final lateTodayCount =
+          todayAttendanceList.where((r) => r['isLate'] == true).length;
 
       // D. Class Metrics & Alerts (Same as before)
       List<ClassMetric> classMetrics = [];
@@ -921,6 +927,8 @@ class DatabaseService {
       return DashboardData(
         overallAttendance: '${overallPercentage.toStringAsFixed(1)}%',
         presentToday: presentTodayCount.toString(),
+        absentToday: absentTodayCount.toString(),
+        lateToday: lateTodayCount.toString(),
         classMetrics: classMetrics,
         alerts: alerts,
         trendData: trendData, // <--- Pass the graph data
