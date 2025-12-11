@@ -30,13 +30,13 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
   bool _isCameraInitialized = false;
   bool _isScanning = true;
 
-  // Data Collection: We now collect multiple frames to create a "Super Vector"
+  // Data Collection
   List<List<double>> _collectedVectors = [];
-  final int _requiredSamples = 20; // Takes about 2-3 seconds to collect
+  final int _requiredSamples = 20;
 
   // Processing Throttling
   DateTime _lastFrameTime = DateTime.now();
-  final int _processingIntervalMs = 50; // Faster processing for smoother UI
+  final int _processingIntervalMs = 50;
 
   // UI State
   String _feedbackText = "Align Face";
@@ -87,7 +87,6 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
     _controller!.startImageStream((CameraImage image) async {
       if (!_isScanning) return;
 
-      // Throttle
       if (DateTime.now().difference(_lastFrameTime).inMilliseconds <
           _processingIntervalMs) {
         return;
@@ -102,43 +101,50 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
 
         if (!mounted) return;
 
+        // --- 1. RESET LOGIC (Face Lost) ---
         if (faces.isEmpty) {
-          _updateFeedback("No face detected", Colors.redAccent, 0.0);
+          // If we had progress, wipe it because the stream was broken
+          if (_collectedVectors.isNotEmpty) {
+            _collectedVectors.clear();
+          }
+
+          _updateFeedback("Face Lost - Resetting...", Colors.redAccent, 0.0);
           return;
         }
 
         final Face face = faces.first;
 
-        // --- 1. DISTANCE CHECK ---
+        // --- 2. DISTANCE CHECK ---
         final double imageWidth = inputImage.metadata!.size.width;
         final double faceWidth = face.boundingBox.width;
         final double ratio = faceWidth / imageWidth;
 
-        // Strict distance to ensure high resolution capture
         if (ratio < 0.20) {
+          _collectedVectors.clear(); // Reset if they move too far
           _isTooFar = true;
           _isTooClose = false;
-          _updateFeedback("Move Closer", Colors.orangeAccent, _progress);
+          _updateFeedback("Move Closer", Colors.orangeAccent, 0.0);
           return;
         } else if (ratio > 0.70) {
+          _collectedVectors.clear(); // Reset if too close
           _isTooFar = false;
           _isTooClose = true;
-          _updateFeedback("Move Back", Colors.orangeAccent, _progress);
+          _updateFeedback("Move Back", Colors.orangeAccent, 0.0);
           return;
         }
 
         _isTooFar = false;
         _isTooClose = false;
 
-        // --- 2. ANGLE CHECK ---
-        // Ensure they are looking relatively straight (within 12 degrees)
+        // --- 3. ANGLE CHECK ---
         if ((face.headEulerAngleY ?? 0).abs() > 12 ||
             (face.headEulerAngleZ ?? 0).abs() > 12) {
-          _updateFeedback("Look Straight", Colors.yellowAccent, _progress);
+          _collectedVectors.clear(); // Reset if they turn away
+          _updateFeedback("Look Straight", Colors.yellowAccent, 0.0);
           return;
         }
 
-        // --- 3. CAPTURE & ACCUMULATE ---
+        // --- 4. CAPTURE & ACCUMULATE ---
         List<double> vector = List<double>.from(
           await _modelManager.generateFaceEmbedding(
             image,
@@ -164,11 +170,14 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
 
   void _updateFeedback(String text, Color color, double progress) {
     if (!mounted) return;
-    setState(() {
-      _feedbackText = text;
-      _ringColor = color;
-      _progress = progress.clamp(0.0, 1.0);
-    });
+    // Only rebuild if something changed to save UI resources
+    if (_feedbackText != text || _ringColor != color || _progress != progress) {
+      setState(() {
+        _feedbackText = text;
+        _ringColor = color;
+        _progress = progress.clamp(0.0, 1.0);
+      });
+    }
   }
 
   void _finishRegistration() async {
@@ -177,8 +186,7 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
 
     _updateFeedback("Processing...", Colors.green, 1.0);
 
-    // --- KEY FIX: AVERAGE THE VECTORS ---
-    // This creates a robust "Mean Identity" vector, reducing false positives
+    // Calculate Average Vector
     List<double> finalVector = List.filled(512, 0.0);
     if (_collectedVectors.isNotEmpty) {
       for (var vec in _collectedVectors) {
@@ -189,7 +197,6 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
       finalVector = finalVector
           .map((e) => e / _collectedVectors.length)
           .toList();
-      // Important: Re-normalize after averaging
       finalVector = _l2Normalize(finalVector);
     }
 
@@ -212,7 +219,6 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
     return vector.map((x) => x / norm).toList();
   }
 
-  // Helper function to convert CameraImage to InputImage
   InputImage? _inputImageFromCameraImage(CameraImage image) {
     final camera = _controller!.description;
     final sensorOrientation = camera.sensorOrientation;
@@ -317,21 +323,23 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
               ],
             ),
           ),
+
+          // --- BACK BUTTON (Commented out based on your request) ---
+          /*
           Positioned(
-            top: 50,
-            left: 20,
+            top: 50, left: 20,
             child: IconButton(
               icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
               onPressed: () => Navigator.pop(context),
             ),
           ),
+          */
         ],
       ),
     );
   }
 }
 
-// Re-using your working Painter
 class FaceOverlayPainter extends CustomPainter {
   final double holeRadius;
   final double progress;
