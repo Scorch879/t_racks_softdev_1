@@ -21,8 +21,6 @@ class FaceRecognitionService {
     try {
       final embeddingString = faceEmbedding.toString();
 
-      // FIX: TIGHTEN THRESHOLD TO 0.30 (or 0.35)
-      // This is the number one cause of misidentification.
       const matchThreshold = 0.30;
 
       final response = await _supabase.rpc(

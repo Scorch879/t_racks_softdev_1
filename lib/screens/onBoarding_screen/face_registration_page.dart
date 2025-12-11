@@ -15,6 +15,8 @@ class FaceRegistrationPage extends StatefulWidget {
   State<FaceRegistrationPage> createState() => _FaceRegistrationPageState();
 }
 
+enum _RegistrationState { scanning, processing, done }
+
 class _FaceRegistrationPageState extends State<FaceRegistrationPage>
     with TickerProviderStateMixin {
   CameraController? _controller;
@@ -28,7 +30,7 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
   );
 
   bool _isCameraInitialized = false;
-  bool _isScanning = true;
+  _RegistrationState _state = _RegistrationState.scanning;
 
   // Data Collection
   List<List<double>> _collectedVectors = [];
@@ -51,8 +53,7 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
   @override
   void initState() {
     super.initState();
-    _initializeCamera();
-    _modelManager.loadModels();
+    _initializeCameraAndModels();
 
     _pulseController = AnimationController(
       vsync: this,
@@ -60,7 +61,10 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
     )..repeat(reverse: true);
   }
 
-  Future<void> _initializeCamera() async {
+  Future<void> _initializeCameraAndModels() async {
+    // It's more efficient to load models and initialize the camera in parallel.
+    await _modelManager.loadModels();
+    
     final cameras = await availableCameras();
     final frontCamera = cameras.firstWhere(
       (c) => c.lensDirection == CameraLensDirection.front,
@@ -84,14 +88,19 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
   }
 
   void _startImageStream() {
+    debugPrint("Starting image stream...");
     _controller!.startImageStream((CameraImage image) async {
-      if (!_isScanning) return;
+      if (_state != _RegistrationState.scanning) {
+        // debugPrint("Skipping frame, state is not scanning.");
+        return;
+      }
 
-      if (DateTime.now().difference(_lastFrameTime).inMilliseconds <
+      final now = DateTime.now();
+      if (now.difference(_lastFrameTime).inMilliseconds <
           _processingIntervalMs) {
         return;
       }
-      _lastFrameTime = DateTime.now();
+      _lastFrameTime = now;
 
       try {
         final inputImage = _inputImageFromCameraImage(image);
@@ -101,50 +110,34 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
 
         if (!mounted) return;
 
-        // --- 1. RESET LOGIC (Face Lost) ---
         if (faces.isEmpty) {
-          // If we had progress, wipe it because the stream was broken
           if (_collectedVectors.isNotEmpty) {
+            debugPrint("Face lost, clearing ${_collectedVectors.length} vectors.");
             _collectedVectors.clear();
           }
-
           _updateFeedback("Face Lost - Resetting...", Colors.redAccent, 0.0);
           return;
         }
 
         final Face face = faces.first;
 
-        // --- 2. DISTANCE CHECK ---
         final double imageWidth = inputImage.metadata!.size.width;
         final double faceWidth = face.boundingBox.width;
         final double ratio = faceWidth / imageWidth;
 
-        if (ratio < 0.20) {
-          _collectedVectors.clear(); // Reset if they move too far
-          _isTooFar = true;
-          _isTooClose = false;
-          _updateFeedback("Move Closer", Colors.orangeAccent, 0.0);
-          return;
-        } else if (ratio > 0.70) {
-          _collectedVectors.clear(); // Reset if too close
-          _isTooFar = false;
-          _isTooClose = true;
-          _updateFeedback("Move Back", Colors.orangeAccent, 0.0);
+        if (ratio < 0.20 || ratio > 0.70) {
+          _collectedVectors.clear();
+          _updateFeedback(
+              ratio < 0.20 ? "Move Closer" : "Move Back", Colors.orangeAccent, 0.0);
           return;
         }
-
-        _isTooFar = false;
-        _isTooClose = false;
-
-        // --- 3. ANGLE CHECK ---
         if ((face.headEulerAngleY ?? 0).abs() > 12 ||
             (face.headEulerAngleZ ?? 0).abs() > 12) {
-          _collectedVectors.clear(); // Reset if they turn away
+          _collectedVectors.clear();
           _updateFeedback("Look Straight", Colors.yellowAccent, 0.0);
           return;
         }
 
-        // --- 4. CAPTURE & ACCUMULATE ---
         List<double> vector = List<double>.from(
           await _modelManager.generateFaceEmbedding(
             image,
@@ -152,25 +145,28 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
           ),
         );
 
-        if (vector.isNotEmpty) {
+        if (vector.isNotEmpty && _state == _RegistrationState.scanning) {
           _collectedVectors.add(vector);
+          debugPrint("Collected vector #${_collectedVectors.length}");
 
           double newProgress = _collectedVectors.length / _requiredSamples;
           _updateFeedback("Hold still...", Colors.greenAccent, newProgress);
 
           if (_collectedVectors.length >= _requiredSamples) {
+            debugPrint("--> Attempting to finish registration...");
             _finishRegistration();
           }
+        } else {
+          debugPrint("Skipping vector: (isNotEmpty: ${vector.isNotEmpty}, state: $_state)");
         }
       } catch (e) {
-        debugPrint("Error: $e");
+        debugPrint("Error in image stream: $e");
       }
     });
   }
 
   void _updateFeedback(String text, Color color, double progress) {
     if (!mounted) return;
-    // Only rebuild if something changed to save UI resources
     if (_feedbackText != text || _ringColor != color || _progress != progress) {
       setState(() {
         _feedbackText = text;
@@ -181,33 +177,51 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
   }
 
   void _finishRegistration() async {
-    setState(() => _isScanning = false);
-    await _controller!.stopImageStream();
-
+    debugPrint("==> _finishRegistration called. Current state: $_state");
+    if (_state != _RegistrationState.scanning) return;
+    
+    debugPrint("State transition: scanning -> processing");
+    _state = _RegistrationState.processing;
+    
     _updateFeedback("Processing...", Colors.green, 1.0);
 
-    // Calculate Average Vector
-    List<double> finalVector = List.filled(512, 0.0);
-    if (_collectedVectors.isNotEmpty) {
-      for (var vec in _collectedVectors) {
-        for (int i = 0; i < 512; i++) {
-          finalVector[i] += vec[i];
-        }
-      }
-      finalVector = finalVector
-          .map((e) => e / _collectedVectors.length)
-          .toList();
-      finalVector = _l2Normalize(finalVector);
-    }
-
     try {
-      await Future.delayed(const Duration(milliseconds: 500));
+      // It's often better to NOT stop the stream manually before taking a picture,
+      // as the controller should handle pausing it. Stopping it can lead to race conditions.
+      // await _controller!.stopImageStream(); 
+      
+      List<double> finalVector = List.filled(512, 0.0);
+      if (_collectedVectors.isNotEmpty) {
+        for (var vec in _collectedVectors) {
+          for (int i = 0; i < 512; i++) {
+            finalVector[i] += vec[i];
+          }
+        }
+        finalVector = finalVector
+            .map((e) => e / _collectedVectors.length)
+            .toList();
+        finalVector = _l2Normalize(finalVector);
+        debugPrint("Calculated average vector.");
+      }
+
+      // A short delay can still be helpful for the camera to finalize focus.
+      await Future.delayed(const Duration(milliseconds: 400));
+      
+      debugPrint("Taking picture...");
       final XFile file = await _controller!.takePicture();
+      debugPrint("Picture taken at ${file.path}");
+      
+      debugPrint("State transition: processing -> done");
+      _state = _RegistrationState.done;
+
       if (mounted) {
         widget.onFaceCaptured(File(file.path), finalVector);
       }
     } catch (e) {
-      debugPrint("Error capturing final image: $e");
+      debugPrint("Error during registration finalization: $e");
+      if (mounted) {
+        _updateFeedback("Error", Colors.red, _progress);
+      }
     }
   }
 
