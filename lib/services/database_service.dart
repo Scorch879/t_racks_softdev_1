@@ -157,7 +157,10 @@ class DatabaseService {
 
       // Add profilePictureUrl to the update map if it's not null
       if (profilePictureUrl != null) {
-        await _supabase.from('profiles').update({'profile_picture_url': profilePictureUrl}).eq('id', userId);
+        await _supabase
+            .from('profiles')
+            .update({'profile_picture_url': profilePictureUrl})
+            .eq('id', userId);
       }
 
       // 1. Update the 'profiles' table
@@ -183,8 +186,10 @@ class DatabaseService {
 
     await _supabase
         .from('profiles')
-        .update({'profile_picture_url': url}).eq('id', userId);
+        .update({'profile_picture_url': url})
+        .eq('id', userId);
   }
+
   /// Fetches the complete data for an educator user.
   Future<Educator?> getEducatorData() async {
     try {
@@ -423,11 +428,101 @@ class DatabaseService {
         });
   }
 
+  /// Helper to check for schedule conflicts before enrolling a student.
+  Future<bool> _hasScheduleConflict(String studentId, String newClassId) async {
+    // 1. Get the schedule for the new class.
+    final newClassData = await _supabase
+        .from('Classes_Table')
+        .select('day, time')
+        .eq('id', newClassId)
+        .single();
+
+    final newClassDay = newClassData['day'] as String?;
+    final newClassTime = newClassData['time'] as String?;
+
+    if (newClassDay == null || newClassTime == null) {
+      // If the new class has no schedule, it can't conflict.
+      return false;
+    }
+
+    // 2. Get the schedules for all classes the student is currently enrolled in.
+    final enrolledClassesData = await _supabase
+        .from('Enrollments_Table')
+        .select('class:Classes_Table!inner(day, time)')
+        .eq('student_id', studentId);
+
+    // 3. Check for any overlap.
+    for (final enrollment in enrolledClassesData) {
+      final existingClass = enrollment['class'];
+      if (existingClass == null) continue;
+
+      final existingClassDay = existingClass['day'] as String?;
+      final existingClassTime = existingClass['time'] as String?;
+
+      if (existingClassDay == null || existingClassTime == null) {
+        continue;
+      }
+
+      if (_checkOverlap(
+        newClassDay,
+        newClassTime,
+        existingClassDay,
+        existingClassTime,
+      )) {
+        return true; // Conflict found
+      }
+    }
+
+    return false; // No conflicts
+  }
+
+  /// Checks if two class schedules (day and time) overlap.
+  bool _checkOverlap(String day1, String time1, String day2, String time2) {
+    bool dayConflict = false;
+    // Check for any common day of the week.
+    for (int i = 1; i <= 7; i++) {
+      if (_isClassScheduledForToday(day1, i) &&
+          _isClassScheduledForToday(day2, i)) {
+        dayConflict = true;
+        break;
+      }
+    }
+
+    if (!dayConflict) {
+      return false;
+    }
+
+    // Time Overlap Check
+    final now = DateTime.now();
+    final timeRange1 = time1.split('-');
+    final timeRange2 = time2.split('-');
+
+    if (timeRange1.length < 2 || timeRange2.length < 2) {
+      return false; // Invalid time format
+    }
+
+    final start1 = _parseTimeHelper(timeRange1[0].trim(), now);
+    final end1 = _parseTimeHelper(timeRange1[1].trim(), now);
+    final start2 = _parseTimeHelper(timeRange2[0].trim(), now);
+    final end2 = _parseTimeHelper(timeRange2[1].trim(), now);
+
+    if (start1 == null || end1 == null || start2 == null || end2 == null) {
+      return false; // Could not parse times
+    }
+
+    // Overlap exists if one class starts before the other ends, AND ends after the other starts.
+    return start1.isBefore(end2) && end1.isAfter(start2);
+  }
+
   Future<void> enrollStudent({
     required String classId,
     required String studentId,
   }) async {
     try {
+      // SCHEDULE CONFLICT CHECK
+      if (await _hasScheduleConflict(studentId, classId)) {
+        throw 'Schedule conflict: This student is already busy at this time.';
+      }
       // 1. Perform the Enrollment
       await _supabase.from('Enrollments_Table').insert({
         'class_id': classId,
@@ -472,6 +567,11 @@ class DatabaseService {
       final classId = classResponse['id'];
       final educatorId = classResponse['educator_id'];
       final className = classResponse['class_name'];
+
+      // SCHEDULE CONFLICT CHECK
+      if (await _hasScheduleConflict(userId, classId)) {
+        throw 'Schedule conflict: This class overlaps with your existing schedule.';
+      }
 
       // 2. Check if the student is already enrolled.
       final enrollmentCheck = await _supabase
@@ -844,7 +944,10 @@ class DatabaseService {
 
       // Update profile picture URL if provided
       if (profilePictureUrl != null) {
-        await _supabase.from('profiles').update({'profile_picture_url': profilePictureUrl}).eq('id', userId);
+        await _supabase
+            .from('profiles')
+            .update({'profile_picture_url': profilePictureUrl})
+            .eq('id', userId);
       }
 
       // 1. Update the 'profiles' table (Always safe to update)
@@ -959,6 +1062,72 @@ class DatabaseService {
       throw e;
     }
   }
+
+  Future<Map<String, dynamic>> getAttendanceForReport(String classId) async {
+    // 1. Get all student IDs and names for the class by joining through Student_Table
+    final studentProfiles = await _supabase
+        .from('Enrollments_Table')
+        .select('Student_Table!inner(profiles!inner(id, firstName, lastName))')
+        .eq('class_id', classId);
+
+    final students = studentProfiles.map((e) {
+      // Adjust parsing for the nested structure
+      final profile = e['Student_Table']['profiles'];
+      return {
+        'id': profile['id'],
+        'name': '${profile['firstName']} ${profile['lastName']}',
+      };
+    }).toList();
+
+    if (students.isEmpty) {
+      return {
+        'students': [],
+        'dates': [],
+        'attendanceMatrix': {},
+      };
+    }
+
+    final studentIds = students.map((s) => s['id'] as String).toList();
+
+    // 2. Get all attendance records for these students in this class
+    final attendanceRecords = await _supabase
+        .from('Attendance_Record')
+        .select('student_id, date, isPresent, isLate')
+        .eq('class_id', classId)
+        .inFilter('student_id', studentIds)
+        .order('date', ascending: true);
+
+    // 3. Get a unique, sorted list of all dates
+    final dates =
+        attendanceRecords.map((r) => r['date'] as String).toSet().toList();
+    dates.sort();
+
+    // 4. Create a matrix for easy lookup: Map<studentId, Map<date, status>>
+    final attendanceMatrix = <String, Map<String, String>>{};
+    for (final student in students) {
+      final studentId = student['id'] as String;
+      attendanceMatrix[studentId] = {};
+    }
+
+    for (final record in attendanceRecords) {
+      final studentId = record['student_id'] as String;
+      final date = record['date'] as String;
+      final isPresent = record['isPresent'] as bool;
+      final isLate = record['isLate'] as bool? ?? false;
+
+      String status = 'Absent';
+      if (isPresent) {
+        status = isLate ? 'Late' : 'Present';
+      }
+      attendanceMatrix[studentId]![date] = status;
+    }
+
+    return {
+      'students': students,
+      'dates': dates,
+      'attendanceMatrix': attendanceMatrix,
+    };
+  }
 }
 
 class AccountServices {
@@ -1024,7 +1193,8 @@ DynamicStatus getDynamicStatus(
     // --- CORRECTED LOGIC FOR LIST VIEW ---
     // 1. If attendance has been marked, that is the definitive status.
     if (sClass.todaysAttendance != null) {
-      return (sClass.todaysAttendance == true || sClass.todaysAttendance == 'true')
+      return (sClass.todaysAttendance == true ||
+              sClass.todaysAttendance == 'true')
           ? DynamicStatus('Present', green)
           : DynamicStatus('Absent', red);
     }
@@ -1099,16 +1269,18 @@ bool _isClassScheduledForToday(String scheduleDay, int todayWeekday) {
     'sunday': 7,
   };
 
-  if (fullDayMappings.containsKey(scheduleDay)) {
-    return fullDayMappings[scheduleDay] == todayWeekday;
+  final lowerScheduleDay = scheduleDay.toLowerCase();
+
+  if (fullDayMappings.containsKey(lowerScheduleDay)) {
+    return fullDayMappings[lowerScheduleDay] == todayWeekday;
   }
 
   // Handle abbreviations like "th" and "su" first to avoid ambiguity
-  if (scheduleDay.contains('th') && todayWeekday == 4) return true;
-  if (scheduleDay.contains('su') && todayWeekday == 7) return true;
+  if (lowerScheduleDay.contains('th') && todayWeekday == 4) return true;
+  if (lowerScheduleDay.contains('su') && todayWeekday == 7) return true;
 
   // Handle single-letter abbreviations, ignoring 'h' and 'u' from 'th'/'su'
-  return scheduleDay
+  return lowerScheduleDay
       .split('')
       .any(
         (char) =>
@@ -1220,7 +1392,7 @@ class AttendanceService {
       // return status.text == 'Ongoing' || status.text == 'Late';
 
       // NEW CODE: Allow Present and Absent statuses so the app finds the class
-           // A class is only "ongoing" if its status is currently 'Ongoing' or 'Late'.
+      // A class is only "ongoing" if its status is currently 'Ongoing' or 'Late'.
       // Including 'Present' or 'Absent' causes inconsistencies with the home screen display.
       return status.text == 'Ongoing' || status.text == 'Late';
     });

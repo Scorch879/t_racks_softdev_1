@@ -47,5 +47,9 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>This app needs camera access for face detection testing</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>This app needs access to the documents folder to save attendance reports.</string>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 </dict>
 </plist>
