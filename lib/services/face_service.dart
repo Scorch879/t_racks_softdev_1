@@ -21,9 +21,7 @@ class FaceRecognitionService {
     try {
       final embeddingString = faceEmbedding.toString();
 
-      // FIX: TIGHTEN THRESHOLD
-      // 0.40 is strict enough to reject random people
-      const matchThreshold = 0.40;
+      const matchThreshold = 0.30;
 
       final response = await _supabase.rpc(
         'match_face',

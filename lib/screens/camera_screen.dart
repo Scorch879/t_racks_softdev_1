@@ -1,4 +1,3 @@
-// ... (Imports same as before)
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
@@ -12,8 +11,6 @@ import 'package:t_racks_softdev_1/services/tflite_service.dart' as tflite;
 import 'package:t_racks_softdev_1/services/face_service.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 
-enum ChallengeType { smile, blink, turnLeft, turnRight }
-
 class AttendanceCameraScreen extends StatefulWidget {
   final List<CameraDescription> cameras;
 
@@ -24,7 +21,6 @@ class AttendanceCameraScreen extends StatefulWidget {
 }
 
 class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
-  // ... (Variables same as before) ...
   CameraController? _controller;
   Future<void>? _initializeControllerFuture;
   bool _isProcessing = false;
@@ -32,37 +28,26 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
   final tflite.ModelManager _tfliteManager = tflite.ModelManager();
   final AttendanceService _attendanceService = AttendanceService();
 
-  List<ChallengeType> _challenges = [];
-  int _currentChallengeIndex = 0;
-  bool _isSessionActive = false;
-  String _statusMessage = "Initializing...";
+  // UI State
+  String _statusMessage = "Align face to scan";
   Color _statusColor = Colors.white;
-  bool _isVerified = false;
-  bool _hasFailed = false;
-
-  bool _isTfliteLoaded = false;
-  int _consecutiveFakeFrames = 0;
+  bool _isVerified = false; // Stops scanning once verified
+  bool _canScan = true; // Debounce for failed scans
 
   @override
   void initState() {
     super.initState();
     final options = FaceDetectorOptions(
-      enableClassification: true,
+      enableClassification: false,
       enableLandmarks: true,
       performanceMode: FaceDetectorMode.fast,
     );
     _faceDetector = FaceDetector(options: options);
 
-    _tfliteManager.loadModels().then((_) {
-      if (mounted) {
-        setState(() => _isTfliteLoaded = true);
-      }
-    });
-
+    _tfliteManager.loadModels();
     _initializeCamera();
   }
 
-  // ... (Camera initialization and Liveness logic same as before) ...
   void _initializeCamera() {
     if (widget.cameras.isEmpty) return;
     final frontCamera = widget.cameras.firstWhere(
@@ -80,54 +65,9 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
     _initializeControllerFuture = _controller!.initialize().then((_) {
       if (mounted) {
         setState(() {});
-        _startLivenessSession();
         _startImageStream();
       }
     });
-  }
-
-  void _startLivenessSession() {
-    final random = Random();
-    List<ChallengeType> allTypes = ChallengeType.values.toList();
-    _challenges = [];
-    for (int i = 0; i < 2; i++) {
-      _challenges.add(allTypes[random.nextInt(allTypes.length)]);
-    }
-    setState(() {
-      _isSessionActive = true;
-      _currentChallengeIndex = 0;
-      _isVerified = false;
-      _hasFailed = false;
-      _consecutiveFakeFrames = 0;
-      _updateStatusMessage();
-    });
-  }
-
-  void _updateStatusMessage() {
-    if (_isVerified || _hasFailed) return;
-    if (_currentChallengeIndex >= _challenges.length) {
-      _statusMessage = "Verifying Texture...";
-      _statusColor = Colors.blueAccent;
-      return;
-    }
-    ChallengeType current = _challenges[_currentChallengeIndex];
-    switch (current) {
-      case ChallengeType.smile:
-        _statusMessage = "Step ${_currentChallengeIndex + 1}: Please SMILE 😀";
-        break;
-      case ChallengeType.blink:
-        _statusMessage = "Step ${_currentChallengeIndex + 1}: Please BLINK 😉";
-        break;
-      case ChallengeType.turnLeft:
-        _statusMessage =
-            "Step ${_currentChallengeIndex + 1}: Turn Head LEFT ⬅️";
-        break;
-      case ChallengeType.turnRight:
-        _statusMessage =
-            "Step ${_currentChallengeIndex + 1}: Turn Head RIGHT ➡️";
-        break;
-    }
-    _statusColor = Colors.yellowAccent;
   }
 
   void _startImageStream() {
@@ -135,18 +75,16 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
     int frameCount = 0;
 
     _controller!.startImageStream((CameraImage image) async {
-      if (_isProcessing || !_isSessionActive || _isVerified || _hasFailed)
-        return;
+      // Skip frames if busy, verified, or cooling down
+      if (_isProcessing || !_canScan || _isVerified) return;
+
+      // Process every 5th frame to save CPU
+      frameCount++;
+      if (frameCount % 5 != 0) return;
+
       _isProcessing = true;
-
       try {
-        await _processMLKit(image);
-
-        // Run TFLite less frequently
-        if (frameCount % 10 == 0 && _isTfliteLoaded) {
-          await _processTFLite(image);
-        }
-        frameCount++;
+        await _processFrame(image);
       } catch (e) {
         print("Error processing: $e");
       } finally {
@@ -155,160 +93,136 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
     });
   }
 
-  Future<void> _processMLKit(CameraImage image) async {
+  Future<void> _processFrame(CameraImage image) async {
     final inputImage = _inputImageFromCameraImage(image);
     if (inputImage == null) return;
 
     final List<Face> faces = await _faceDetector.processImage(inputImage);
-    if (faces.isNotEmpty) {
-      final Face face = faces.first;
-      _checkChallenge(face, image);
-    }
-  }
 
-  void _checkChallenge(Face face, CameraImage image) {
-    if (_currentChallengeIndex >= _challenges.length && !_isVerified) {
-      // FIX: Passing the Face object for final verification (cropping)
-      _finalizeVerification(image, face);
+    if (faces.isEmpty) {
+      if (mounted && _statusMessage != "Align face to scan") {
+        setState(() {
+          _statusMessage = "Align face to scan";
+          _statusColor = Colors.white;
+        });
+      }
       return;
     }
 
-    // ... (Challenge checking logic remains the same) ...
-    ChallengeType current = _challenges[_currentChallengeIndex];
-    bool passed = false;
-    double smileThreshold = 0.8;
-    double blinkThreshold = 0.1;
-    double headRotationThreshold = 15.0;
-
-    switch (current) {
-      case ChallengeType.smile:
-        if ((face.smilingProbability ?? 0) > smileThreshold) passed = true;
-        break;
-      case ChallengeType.blink:
-        if ((face.leftEyeOpenProbability ?? 1) < blinkThreshold ||
-            (face.rightEyeOpenProbability ?? 1) < blinkThreshold) {
-          passed = true;
-        }
-        break;
-      case ChallengeType.turnLeft:
-        if ((face.headEulerAngleY ?? 0) > headRotationThreshold) passed = true;
-        break;
-      case ChallengeType.turnRight:
-        if ((face.headEulerAngleY ?? 0) < -headRotationThreshold) passed = true;
-        break;
+    // Find Largest Face
+    Face mainFace = faces.first;
+    double maxArea = 0;
+    for (var face in faces) {
+      double area = face.boundingBox.width * face.boundingBox.height;
+      if (area > maxArea) {
+        maxArea = area;
+        mainFace = face;
+      }
     }
 
-    if (passed) {
+    // Distance Check
+    double faceRatio =
+        mainFace.boundingBox.width / inputImage.metadata!.size.width;
+    if (faceRatio < 0.15) {
+      if (mounted)
+        setState(() {
+          _statusMessage = "Move Closer";
+          _statusColor = Colors.orange;
+        });
+      return;
+    }
+
+    // --- NEW: Liveness Check ---
+    // We check if the face is real before processing identification
+    bool isReal = await _tfliteManager.checkLiveness(image);
+    if (!isReal) {
       if (mounted) {
         setState(() {
-          _currentChallengeIndex++;
-          _updateStatusMessage();
+          _statusMessage = "⚠️ SPOOF DETECTED ⚠️\nReal face required";
+          _statusColor = Colors.redAccent;
         });
       }
+      // Stop here if fake
+      return;
     }
+
+    // Verify
+    await _verifyStudent(image, mainFace);
   }
 
-  Future<void> _processTFLite(CameraImage image) async {
-    // (Keep existing Liveness Check Logic)
-    try {
-      bool isReal = await _tfliteManager.checkLiveness(image);
-      if (!isReal) {
-        _consecutiveFakeFrames++;
-      } else {
-        _consecutiveFakeFrames = 0;
-      }
-      if (_consecutiveFakeFrames >= 3) {
-        if (mounted) {
-          setState(() {
-            _hasFailed = true;
-            _statusMessage = "⚠️ SPOOF DETECTED";
-            _statusColor = Colors.red;
-          });
-        }
-      }
-    } catch (e) {
-      print("TFLite Error: $e");
-    }
-  }
-
-  // FIX: Added 'Face face' parameter
-  Future<void> _finalizeVerification(CameraImage image, Face face) async {
-    if (_hasFailed) return;
-
-    // 1. Generate Embedding
-    // FIX: Pass boundingBox here for accurate cropping!
+  Future<void> _verifyStudent(CameraImage image, Face face) async {
     final faceEmbedding = await _tfliteManager.generateFaceEmbedding(
       image,
       faceBox: face.boundingBox,
     );
 
-    if (faceEmbedding.isEmpty) {
-      setState(() {
-        _hasFailed = true;
-        _statusMessage = "⚠️ Could not read face. Try again.";
-        _statusColor = Colors.red;
-      });
-      return;
-    }
+    if (faceEmbedding.isEmpty) return;
 
-    // 2. Server-Side Match (Assuming you updated FaceService as discussed)
     final matchingService = FaceRecognitionService();
     final matchResult = await matchingService.findMatchingStudent(
       faceEmbedding,
     );
 
-    if (mounted) {
+    if (!mounted) return;
+
+    if (matchResult != null) {
+      // MATCH FOUND
       setState(() {
         _isVerified = true;
-        if (matchResult != null) {
-          // 1. Set loading state
-          _statusMessage = "Verifying class & marking attendance...";
-          _statusColor = Colors.blueAccent;
+        _statusMessage = "Hi ${matchResult.fullName}!\nMarking attendance...";
+        _statusColor = Colors.blueAccent;
+      });
 
-          // 2. Attempt to mark attendance
-          _attendanceService
-              .markAttendance(matchResult.studentId)
-              .then((className) {
-                if (mounted) {
-                  setState(() {
-                    if (className != null) {
-                      _statusMessage =
-                          "✅ Welcome, ${matchResult.fullName}!\nAttendance marked for $className.";
-                      _statusColor = Colors.green;
-                    }
-                    // Optional: Auto-reset after 3 seconds
-                    Future.delayed(const Duration(seconds: 3), () {
-                      if (mounted) _startLivenessSession();
-                    });
-                  });
+      // Mark Attendance with catchError
+      _attendanceService
+          .markAttendance(matchResult.studentId)
+          .then((className) {
+            if (mounted) {
+              setState(() {
+                if (className != null) {
+                  _statusMessage = "✅ Success!\nAttended: $className";
+                  _statusColor = Colors.green;
+                } else {
+                  _statusMessage = "✅ Logged in (No Class Now)";
+                  _statusColor = Colors.green;
                 }
-              })
-              .catchError((e) {
-                // --- THIS FIXES THE BUG ---
-                // We catch the "No ongoing class found" error here
-                print("Attendance Error: $e");
+              });
+              // Reset
+              Future.delayed(const Duration(seconds: 3), () {
                 if (mounted) {
                   setState(() {
-                    _statusMessage =
-                        "❌ Hi ${matchResult.fullName}.\nNo active class found for you right now.";
-                    _statusColor = Colors.orange;
-                  });
-
-                  // Allow them to retry after 3 seconds
-                  Future.delayed(const Duration(seconds: 3), () {
-                    if (mounted) _startLivenessSession();
+                    _isVerified = false;
+                    _statusMessage = "Align face to scan";
+                    _statusColor = Colors.white;
                   });
                 }
               });
-        } else {
-          _statusMessage = "❌ Student Not Recognized";
-          _statusColor = Colors.red;
-        }
+            }
+          })
+          .catchError((e) {
+            if (mounted) {
+              setState(() {
+                _statusMessage =
+                    "❌ Hi ${matchResult.fullName}.\nNo active class found.";
+                _statusColor = Colors.orange;
+              });
+              Future.delayed(const Duration(seconds: 4), () {
+                if (mounted)
+                  setState(() {
+                    _isVerified = false;
+                  });
+              });
+            }
+          });
+    } else {
+      // NO MATCH FOUND - Debounce to avoid flickering error
+      setState(() {
+        _statusMessage = "Scanning..."; // Neutral message while searching
+        // Or "Unknown Face" if you want strict feedback
       });
     }
   }
 
-  // ... (Rest of InputImage helper and build method remains the same) ...
   InputImage? _inputImageFromCameraImage(CameraImage image) {
     if (_controller == null) return null;
     final camera = _controller!.description;
@@ -359,7 +273,6 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
   @override
   void dispose() {
     _faceDetector.close();
-    _tfliteManager.close();
     _controller?.stopImageStream();
     _controller?.dispose();
     super.dispose();
@@ -367,10 +280,9 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // (UI Code is identical to your original file, just returning Scaffold...)
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(title: const Text('Secure Attendance')),
+      appBar: AppBar(title: const Text('Attendance Scanner')),
       body: FutureBuilder<void>(
         future: _initializeControllerFuture,
         builder: (context, snapshot) {
@@ -389,48 +301,20 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
                     child: CameraPreview(_controller!),
                   ),
                 ),
-                if (_hasFailed || _isVerified) Container(color: Colors.black54),
                 Align(
                   alignment: Alignment.bottomCenter,
                   child: Container(
                     width: double.infinity,
                     color: Colors.black87,
                     padding: const EdgeInsets.all(30),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _statusMessage,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: _statusColor,
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        if (_hasFailed) ...[
-                          const SizedBox(height: 20),
-                          const Text(
-                            "Security Check Failed.\nMake sure you are in good lighting.",
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.white70),
-                          ),
-                          const SizedBox(height: 20),
-                          ElevatedButton.icon(
-                            onPressed: _startLivenessSession,
-                            icon: const Icon(Icons.refresh),
-                            label: const Text("TRY AGAIN"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: Colors.black,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 30,
-                                vertical: 15,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
+                    child: Text(
+                      _statusMessage,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: _statusColor,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),

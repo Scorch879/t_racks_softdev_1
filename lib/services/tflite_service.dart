@@ -4,7 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:camera/camera.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
-import 'dart:ui'; // Required for Rect
+import 'dart:ui';
 
 class ModelManager {
   Interpreter? _livenessInterpreter;
@@ -13,27 +13,17 @@ class ModelManager {
 
   bool get areModelsLoaded => _areModelsLoaded;
 
-  double compareVectors(List<double> v1, List<double> v2) {
-    if (v1.length != v2.length) return 10.0;
-    double sum = 0.0;
-    for (int i = 0; i < v1.length; i++) {
-      sum += math.pow(v1[i] - v2[i], 2);
-    }
-    return math.sqrt(sum);
-  }
-
   Future<void> loadModels() async {
     try {
       final options = InterpreterOptions();
 
-      // 1. Load Liveness Model (Keep existing one)
+      // 1. Load Liveness Model
       _livenessInterpreter = await Interpreter.fromAsset(
         'assets/models/model.tflite',
         options: options,
       );
 
-      // 2. Load FaceNet 512 (New Model)
-      // Ensure 'facenet_512.tflite' is in your assets/models/ folder
+      // 2. Load FaceNet 512
       _recognitionInterpreter = await Interpreter.fromAsset(
         'assets/models/facenet_512.tflite',
         options: options,
@@ -54,10 +44,8 @@ class ModelManager {
   /// Returns True if face is Real, False if Spoof
   Future<bool> checkLiveness(CameraImage image) async {
     if (!_areModelsLoaded || _livenessInterpreter == null) return false;
-    const int inputSize = 224; // Liveness model uses 224
+    const int inputSize = 224;
 
-    // Liveness checks typically don't need precise cropping, center is usually fine
-    // or you can pass faceBox if you want to be precise, but keeping it simple here.
     final flatInput = await compute(
       _processImageForLiveness,
       _IsolateData(
@@ -71,7 +59,6 @@ class ModelManager {
             : 0,
         isYUV: image.planes.length >= 3,
         targetSize: inputSize,
-        // Default center crop for liveness
         cropX: (image.width - math.min(image.width, image.height)) ~/ 2,
         cropY: (image.height - math.min(image.width, image.height)) ~/ 2,
         cropWidth: math.min(image.width, image.height),
@@ -80,40 +67,41 @@ class ModelManager {
     );
 
     final input = flatInput.reshape([1, inputSize, inputSize, 3]);
+    // Assuming output is [1, 3] based on your previous code
     var output = List.filled(3, 0.0).reshape([1, 3]);
     _livenessInterpreter!.run(input, output);
 
     List<double> scores = (output[0] as List)
         .map((e) => (e as num).toDouble())
         .toList();
-    // Index 1 is usually "Real"
-    print("Liveness Score: ${scores[1]} (Threshold: 0.4)");
-    return scores.length > 1 && scores[1] > 0.40;
+
+    // Typically index 1 is "Real" in many 2-3 class liveness models.
+    // If your model is binary [Fake, Real], use scores[1].
+    double realScore = scores[1];
+
+    print("Liveness Score: $realScore (Threshold: 0.75)");
+
+    // FIX: Re-enabled logic with a threshold.
+    // Adjust 0.75 up (stricter) or down (looser) based on testing.
+    return realScore > 0.75;
   }
 
-  /// Generates the Normalized 512-D Identity Vector (FaceNet)
-  /// Now accepts [faceBox] to crop the specific face area.
   Future<List<double>> generateFaceEmbedding(
     CameraImage image, {
     Rect? faceBox,
   }) async {
     if (!_areModelsLoaded || _recognitionInterpreter == null) return [];
-
-    // FaceNet 512 uses 160x160 input
     const int inputSize = 160;
 
-    // Calculate crop area
     int cropX, cropY, cropWidth, cropHeight;
 
     if (faceBox != null) {
-      // Add a little padding (margin) around the face so we don't cut off chin/forehead
-      double margin = 0.10; // 10% margin
+      double margin = 0.10;
       double width = faceBox.width * (1 + margin);
       double height = faceBox.height * (1 + margin);
       double centerX = faceBox.center.dx;
       double centerY = faceBox.center.dy;
 
-      // Make it a square
       double side = math.max(width, height);
 
       cropX = (centerX - side / 2).toInt();
@@ -121,7 +109,6 @@ class ModelManager {
       cropWidth = side.toInt();
       cropHeight = side.toInt();
     } else {
-      // Fallback to center crop
       int minSide = math.min(image.width, image.height);
       cropX = (image.width - minSide) ~/ 2;
       cropY = (image.height - minSide) ~/ 2;
@@ -129,15 +116,11 @@ class ModelManager {
       cropHeight = minSide;
     }
 
-    // Safety checks to ensure we don't crop outside image bounds
-    // (Note: CameraImage coordinates might need rotation handling if not already done,
-    // but typically MLKit faceBox matches the preview stream orientation on Android NV21)
     cropX = cropX.clamp(0, image.width - 1);
     cropY = cropY.clamp(0, image.height - 1);
     if (cropX + cropWidth > image.width) cropWidth = image.width - cropX;
     if (cropY + cropHeight > image.height) cropHeight = image.height - cropY;
 
-    // 1. Preprocess with Whitening (Standardization)
     final flatInput = await compute(
       _processImageForFaceNet,
       _IsolateData(
@@ -159,10 +142,8 @@ class ModelManager {
     );
 
     final input = flatInput.reshape([1, inputSize, inputSize, 3]);
-
-    // 2. Output is now 512 float values
     final outputTensor = _recognitionInterpreter!.getOutputTensors().first;
-    int vectorLen = outputTensor.shape.last; // Should be 512
+    int vectorLen = outputTensor.shape.last;
     var output = List.filled(vectorLen, 0.0).reshape([1, vectorLen]);
 
     _recognitionInterpreter!.run(input, output);
@@ -171,7 +152,6 @@ class ModelManager {
         .map((e) => (e as num).toDouble())
         .toList();
 
-    // 3. L2 Normalize
     return _l2Normalize(rawVector);
   }
 
@@ -183,21 +163,22 @@ class ModelManager {
     return vector.map((x) => x / norm).toList();
   }
 
-  // ===========================================================================
-  //  ISOLATE FUNCTIONS
-  // ===========================================================================
+  double compareVectors(List<double> v1, List<double> v2) {
+    if (v1.length != v2.length) return 10.0;
+    double sum = 0.0;
+    for (int i = 0; i < v1.length; i++) {
+      sum += math.pow(v1[i] - v2[i], 2);
+    }
+    return math.sqrt(sum);
+  }
 
   static Float32List _processImageForLiveness(_IsolateData data) {
-    // Basic 0-1 normalization for liveness
+    // Normalization often 0-1 for liveness models
     return _extractPixels(data, (pixel) => pixel / 255.0);
   }
 
-  // WHITENING for FaceNet: (pixel - mean) / std_dev
   static Float32List _processImageForFaceNet(_IsolateData data) {
-    // 1. Extract Raw Pixels
     Float32List rawPixels = _extractPixels(data, (pixel) => pixel.toDouble());
-
-    // 2. Calculate Mean and Std Dev
     double sum = 0;
     double sqSum = 0;
     for (double p in rawPixels) {
@@ -207,15 +188,11 @@ class ModelManager {
     double mean = sum / rawPixels.length;
     double variance = (sqSum / rawPixels.length) - (mean * mean);
     double std = math.sqrt(variance);
-
-    // Avoid division by zero
     std = math.max(std, 1.0 / math.sqrt(rawPixels.length));
 
-    // 3. Standardize
     for (int i = 0; i < rawPixels.length; i++) {
       rawPixels[i] = (rawPixels[i] - mean) / std;
     }
-
     return rawPixels;
   }
 
@@ -238,9 +215,7 @@ class ModelManager {
       final vBytes = data.planes[2];
 
       for (int y = 0; y < targetSize; y++) {
-        // Map target pixel to source crop pixel
         final int srcY = cropY + (y * cropH ~/ targetSize);
-
         for (int x = 0; x < targetSize; x++) {
           final int srcX = cropX + (x * cropW ~/ targetSize);
 
@@ -248,7 +223,6 @@ class ModelManager {
               srcX >= data.width ||
               srcY < 0 ||
               srcY >= data.height) {
-            // Padding (Black) if out of bounds
             floatInput[pixelIndex++] = transform(0);
             floatInput[pixelIndex++] = transform(0);
             floatInput[pixelIndex++] = transform(0);
@@ -282,13 +256,11 @@ class ModelManager {
         }
       }
     } else {
-      // BGRA (iOS)
       final bytes = data.planes[0];
       for (int y = 0; y < targetSize; y++) {
         final int srcY = cropY + (y * cropH ~/ targetSize);
         for (int x = 0; x < targetSize; x++) {
           final int srcX = cropX + (x * cropW ~/ targetSize);
-
           if (srcX < 0 ||
               srcX >= data.width ||
               srcY < 0 ||
@@ -296,17 +268,14 @@ class ModelManager {
             pixelIndex += 3;
             continue;
           }
-
           final int index = (srcY * data.yRowStride) + (srcX * 4);
           if (index + 2 >= bytes.length) {
             pixelIndex += 3;
             continue;
           }
-
           final b = bytes[index];
           final g = bytes[index + 1];
           final r = bytes[index + 2];
-
           floatInput[pixelIndex++] = transform(r);
           floatInput[pixelIndex++] = transform(g);
           floatInput[pixelIndex++] = transform(b);
