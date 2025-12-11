@@ -67,6 +67,7 @@ class ModelManager {
     );
 
     final input = flatInput.reshape([1, inputSize, inputSize, 3]);
+    // Assuming output is [1, 3] based on your previous code
     var output = List.filled(3, 0.0).reshape([1, 3]);
     _livenessInterpreter!.run(input, output);
 
@@ -74,12 +75,15 @@ class ModelManager {
         .map((e) => (e as num).toDouble())
         .toList();
 
-    // DEBUG: Print liveness score
-    print("Liveness Score: ${scores[1]}");
+    // Typically index 1 is "Real" in many 2-3 class liveness models.
+    // If your model is binary [Fake, Real], use scores[1].
+    double realScore = scores[1];
 
-    // FIX: Set threshold to 0.0 to prevent blocking users due to rotation issues.
-    // We rely on "Active Liveness" (Smile/Blink/Turn) instead.
-    return true;
+    print("Liveness Score: $realScore (Threshold: 0.75)");
+
+    // FIX: Re-enabled logic with a threshold.
+    // Adjust 0.75 up (stricter) or down (looser) based on testing.
+    return realScore > 0.75;
   }
 
   Future<List<double>> generateFaceEmbedding(
@@ -159,7 +163,6 @@ class ModelManager {
     return vector.map((x) => x / norm).toList();
   }
 
-  // FIX: Added missing method
   double compareVectors(List<double> v1, List<double> v2) {
     if (v1.length != v2.length) return 10.0;
     double sum = 0.0;
@@ -170,6 +173,7 @@ class ModelManager {
   }
 
   static Float32List _processImageForLiveness(_IsolateData data) {
+    // Normalization often 0-1 for liveness models
     return _extractPixels(data, (pixel) => pixel / 255.0);
   }
 

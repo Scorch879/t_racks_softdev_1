@@ -132,6 +132,20 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
       return;
     }
 
+    // --- NEW: Liveness Check ---
+    // We check if the face is real before processing identification
+    bool isReal = await _tfliteManager.checkLiveness(image);
+    if (!isReal) {
+      if (mounted) {
+        setState(() {
+          _statusMessage = "⚠️ SPOOF DETECTED ⚠️\nReal face required";
+          _statusColor = Colors.redAccent;
+        });
+      }
+      // Stop here if fake
+      return;
+    }
+
     // Verify
     await _verifyStudent(image, mainFace);
   }
