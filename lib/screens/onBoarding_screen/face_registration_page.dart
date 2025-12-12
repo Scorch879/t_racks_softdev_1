@@ -146,6 +146,17 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
 
         if (faces.isEmpty) {
           _updateFeedback("Position Face in Circle", Colors.white, 0.0);
+
+          // --- FIX: RESET IF FACE LOST ---
+          if (_collectedVectors.isNotEmpty) {
+            // Face disappeared during scanning! Reset progress.
+            setState(() {
+              _collectedVectors.clear();
+              _progress = 0.0;
+            });
+            _updateFeedback("Face Lost. Restarting...", Colors.redAccent, 0.0);
+            HapticFeedback.vibrate();
+          }
           return;
         }
 
@@ -162,8 +173,11 @@ class _FaceRegistrationPageState extends State<FaceRegistrationPage>
           _updateFeedback("Move Back", Colors.orangeAccent, 0.0);
           return;
         }
-        if ((face.headEulerAngleY ?? 0).abs() > 25 ||
-            (face.headEulerAngleZ ?? 0).abs() > 25) {
+
+        // --- FIX: TIGHTER HEAD POSE CHECK FOR REGISTRATION ---
+        // Stricter than attendance (10 degrees vs 12-15) because this is the reference face.
+        if ((face.headEulerAngleY ?? 0).abs() > 10 ||
+            (face.headEulerAngleZ ?? 0).abs() > 10) {
           _updateFeedback("Look Straight", Colors.yellowAccent, 0.0);
           return;
         }
