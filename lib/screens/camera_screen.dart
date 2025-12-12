@@ -94,10 +94,36 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen>
 
           if (faces.isNotEmpty) {
             final mainFace = faces.first;
+
+            // --- PROXIMITY CHECK ---
+            // Calculate face width relative to the image's smallest dimension
+            final double faceWidth = mainFace.boundingBox.width;
+            final double minImageDim =
+                (image.width < image.height ? image.width : image.height)
+                    .toDouble();
+
+            // Threshold: if face is > 65% of the screen, it's too close
+            if (faceWidth > minImageDim * 0.65) {
+              if (mounted) {
+                setState(() {
+                  _detectedFace = mainFace;
+                  _scannerColor = Colors.orangeAccent;
+                  _topStatus = "Too Close! Zoom Out";
+                });
+              }
+              // Skip verification for this frame
+              return;
+            }
+
+            // --- PROCEED TO VERIFY ---
             setState(() {
               _detectedFace = mainFace;
               _scannerColor =
                   Colors.yellowAccent; // Found face, checking identity
+              // Reset status if coming from "Too Close" state
+              if (_topStatus.contains("Too Close")) {
+                _topStatus = "Scanning for students...";
+              }
             });
             await _verifyStudent(image, mainFace);
           } else {
@@ -105,6 +131,7 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen>
               setState(() {
                 _detectedFace = null;
                 _scannerColor = const Color(0xFF2A7FA3); // Reset
+                _topStatus = "Scanning for students...";
               });
           }
         }

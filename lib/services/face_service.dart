@@ -21,11 +21,11 @@ class FaceRecognitionService {
     try {
       final embeddingString = faceEmbedding.toString();
 
-      // FIXED: Increased from 0.25 to 0.80.
-      // 0.25 was too strict (requiring >96% similarity).
-      // 0.80 allows for reasonable variations in lighting and angles
-      // while still keeping distinct faces separate.
-      const matchThreshold = 0.50;
+      // FIXED: Lowered threshold for better accuracy.
+      // 0.50 is too loose and causes false positives.
+      // 0.30 is the academic benchmark for FaceNet512.
+      // 0.35-0.40 is a safe practical range for mobile cameras.
+      const matchThreshold = 0.40;
 
       final response = await _supabase.rpc(
         'match_face',
