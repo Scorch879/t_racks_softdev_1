@@ -150,7 +150,7 @@ class AiServices {
       // might re-register their face. For pgvector, we convert the List to a string.
       await _supabase
           .from('Face_Table')
-          .upsert({'student_id': userId, 'face_id': faceVector.toString()});
+          .upsert({'student_id': userId, 'face_id': faceVector});
     } catch (e) {
       print('Error saving face data: $e');
       rethrow;

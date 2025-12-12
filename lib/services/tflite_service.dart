@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:camera/camera.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
+import 'package:image/image.dart' as img;
 import 'dart:ui';
 
 class ModelManager {
@@ -23,7 +24,10 @@ class ModelManager {
         options: options,
       );
 
-      // 2. Load FaceNet 512
+      // 2. Load FaceNet 512 (Current Active Model)
+      // NOTE: mobilefacenet.tflite is available in assets but UNUSED here.
+      // To use it, change the string below to 'assets/models/mobilefacenet.tflite'
+      // and ensure the output shape matches (192 for mobilefacenet vs 512 for facenet).
       _recognitionInterpreter = await Interpreter.fromAsset(
         'assets/models/facenet_512.tflite',
         options: options,
@@ -41,10 +45,8 @@ class ModelManager {
     _recognitionInterpreter?.close();
   }
 
-  /// Returns True if face is Real, False if Spoof
   Future<bool> checkLiveness(CameraImage image) async {
-    // REVERTED: Always return true to disable the sensitive spoof check.
-    return true;
+    return true; // Keep true for now to isolate the vector issue
   }
 
   Future<List<double>> generateFaceEmbedding(
@@ -52,36 +54,37 @@ class ModelManager {
     Rect? faceBox,
   }) async {
     if (!_areModelsLoaded || _recognitionInterpreter == null) return [];
+
+    // FaceNet-512 expects 160x160
     const int inputSize = 160;
 
-    int cropX, cropY, cropWidth, cropHeight;
+    // Calculate Crop Coordinates
+    int cropX = 0,
+        cropY = 0,
+        cropWidth = image.width,
+        cropHeight = image.height;
 
     if (faceBox != null) {
-      double margin = 0.10;
+      double margin = 0.10; // 10% margin
       double width = faceBox.width * (1 + margin);
       double height = faceBox.height * (1 + margin);
       double centerX = faceBox.center.dx;
       double centerY = faceBox.center.dy;
-
       double side = math.max(width, height);
 
       cropX = (centerX - side / 2).toInt();
       cropY = (centerY - side / 2).toInt();
       cropWidth = side.toInt();
       cropHeight = side.toInt();
-    } else {
-      int minSide = math.min(image.width, image.height);
-      cropX = (image.width - minSide) ~/ 2;
-      cropY = (image.height - minSide) ~/ 2;
-      cropWidth = minSide;
-      cropHeight = minSide;
     }
 
+    // Clamp to image bounds
     cropX = cropX.clamp(0, image.width - 1);
     cropY = cropY.clamp(0, image.height - 1);
     if (cropX + cropWidth > image.width) cropWidth = image.width - cropX;
     if (cropY + cropHeight > image.height) cropHeight = image.height - cropY;
 
+    // --- STEP 1: PROCESSING ---
     final flatInput = await compute(
       _processImageForFaceNet,
       _IsolateData(
@@ -93,7 +96,7 @@ class ModelManager {
         uvPixelStride: image.planes.length > 1
             ? (image.planes[1].bytesPerPixel ?? 1)
             : 0,
-        isYUV: image.planes.length >= 3,
+        isYUV: image.format.group == ImageFormatGroup.yuv420,
         targetSize: inputSize,
         cropX: cropX,
         cropY: cropY,
@@ -102,9 +105,12 @@ class ModelManager {
       ),
     );
 
+    // --- STEP 2: INFERENCE ---
+    if (flatInput.length == 0) return []; // Check for conversion failure
+
     final input = flatInput.reshape([1, inputSize, inputSize, 3]);
     final outputTensor = _recognitionInterpreter!.getOutputTensors().first;
-    int vectorLen = outputTensor.shape.last;
+    int vectorLen = outputTensor.shape.last; // 512
     var output = List.filled(vectorLen, 0.0).reshape([1, vectorLen]);
 
     _recognitionInterpreter!.run(input, output);
@@ -133,116 +139,160 @@ class ModelManager {
     return math.sqrt(sum);
   }
 
-  static Float32List _processImageForLiveness(_IsolateData data) {
-    return _extractPixels(data, (pixel) => pixel / 255.0);
-  }
+  // --- ISOLATE LOGIC ---
 
   static Float32List _processImageForFaceNet(_IsolateData data) {
-    Float32List rawPixels = _extractPixels(data, (pixel) => pixel.toDouble());
-    double sum = 0;
-    double sqSum = 0;
-    for (double p in rawPixels) {
-      sum += p;
-      sqSum += p * p;
-    }
-    double mean = sum / rawPixels.length;
-    double variance = (sqSum / rawPixels.length) - (mean * mean);
-    double std = math.sqrt(variance);
-    std = math.max(std, 1.0 / math.sqrt(rawPixels.length));
+    // 1. Convert Camera Data to a standard RGB Image
+    img.Image? originalImage = _convertYUV420ToImage(data);
 
-    for (int i = 0; i < rawPixels.length; i++) {
-      rawPixels[i] = (rawPixels[i] - mean) / std;
-    }
-    return rawPixels;
-  }
+    if (originalImage == null) return Float32List(0);
 
-  static Float32List _extractPixels(
-    _IsolateData data,
-    double Function(int) transform,
-  ) {
-    final int targetSize = data.targetSize;
-    final int cropX = data.cropX;
-    final int cropY = data.cropY;
-    final int cropY_H = data.cropHeight;
-    final int cropX_W = data.cropWidth;
+    // 2. Crop & Resize
+    img.Image faceImage = img.copyCrop(
+      originalImage,
+      x: data.cropX,
+      y: data.cropY,
+      width: data.cropWidth,
+      height: data.cropHeight,
+    );
 
-    final floatInput = Float32List(1 * targetSize * targetSize * 3);
+    img.Image resizedImage = img.copyResize(
+      faceImage,
+      width: data.targetSize,
+      height: data.targetSize,
+      interpolation: img.Interpolation.linear,
+    );
+
+    // 3. Standardize (Pixel - Mean / Std)
+    final Float32List floatInput = Float32List(
+      data.targetSize * data.targetSize * 3,
+    );
     int pixelIndex = 0;
 
-    if (data.isYUV) {
-      final yBytes = data.planes[0];
-      final uBytes = data.planes[1];
-      final vBytes = data.planes[2];
+    // Convert to Float & Standardize
+    // Iterate pixels
+    double sum = 0;
+    double sqSum = 0;
+    int numPixels = data.targetSize * data.targetSize * 3;
 
-      for (int y = 0; y < targetSize; y++) {
-        final int srcY = cropY + (y * cropY_H ~/ targetSize);
-        for (int x = 0; x < targetSize; x++) {
-          final int srcX = cropX + (x * cropX_W ~/ targetSize);
-
-          if (srcX < 0 ||
-              srcX >= data.width ||
-              srcY < 0 ||
-              srcY >= data.height) {
-            floatInput[pixelIndex++] = transform(0);
-            floatInput[pixelIndex++] = transform(0);
-            floatInput[pixelIndex++] = transform(0);
-            continue;
-          }
-
-          final int uvX = srcX ~/ 2;
-          final int uvY = srcY ~/ 2;
-          final int indexY = srcY * data.yRowStride + srcX;
-          final int indexUV =
-              uvY * data.uvRowStride + (uvX * data.uvPixelStride);
-
-          if (indexY >= yBytes.length || indexUV >= uBytes.length) {
-            pixelIndex += 3;
-            continue;
-          }
-
-          final int yVal = yBytes[indexY];
-          final int uVal = uBytes[indexUV];
-          final int vVal = vBytes[indexUV];
-
-          int r = (yVal + 1.402 * (vVal - 128)).toInt().clamp(0, 255);
-          int g = (yVal - 0.344136 * (uVal - 128) - 0.714136 * (vVal - 128))
-              .toInt()
-              .clamp(0, 255);
-          int b = (yVal + 1.772 * (uVal - 128)).toInt().clamp(0, 255);
-
-          floatInput[pixelIndex++] = transform(r);
-          floatInput[pixelIndex++] = transform(g);
-          floatInput[pixelIndex++] = transform(b);
-        }
-      }
-    } else {
-      final bytes = data.planes[0];
-      for (int y = 0; y < targetSize; y++) {
-        final int srcY = cropY + (y * cropY_H ~/ targetSize);
-        for (int x = 0; x < targetSize; x++) {
-          final int srcX = cropX + (x * cropX_W ~/ targetSize);
-          if (srcX < 0 ||
-              srcX >= data.width ||
-              srcY < 0 ||
-              srcY >= data.height) {
-            pixelIndex += 3;
-            continue;
-          }
-          final int index = (srcY * data.yRowStride) + (srcX * 4);
-          if (index + 2 >= bytes.length) {
-            pixelIndex += 3;
-            continue;
-          }
-          final b = bytes[index];
-          final g = bytes[index + 1];
-          final r = bytes[index + 2];
-          floatInput[pixelIndex++] = transform(r);
-          floatInput[pixelIndex++] = transform(g);
-          floatInput[pixelIndex++] = transform(b);
-        }
+    // Pass 1: Calc Mean/Std
+    for (int y = 0; y < data.targetSize; y++) {
+      for (int x = 0; x < data.targetSize; x++) {
+        final pixel = resizedImage.getPixel(x, y);
+        sum += pixel.r + pixel.g + pixel.b;
+        sqSum +=
+            (pixel.r * pixel.r) + (pixel.g * pixel.g) + (pixel.b * pixel.b);
       }
     }
+
+    double mean = sum / numPixels;
+    double variance = (sqSum / numPixels) - (mean * mean);
+    double std = math.sqrt(variance);
+    std = math.max(std, 1.0 / math.sqrt(numPixels.toDouble()));
+
+    // Pass 2: Normalize
+    for (int y = 0; y < data.targetSize; y++) {
+      for (int x = 0; x < data.targetSize; x++) {
+        final pixel = resizedImage.getPixel(x, y);
+        floatInput[pixelIndex++] = (pixel.r - mean) / std;
+        floatInput[pixelIndex++] = (pixel.g - mean) / std;
+        floatInput[pixelIndex++] = (pixel.b - mean) / std;
+      }
+    }
+
     return floatInput;
+  }
+
+  static img.Image? _convertYUV420ToImage(_IsolateData data) {
+    try {
+      final width = data.width;
+      final height = data.height;
+      final yBuffer = data.planes[0];
+
+      // Determine format: Multi-plane (Normal) or Single-plane (NV21 packed)
+      bool isSinglePlane = data.planes.length == 1;
+
+      // Safety Check: If single plane, ensure it's large enough for YUV420
+      // YUV420 needs 1.5 bytes per pixel. BGRA needs 4 bytes.
+      if (isSinglePlane) {
+        if (yBuffer.length < width * height * 1.5) {
+          // Buffer too small for YUV? Might be corrupted or odd format.
+          // Attempt to read as BGRA if size matches, else return null.
+          if (yBuffer.length >= width * height * 4) {
+            return img.Image.fromBytes(
+              width: width,
+              height: height,
+              bytes: yBuffer.buffer,
+              order: img.ChannelOrder.bgra,
+            );
+          }
+        }
+      }
+
+      final img.Image image = img.Image(width: width, height: height);
+      final int uvRowStride = data.uvRowStride > 0 ? data.uvRowStride : width;
+      final int uvPixelStride = data.uvPixelStride > 0 ? data.uvPixelStride : 2;
+
+      // Offsets for Single Plane NV21
+      // Y ends at width*height. UV starts immediately after.
+      final int uvOffset = isSinglePlane ? (width * height) : 0;
+      final Uint8List uBuffer = isSinglePlane
+          ? yBuffer
+          : (data.planes.length > 1 ? data.planes[1] : Uint8List(0));
+      final Uint8List vBuffer = isSinglePlane
+          ? yBuffer
+          : (data.planes.length > 2 ? data.planes[2] : Uint8List(0));
+
+      for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+          final int yIndex = y * data.yRowStride + x;
+
+          if (yIndex >= yBuffer.length) continue;
+          final int yVal = yBuffer[yIndex];
+
+          // Calculate UV Index
+          final int uvRow = y >> 1;
+          final int uvCol = x >> 1;
+          final int uvBaseIndex = uvRow * uvRowStride + uvCol * uvPixelStride;
+
+          int uVal = 128, vVal = 128;
+
+          if (isSinglePlane) {
+            // NV21 (Android default) -> V then U
+            int index = uvOffset + uvBaseIndex;
+            if (index + 1 < yBuffer.length) {
+              vVal = yBuffer[index];
+              uVal = yBuffer[index + 1];
+            }
+          } else if (uBuffer.isNotEmpty && vBuffer.isNotEmpty) {
+            if (uvBaseIndex < uBuffer.length && uvBaseIndex < vBuffer.length) {
+              uVal = uBuffer[uvBaseIndex];
+              vVal = vBuffer[uvBaseIndex];
+            }
+          }
+
+          // YUV to RGB Conversion
+          int r = (yVal + 1.370705 * (vVal - 128)).toInt();
+          int g = (yVal - 0.337633 * (uVal - 128) - 0.698001 * (vVal - 128))
+              .toInt();
+          int b = (yVal + 1.732446 * (uVal - 128)).toInt();
+
+          image.setPixelRgb(
+            x,
+            y,
+            r.clamp(0, 255),
+            g.clamp(0, 255),
+            b.clamp(0, 255),
+          );
+        }
+      }
+
+      // Rotate if needed (usually front camera is rotated)
+      return img.copyRotate(image, angle: -90);
+    } catch (e) {
+      print("Convert Error: $e");
+      return null;
+    }
   }
 }
 

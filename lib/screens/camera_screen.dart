@@ -1,9 +1,7 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math';
-import 'dart:typed_data';
+import 'dart:ui';
 import 'package:camera/camera.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
@@ -20,27 +18,31 @@ class AttendanceCameraScreen extends StatefulWidget {
   State<AttendanceCameraScreen> createState() => _AttendanceCameraScreenState();
 }
 
-class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
+class _AttendanceCameraScreenState extends State<AttendanceCameraScreen>
+    with SingleTickerProviderStateMixin {
   CameraController? _controller;
-  Future<void>? _initializeControllerFuture;
-  bool _isProcessing = false;
   late FaceDetector _faceDetector;
   final tflite.ModelManager _tfliteManager = tflite.ModelManager();
   final AttendanceService _attendanceService = AttendanceService();
 
-  // UI State
-  String _statusMessage = "Align face to scan";
-  Color _statusColor = Colors.white;
-  bool _isVerified = false;
-  bool _canScan = true;
+  bool _isProcessing = false;
 
-  // --- STABILITY CHECK ---
-  int _stableFrames = 0;
-  final int _requiredStableFrames = 3; // Face must be stable for ~3 checks
+  // UI State
+  String _topStatus = "Scanning for students...";
+  Color _scannerColor = const Color(0xFF2A7FA3); // Default Blue
+  bool _isVerified = false;
+  Face? _detectedFace;
+
+  late AnimationController _scanLineController;
 
   @override
   void initState() {
     super.initState();
+    _scanLineController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+
     final options = FaceDetectorOptions(
       enableClassification: false,
       enableLandmarks: true,
@@ -52,290 +54,399 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
     _initializeCamera();
   }
 
-  void _initializeCamera() {
+  void _initializeCamera() async {
     if (widget.cameras.isEmpty) return;
-    final frontCamera = widget.cameras.firstWhere(
+
+    // Use back camera for scanning students
+    final camera = widget.cameras.firstWhere(
       (c) => c.lensDirection == CameraLensDirection.front,
       orElse: () => widget.cameras[0],
     );
+
     _controller = CameraController(
-      frontCamera,
-      ResolutionPreset.medium,
+      camera,
+      ResolutionPreset.high,
       enableAudio: false,
       imageFormatGroup: Platform.isAndroid
           ? ImageFormatGroup.nv21
           : ImageFormatGroup.bgra8888,
     );
-    _initializeControllerFuture = _controller!.initialize().then((_) {
-      if (mounted) {
-        setState(() {});
-        _startImageStream();
-      }
-    });
+
+    await _controller!.initialize();
+    if (mounted) {
+      setState(() {});
+      _startImageStream();
+    }
   }
 
   void _startImageStream() {
-    if (_controller == null) return;
     int frameCount = 0;
-
     _controller!.startImageStream((CameraImage image) async {
-      if (_isProcessing || !_canScan || _isVerified) return;
-
-      // Process every 5th frame to save CPU
+      if (_isProcessing || _isVerified) return;
       frameCount++;
-      if (frameCount % 5 != 0) return;
+      if (frameCount % 3 != 0) return; // Process every 3rd frame
 
       _isProcessing = true;
       try {
-        await _processFrame(image);
+        final inputImage = _inputImageFromCameraImage(image);
+        if (inputImage != null) {
+          final faces = await _faceDetector.processImage(inputImage);
+
+          if (faces.isNotEmpty) {
+            final mainFace = faces.first;
+            setState(() {
+              _detectedFace = mainFace;
+              _scannerColor =
+                  Colors.yellowAccent; // Found face, checking identity
+            });
+            await _verifyStudent(image, mainFace);
+          } else {
+            if (mounted)
+              setState(() {
+                _detectedFace = null;
+                _scannerColor = const Color(0xFF2A7FA3); // Reset
+              });
+          }
+        }
       } catch (e) {
-        print("Error processing: $e");
+        debugPrint("Scan error: $e");
       } finally {
         _isProcessing = false;
       }
     });
   }
 
-  Future<void> _processFrame(CameraImage image) async {
-    final inputImage = _inputImageFromCameraImage(image);
-    if (inputImage == null) return;
-
-    final List<Face> faces = await _faceDetector.processImage(inputImage);
-
-    // If no face found, reset stability
-    if (faces.isEmpty) {
-      _stableFrames = 0;
-      if (mounted && _statusMessage != "Align face to scan") {
-        setState(() {
-          _statusMessage = "Align face to scan";
-          _statusColor = Colors.white;
-        });
-      }
-      return;
-    }
-
-    Face mainFace = faces.first;
-    double maxArea = 0;
-    for (var face in faces) {
-      double area = face.boundingBox.width * face.boundingBox.height;
-      if (area > maxArea) {
-        maxArea = area;
-        mainFace = face;
-      }
-    }
-
-    // Distance Check
-    double faceRatio =
-        mainFace.boundingBox.width / inputImage.metadata!.size.width;
-    if (faceRatio < 0.15) {
-      _stableFrames = 0; // Reset if too far
-      if (mounted)
-        setState(() {
-          _statusMessage = "Move Closer";
-          _statusColor = Colors.orange;
-        });
-      return;
-    }
-
-    // --- STABILITY LOGIC ---
-    // Instead of checking for Spoof, we check for Stability.
-    // This forces the user to "Hold Still" which fixes the blurry/wrong face issue.
-    if (_stableFrames < _requiredStableFrames) {
-      _stableFrames++;
-      if (mounted) {
-        setState(() {
-          _statusMessage =
-              "Hold still... (${_stableFrames}/${_requiredStableFrames})";
-          _statusColor = Colors.yellowAccent;
-        });
-      }
-      return; // Not stable yet, skip verification
-    }
-
-    // If we reach here, face is stable. Proceed to Verify.
-    await _verifyStudent(image, mainFace);
-  }
-
   Future<void> _verifyStudent(CameraImage image, Face face) async {
-    final faceEmbedding = await _tfliteManager.generateFaceEmbedding(
+    // 1. Get Vector
+    final vector = await _tfliteManager.generateFaceEmbedding(
       image,
       faceBox: face.boundingBox,
     );
+    if (vector.isEmpty) return;
 
-    if (faceEmbedding.isEmpty) return;
-
-    final matchingService = FaceRecognitionService();
-    final matchResult = await matchingService.findMatchingStudent(
-      faceEmbedding,
-    );
+    // 2. Find Match in Database
+    final service = FaceRecognitionService();
+    final match = await service.findMatchingStudent(vector);
 
     if (!mounted) return;
 
-    if (matchResult != null) {
+    if (match != null) {
+      // --- MATCH FOUND ---
+      HapticFeedback.heavyImpact();
+
       setState(() {
         _isVerified = true;
-        _statusMessage = "Hi ${matchResult.fullName}!\nMarking attendance...";
-        _statusColor = Colors.blueAccent;
+        _scannerColor = const Color(0xFF7FE26B); // Green
+        _topStatus = "Identified: ${match.fullName}";
       });
 
-      _attendanceService
-          .markAttendance(matchResult.studentId)
-          .then((className) {
-            if (mounted) {
-              setState(() {
-                if (className != null) {
-                  _statusMessage = "✅ Success!\nAttended: $className";
-                  _statusColor = Colors.green;
-                } else {
-                  _statusMessage = "✅ Logged in (No Class Now)";
-                  _statusColor = Colors.green;
-                }
-              });
-
-              // Reset after 3 seconds
-              Future.delayed(const Duration(seconds: 3), () {
-                if (mounted) {
-                  setState(() {
-                    _isVerified = false;
-                    _stableFrames = 0;
-                    _statusMessage = "Align face to scan";
-                    _statusColor = Colors.white;
-                  });
-                }
-              });
-            }
-          })
-          .catchError((e) {
-            if (mounted) {
-              setState(() {
-                _statusMessage =
-                    "❌ Hi ${matchResult.fullName}.\nNo active class found.";
-                _statusColor = Colors.orange;
-              });
-              Future.delayed(const Duration(seconds: 4), () {
-                if (mounted)
-                  setState(() {
-                    _isVerified = false;
-                    _stableFrames = 0;
-                  });
-              });
-            }
-          });
-    } else {
-      // NO MATCH FOUND
-      // Reset stability so it retries from scratch (prevents locking onto a wrong match)
-      _stableFrames = 0;
-      if (mounted) {
-        setState(() {
-          _statusMessage = "Face not recognized. Try again.";
-          _statusColor = Colors.redAccent;
-        });
+      // 3. Try to Mark Attendance
+      try {
+        final className = await _attendanceService.markAttendance(
+          match.studentId,
+        );
+        // SUCCESS: Enrolled and Class is Ongoing
+        _showSuccessSheet(
+          name: match.fullName,
+          status: "Present: $className",
+          isSuccess: true,
+        );
+      } catch (e) {
+        // ERROR: Identified, but not in a class (or other error)
+        print("Attendance Logic: $e");
+        _showSuccessSheet(
+          name: match.fullName,
+          status: "Not in any class right now.",
+          isSuccess: false, // Shows orange warning instead of green check
+        );
       }
+    } else {
+      // --- UNKNOWN FACE ---
+      if (mounted)
+        setState(() {
+          _scannerColor = const Color(0xFFDA6A6A); // Red
+          _topStatus = "Unknown Face";
+        });
     }
+  }
+
+  // --- Updated Success/Info Sheet ---
+  void _showSuccessSheet({
+    required String name,
+    required String status,
+    required bool isSuccess,
+  }) {
+    // Determine colors based on result
+    final Color mainColor = isSuccess
+        ? const Color(0xFF7FE26B)
+        : Colors.orangeAccent;
+    final IconData icon = isSuccess
+        ? Icons.check_circle
+        : Icons.warning_amber_rounded;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isDismissible: false,
+      enableDrag: false,
+      builder: (context) => Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: const Color(0xFF133A53),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: mainColor, width: 2),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: mainColor, size: 50),
+            const SizedBox(height: 16),
+            Text(
+              name,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              status,
+              style: TextStyle(
+                color: isSuccess ? Colors.white70 : Colors.orange[200],
+                fontSize: 16,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: mainColor,
+                  foregroundColor: Colors.black,
+                ),
+                onPressed: () {
+                  Navigator.pop(context); // Close sheet
+                  setState(() {
+                    _isVerified = false;
+                    _topStatus = "Scanning for students...";
+                    _scannerColor = const Color(0xFF2A7FA3);
+                  });
+                },
+                child: const Text("Next Student"),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   InputImage? _inputImageFromCameraImage(CameraImage image) {
     if (_controller == null) return null;
     final camera = _controller!.description;
     final sensorOrientation = camera.sensorOrientation;
-    InputImageRotation? rotation;
-    if (Platform.isIOS) {
-      rotation = InputImageRotationValue.fromRawValue(sensorOrientation);
-    } else if (Platform.isAndroid) {
-      var rotationCompensation =
-          _orientations[_controller!.value.deviceOrientation];
-      if (rotationCompensation == null) return null;
-      if (camera.lensDirection == CameraLensDirection.front) {
-        rotationCompensation = (sensorOrientation + rotationCompensation) % 360;
-      } else {
-        rotationCompensation =
-            (sensorOrientation - rotationCompensation + 360) % 360;
-      }
-      rotation = InputImageRotationValue.fromRawValue(rotationCompensation);
-    }
-    if (rotation == null) return null;
-
-    final format = InputImageFormatValue.fromRawValue(image.format.raw);
-    if (image.planes.isEmpty) return null;
-
-    final metadata = InputImageMetadata(
-      size: Size(image.width.toDouble(), image.height.toDouble()),
-      rotation: rotation,
-      format: format ?? InputImageFormat.nv21,
-      bytesPerRow: image.planes[0].bytesPerRow,
+    final rotation = InputImageRotationValue.fromRawValue(
+      Platform.isAndroid ? (sensorOrientation + 0) % 360 : sensorOrientation,
     );
-
-    final WriteBuffer allBytes = WriteBuffer();
-    for (final Plane plane in image.planes) {
-      allBytes.putUint8List(plane.bytes);
-    }
-    final bytes = allBytes.done().buffer.asUint8List();
-
-    return InputImage.fromBytes(bytes: bytes, metadata: metadata);
+    if (rotation == null) return null;
+    final format = InputImageFormatValue.fromRawValue(image.format.raw);
+    if (format == null) return null;
+    return InputImage.fromBytes(
+      bytes: Uint8List.fromList(
+        image.planes.fold(<int>[], (p, e) => p..addAll(e.bytes)),
+      ),
+      metadata: InputImageMetadata(
+        size: Size(image.width.toDouble(), image.height.toDouble()),
+        rotation: rotation,
+        format: format,
+        bytesPerRow: image.planes.first.bytesPerRow,
+      ),
+    );
   }
-
-  final _orientations = {
-    DeviceOrientation.portraitUp: 0,
-    DeviceOrientation.landscapeLeft: 90,
-    DeviceOrientation.portraitDown: 180,
-    DeviceOrientation.landscapeRight: 270,
-  };
 
   @override
   void dispose() {
     _faceDetector.close();
-    _controller?.stopImageStream();
     _controller?.dispose();
+    _scanLineController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_controller == null || !_controller!.value.isInitialized) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final size = MediaQuery.of(context).size;
+
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(title: const Text('Attendance Scanner')),
-      body: FutureBuilder<void>(
-        future: _initializeControllerFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.done &&
-              _controller != null &&
-              _controller!.value.isInitialized) {
-            final size = MediaQuery.of(context).size;
-            var scale = _controller!.value.aspectRatio * size.aspectRatio;
-            if (scale < 1) scale = 1 / scale;
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // 1. Camera Feed
+          SizedBox(
+            width: size.width,
+            height: size.height,
+            child: FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: _controller!.value.previewSize!.height,
+                height: _controller!.value.previewSize!.width,
+                child: CameraPreview(_controller!),
+              ),
+            ),
+          ),
 
-            return Stack(
-              children: [
-                Center(
-                  child: Transform.scale(
-                    scale: scale,
-                    child: CameraPreview(_controller!),
-                  ),
+          // 2. Scanner Overlay
+          CustomPaint(
+            painter: ScannerOverlayPainter(
+              color: _scannerColor,
+              scanLineY: _scanLineController.value,
+            ),
+            child: Container(),
+          ),
+
+          // 3. Top Status Bar
+          Positioned(
+            top: 50,
+            left: 20,
+            right: 20,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
                 ),
-                Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Container(
-                    width: double.infinity,
-                    color: Colors.black87,
-                    padding: const EdgeInsets.all(30),
-                    child: Text(
-                      _statusMessage,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: _statusColor,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: _scannerColor.withOpacity(0.5)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: _scannerColor,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(color: _scannerColor, blurRadius: 5),
+                        ],
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 10),
+                    Flexible(
+                      child: Text(
+                        _topStatus,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            );
-          } else {
-            return const Center(child: CircularProgressIndicator());
-          }
-        },
+              ),
+            ),
+          ),
+
+          // 4. Back Button
+          Positioned(
+            top: 50,
+            left: 10,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+        ],
       ),
     );
   }
+}
+
+// --- Tech-Style Scanner Overlay ---
+class ScannerOverlayPainter extends CustomPainter {
+  final Color color;
+  final double scanLineY;
+
+  ScannerOverlayPainter({required this.color, required this.scanLineY})
+    : super(repaint: null);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 4
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final double w = size.width;
+    final double h = size.height;
+    final double cornerLen = 40.0;
+    final double margin = 50.0;
+
+    // Scan Area Rect
+    final rect = Rect.fromLTRB(margin, h / 4, w - margin, h / 1.5);
+
+    // Draw Corners
+    canvas.drawLine(rect.topLeft, rect.topLeft + Offset(cornerLen, 0), paint);
+    canvas.drawLine(rect.topLeft, rect.topLeft + Offset(0, cornerLen), paint);
+
+    canvas.drawLine(rect.topRight, rect.topRight - Offset(cornerLen, 0), paint);
+    canvas.drawLine(rect.topRight, rect.topRight + Offset(0, cornerLen), paint);
+
+    canvas.drawLine(
+      rect.bottomLeft,
+      rect.bottomLeft + Offset(cornerLen, 0),
+      paint,
+    );
+    canvas.drawLine(
+      rect.bottomLeft,
+      rect.bottomLeft - Offset(0, cornerLen),
+      paint,
+    );
+
+    canvas.drawLine(
+      rect.bottomRight,
+      rect.bottomRight - Offset(cornerLen, 0),
+      paint,
+    );
+    canvas.drawLine(
+      rect.bottomRight,
+      rect.bottomRight - Offset(0, cornerLen),
+      paint,
+    );
+
+    // Draw Scan Line
+    final linePaint = Paint()
+      ..color = color.withOpacity(0.5)
+      ..strokeWidth = 2
+      ..shader = LinearGradient(
+        colors: [Colors.transparent, color, Colors.transparent],
+      ).createShader(Rect.fromLTWH(rect.left, 0, rect.width, 10));
+
+    double currentY = rect.top + (rect.height * scanLineY);
+    canvas.drawLine(
+      Offset(rect.left + 10, currentY),
+      Offset(rect.right - 10, currentY),
+      linePaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(ScannerOverlayPainter old) =>
+      old.scanLineY != scanLineY || old.color != color;
 }
