@@ -187,6 +187,10 @@ class AuthService {
     }
   }
 
+  String? getCurrentUserEmail() {
+    return _supabase.auth.currentUser?.email;
+  }
+
   // Helper to get current role (useful for passing to Onboarding screen)
   String? getCurrentUserRole() {
     return _supabase.auth.currentUser?.userMetadata?['role'];

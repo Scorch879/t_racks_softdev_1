@@ -108,6 +108,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         }
         if (newPassword != _confirmPasswordController.text) {
           showCustomSnackBar(context, "Passwords do not match");
+          setState(() => _isLoading = false);
           return;
         }
 
