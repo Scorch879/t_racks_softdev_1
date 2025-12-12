@@ -289,7 +289,7 @@ class DatabaseService {
       )[0]; // YYYY-MM-DD
       final attendanceRes = await _supabase
           .from('Attendance_Record')
-          .select('student_id, isPresent')
+          .select('student_id, isPresent, isLate') // <-- MODIFIED: Added isLate
           .eq('class_id', classId)
           .eq('date', today);
 
@@ -306,12 +306,21 @@ class DatabaseService {
         );
 
         String status = 'Mark Attendance';
+        bool isLate = false; // Default to not late
+
         if (record != null) {
           status = record['isPresent'] ? 'Present' : 'Absent';
+          // Check for isLate, defaulting to false if null
+          isLate = record['isLate'] ?? false;
         }
 
         students.add(
-          StudentAttendanceItem(id: sId, name: fullName, status: status),
+          StudentAttendanceItem(
+            id: sId,
+            name: fullName,
+            status: status,
+            isLate: isLate, // <-- MODIFIED: Pass isLate status
+          ),
         );
       }
       return students;
