@@ -20,7 +20,7 @@ class ModelManager {
 
       final options = InterpreterOptions();
 
-      // 1. Load Liveness Model (Spoof Detection)
+      // 1. Load Liveness Model (Anti-Spoofing)
       _livenessInterpreter = await Interpreter.fromAsset(
         'assets/models/model.tflite',
         options: options,
@@ -45,40 +45,19 @@ class ModelManager {
     _recognitionInterpreter?.close();
   }
 
-  /// Compares two face vectors. Lower distance = better match.
-  double compareVectors(List<double> v1, List<double> v2) {
-    if (v1.length != v2.length) return 10.0;
-    double sum = 0.0;
-    for (int i = 0; i < v1.length; i++) {
-      sum += math.pow(v1[i] - v2[i], 2);
-    }
-    return math.sqrt(sum);
-  }
-
   /// Returns True if face is REAL, False if FAKE (Spoof)
   Future<bool> checkLiveness(CameraImage image, {Rect? faceBox}) async {
-    // Safety check: if model isn't loaded, default to allowing it (or fail secure)
     if (!_areModelsLoaded || _livenessInterpreter == null) {
-      await loadModels(); // Try one last time
-      if (_livenessInterpreter == null) return true; // Fail open if missing
+      await loadModels();
+      if (_livenessInterpreter == null) return true; // Fail open if model missing
     }
 
     try {
-      // Auto-detect input size from the model (usually 128x128 or 224x224)
+      // Auto-detect input size (usually 128 or 224)
       final inputShape = _livenessInterpreter!.getInputTensors().first.shape;
       final int inputSize = inputShape[1];
 
-      // Extract Rect values safely
-      final Map<String, int>? boxData = faceBox != null
-          ? {
-              'left': faceBox.left.toInt(),
-              'top': faceBox.top.toInt(),
-              'width': faceBox.width.toInt(),
-              'height': faceBox.height.toInt(),
-            }
-          : null;
-
-      // Process image specifically for Liveness (often needs wider crop)
+      // Prepare image (Crop & Resize)
       final flatInput = await compute(
         _processImageForLiveness,
         _IsolateData(
@@ -86,38 +65,26 @@ class ModelManager {
           width: image.width,
           height: image.height,
           yRowStride: image.planes[0].bytesPerRow,
-          uvRowStride: image.planes.length > 1
-              ? image.planes[1].bytesPerRow
-              : 0,
-          uvPixelStride: image.planes.length > 1
-              ? (image.planes[1].bytesPerPixel ?? 1)
-              : 0,
-          isYUV: image.planes.length >= 3,
-          faceBoxData: boxData,
+          uvRowStride: image.planes.length > 1 ? image.planes[1].bytesPerRow : 0,
+          uvPixelStride: image.planes.length > 1 ? (image.planes[1].bytesPerPixel ?? 1) : 0,
+          isYUV: image.format.group == ImageFormatGroup.yuv420,
+          faceBoxData: _rectToMap(faceBox),
           targetSize: inputSize,
         ),
       );
 
-      // Prepare Inputs/Outputs
+      // Run Inference
       final input = flatInput.reshape([1, inputSize, inputSize, 3]);
-
-      // Get Output Shape
       final outputTensor = _livenessInterpreter!.getOutputTensors().first;
-      final outputShape = outputTensor.shape;
-      final outputSize = outputShape.last; // e.g., 2 or 3 classes
+      final outputSize = outputTensor.shape.last;
       var output = List.filled(outputSize, 0.0).reshape([1, outputSize]);
 
-      // Run Inference
       _livenessInterpreter!.run(input, output);
 
-      final List<double> scores = (output[0] as List)
-          .map((e) => (e as num).toDouble())
-          .toList();
+      final List<double> scores = (output[0] as List).map((e) => (e as num).toDouble()).toList();
 
-      // LOGIC: Interpreting the results
-      // If 2 Classes: [0] = Fake, [1] = Real (usually)
-      // If 3 Classes (MiniFASNet): [0]=Spoof, [1]=Real, [2]=Spoof
-
+      // Simple Logic: Index 1 is usually "Real", Index 0 is "Fake"
+      // You may need to swap this based on your specific model training
       int maxIndex = 0;
       double maxScore = scores[0];
       for (int i = 1; i < scores.length; i++) {
@@ -127,38 +94,25 @@ class ModelManager {
         }
       }
 
-      // Standard assumption: Class 1 is "Real Face"
       bool isReal = (maxIndex == 1);
-
-      print("👻 Liveness Check: $scores -> ${isReal ? "REAL" : "FAKE"}");
+      print("👻 Liveness Score: $scores -> ${isReal ? "REAL" : "FAKE"}");
       return isReal;
+
     } catch (e) {
-      print("❌ Liveness Check Error: $e");
-      return true; // Default to true on error to prevent blocking users
+      print("❌ Liveness Error: $e");
+      return true;
     }
   }
 
-  Future<List<double>> generateFaceEmbedding(
-    CameraImage image, {
-    Rect? faceBox,
-  }) async {
+  Future<List<double>> generateFaceEmbedding(CameraImage image, {Rect? faceBox}) async {
     if (!_areModelsLoaded || _recognitionInterpreter == null) {
       await loadModels();
-      if (!_areModelsLoaded || _recognitionInterpreter == null) return [];
+      if (!_areModelsLoaded) return [];
     }
 
     try {
-      const int targetInputSize = 160;
-
-      final Map<String, int>? boxData = faceBox != null
-          ? {
-              'left': faceBox.left.toInt(),
-              'top': faceBox.top.toInt(),
-              'width': faceBox.width.toInt(),
-              'height': faceBox.height.toInt(),
-            }
-          : null;
-
+      const int targetSize = 160;
+      
       final flatInput = await compute(
         _processImageForFaceNet,
         _IsolateData(
@@ -166,32 +120,25 @@ class ModelManager {
           width: image.width,
           height: image.height,
           yRowStride: image.planes[0].bytesPerRow,
-          uvRowStride: image.planes.length > 1
-              ? image.planes[1].bytesPerRow
-              : 0,
-          uvPixelStride: image.planes.length > 1
-              ? (image.planes[1].bytesPerPixel ?? 1)
-              : 0,
-          isYUV: image.planes.length >= 3,
-          faceBoxData: boxData,
-          targetSize: targetInputSize,
+          uvRowStride: image.planes.length > 1 ? image.planes[1].bytesPerRow : 0,
+          uvPixelStride: image.planes.length > 1 ? (image.planes[1].bytesPerPixel ?? 1) : 0,
+          isYUV: image.format.group == ImageFormatGroup.yuv420,
+          faceBoxData: _rectToMap(faceBox),
+          targetSize: targetSize,
         ),
       );
 
-      final input = flatInput.reshape([1, targetInputSize, targetInputSize, 3]);
+      final input = flatInput.reshape([1, targetSize, targetSize, 3]);
       final outputTensor = _recognitionInterpreter!.getOutputTensors().first;
       int vectorLen = outputTensor.shape.last;
       var output = List.filled(vectorLen, 0.0).reshape([1, vectorLen]);
 
       _recognitionInterpreter!.run(input, output);
-
-      List<double> rawVector = (output[0] as List)
-          .map((e) => (e as num).toDouble())
-          .toList();
-
-      return _l2Normalize(rawVector);
+      
+      List<double> vector = (output[0] as List).map((e) => (e as num).toDouble()).toList();
+      return _l2Normalize(vector);
     } catch (e) {
-      print("❌ Error generating embedding: $e");
+      print("❌ Embedding Error: $e");
       return [];
     }
   }
@@ -204,220 +151,122 @@ class ModelManager {
     return vector.map((x) => x / norm).toList();
   }
 
-  // --- PROCESSING LOGIC (Isolate) ---
+  Map<String, int>? _rectToMap(Rect? rect) {
+    if (rect == null) return null;
+    return {
+      'left': rect.left.toInt(),
+      'top': rect.top.toInt(),
+      'width': rect.width.toInt(),
+      'height': rect.height.toInt(),
+    };
+  }
+
+  // --- ISOLATE HELPERS ---
 
   static Float32List _processImageForLiveness(_IsolateData data) {
-    // For Liveness, we often just normalize 0-1 or -1 to 1
-    // And we usually take a slightly larger crop (scale 1.5x or 2.0x)
-    // Here we reuse the standard crop for simplicity, but normalize to [0,1]
-    return _extractPixels(data, (pixel) => pixel / 255.0, cropScale: 1.5);
+    // Liveness usually expects 0.0-1.0 normalization and a wider crop
+    return _extractPixels(data, (p) => p / 255.0, cropScale: 1.4);
   }
 
   static Float32List _processImageForFaceNet(_IsolateData data) {
-    // FaceNet expects standardized data (pixel - mean) / std
-    return _extractPixels(
-      data,
-      (pixel) => pixel.toDouble(),
-      cropScale: 1.0,
-      standardize: true,
-    );
+    // FaceNet expects standardization
+    return _extractPixels(data, (p) => p.toDouble(), cropScale: 1.0, standardize: true);
   }
 
-  static Float32List _extractPixels(
-    _IsolateData data,
-    double Function(int) transform, {
-    double cropScale = 1.0,
-    bool standardize = false,
-  }) {
-    img.Image? originalImage;
+  static Float32List _extractPixels(_IsolateData data, double Function(int) transform, {double cropScale = 1.0, bool standardize = false}) {
+    img.Image? originalImage = _convertYUV420ToImage(data);
+    if (originalImage == null) return Float32List(0);
 
-    // 1. Convert Image
-    try {
-      if (data.isYUV) {
-        originalImage = _convertYUV420ToImage(data);
-      } else {
-        originalImage = img.Image.fromBytes(
-          width: data.width,
-          height: data.height,
-          bytes: data.planes[0].buffer,
-          order: img.ChannelOrder.bgra,
-        );
-      }
-    } catch (e) {
-      return Float32List(data.targetSize * data.targetSize * 3);
-    }
-
-    // 2. Crop
-    img.Image faceImage;
+    // Crop Logic
+    int x = 0, y = 0, w = originalImage.width, h = originalImage.height;
     if (data.faceBoxData != null) {
-      int left = data.faceBoxData!['left']!;
-      int top = data.faceBoxData!['top']!;
-      int width = data.faceBoxData!['width']!;
-      int height = data.faceBoxData!['height']!;
-
-      // Expand crop for liveness (needs context) or keep normal for FaceNet
-      if (cropScale > 1.0) {
-        final cx = left + width / 2;
-        final cy = top + height / 2;
-        final newSize = math.max(width, height) * cropScale;
-        left = (cx - newSize / 2).toInt();
-        top = (cy - newSize / 2).toInt();
-        width = newSize.toInt();
-        height = newSize.toInt();
-      }
-
-      left = left.clamp(0, originalImage.width - 1);
-      top = top.clamp(0, originalImage.height - 1);
-      if (left + width > originalImage.width)
-        width = originalImage.width - left;
-      if (top + height > originalImage.height)
-        height = originalImage.height - top;
-
-      faceImage = img.copyCrop(
-        originalImage,
-        x: left,
-        y: top,
-        width: width,
-        height: height,
-      );
-    } else {
-      // Center crop fallback
-      int size = math.min(originalImage.width, originalImage.height);
-      faceImage = img.copyCrop(
-        originalImage,
-        x: (originalImage.width - size) ~/ 2,
-        y: (originalImage.height - size) ~/ 2,
-        width: size,
-        height: size,
-      );
+      double cx = data.faceBoxData!['left']! + data.faceBoxData!['width']! / 2;
+      double cy = data.faceBoxData!['top']! + data.faceBoxData!['height']! / 2;
+      double size = math.max(data.faceBoxData!['width']!, data.faceBoxData!['height']!) * cropScale;
+      
+      x = (cx - size / 2).toInt();
+      y = (cy - size / 2).toInt();
+      w = size.toInt();
+      h = size.toInt();
     }
 
-    // 3. Resize
-    img.Image resizedImage = img.copyResize(
-      faceImage,
-      width: data.targetSize,
-      height: data.targetSize,
-      interpolation: img.Interpolation.linear,
-    );
+    img.Image face = img.copyCrop(originalImage, x: x, y: y, width: w, height: h);
+    img.Image resized = img.copyResize(face, width: data.targetSize, height: data.targetSize);
 
-    // 4. Extract & Normalize
-    final Float32List floatInput = Float32List(
-      data.targetSize * data.targetSize * 3,
-    );
-    int pixelIndex = 0;
+    // Extract Bytes
+    final Float32List floatInput = Float32List(data.targetSize * data.targetSize * 3);
+    int pIndex = 0;
 
     if (standardize) {
-      // Calculate mean/std for FaceNet
-      double sum = 0;
-      double sqSum = 0;
-      for (int y = 0; y < data.targetSize; y++) {
-        for (int x = 0; x < data.targetSize; x++) {
-          final pixel = resizedImage.getPixel(x, y);
-          sum += pixel.r;
-          sum += pixel.g;
-          sum += pixel.b;
-          sqSum += pixel.r * pixel.r;
-          sqSum += pixel.g * pixel.g;
-          sqSum += pixel.b * pixel.b;
+        // Mean/Std Calculation
+        double sum = 0, sqSum = 0;
+        for (int i = 0; i < data.targetSize; i++) {
+           for (int j = 0; j < data.targetSize; j++) {
+              var p = resized.getPixel(j, i);
+              sum += p.r + p.g + p.b;
+              sqSum += (p.r*p.r) + (p.g*p.g) + (p.b*p.b);
+           }
         }
-      }
-      int numPixels = data.targetSize * data.targetSize * 3;
-      double mean = sum / numPixels;
-      double variance = (sqSum / numPixels) - (mean * mean);
-      double std = math.sqrt(variance);
-      std = math.max(std, 1.0 / math.sqrt(numPixels));
+        double mean = sum / (data.targetSize * data.targetSize * 3);
+        double std = math.sqrt((sqSum / (data.targetSize * data.targetSize * 3)) - (mean * mean));
+        std = math.max(std, 1.0 / math.sqrt(data.targetSize * data.targetSize * 3));
 
-      for (int y = 0; y < data.targetSize; y++) {
-        for (int x = 0; x < data.targetSize; x++) {
-          final pixel = resizedImage.getPixel(x, y);
-          floatInput[pixelIndex++] = (pixel.r - mean) / std;
-          floatInput[pixelIndex++] = (pixel.g - mean) / std;
-          floatInput[pixelIndex++] = (pixel.b - mean) / std;
+        for (int i = 0; i < data.targetSize; i++) {
+           for (int j = 0; j < data.targetSize; j++) {
+              var p = resized.getPixel(j, i);
+              floatInput[pIndex++] = (p.r - mean) / std;
+              floatInput[pIndex++] = (p.g - mean) / std;
+              floatInput[pIndex++] = (p.b - mean) / std;
+           }
         }
-      }
     } else {
-      // Standard 0-1 Normalization for Liveness
-      for (int y = 0; y < data.targetSize; y++) {
-        for (int x = 0; x < data.targetSize; x++) {
-          final pixel = resizedImage.getPixel(x, y);
-          floatInput[pixelIndex++] = transform(pixel.r.toInt());
-          floatInput[pixelIndex++] = transform(pixel.g.toInt());
-          floatInput[pixelIndex++] = transform(pixel.b.toInt());
+        for (int i = 0; i < data.targetSize; i++) {
+           for (int j = 0; j < data.targetSize; j++) {
+              var p = resized.getPixel(j, i);
+              floatInput[pIndex++] = transform(p.r.toInt());
+              floatInput[pIndex++] = transform(p.g.toInt());
+              floatInput[pIndex++] = transform(p.b.toInt());
+           }
         }
-      }
     }
-
     return floatInput;
   }
 
-  static img.Image _convertYUV420ToImage(_IsolateData data) {
-    final width = data.width;
-    final height = data.height;
-    final uvRowStride = data.uvRowStride;
-    final uvPixelStride = data.uvPixelStride;
-    final yRowStride = data.yRowStride;
-
-    final img.Image image = img.Image(width: width, height: height);
-    final yBuffer = data.planes[0];
-    final uBuffer = data.planes.length > 1 ? data.planes[1] : Uint8List(0);
-    final vBuffer = data.planes.length > 2 ? data.planes[2] : Uint8List(0);
-
-    for (int y = 0; y < height; y++) {
-      for (int x = 0; x < width; x++) {
-        final int yIndex = y * yRowStride + x;
-        final int uvIndex = (y ~/ 2) * uvRowStride + (x ~/ 2) * uvPixelStride;
-
-        if (yIndex >= yBuffer.length) continue;
-
-        final int yVal = yBuffer[yIndex];
-        int uVal = 128, vVal = 128;
-
-        if (uBuffer.isNotEmpty &&
-            vBuffer.isNotEmpty &&
-            uvIndex < uBuffer.length &&
-            uvIndex < vBuffer.length) {
-          uVal = uBuffer[uvIndex];
-          vVal = vBuffer[uvIndex];
-        }
-
-        int r = (yVal + 1.370705 * (vVal - 128)).toInt();
-        int g = (yVal - 0.337633 * (uVal - 128) - 0.698001 * (vVal - 128))
-            .toInt();
-        int b = (yVal + 1.732446 * (uVal - 128)).toInt();
-
-        image.setPixelRgb(
-          x,
-          y,
-          r.clamp(0, 255),
-          g.clamp(0, 255),
-          b.clamp(0, 255),
-        );
+  static img.Image? _convertYUV420ToImage(_IsolateData data) {
+    try {
+      final width = data.width;
+      final height = data.height;
+      final yBuffer = data.planes[0];
+      
+      // Single Plane Check (NV21)
+      bool isSinglePlane = data.planes.length == 1;
+      if (isSinglePlane && yBuffer.length < width * height * 1.5) {
+         // Fallback to BGRA if buffer size is huge
+         if (yBuffer.length >= width * height * 4) {
+           return img.Image.fromBytes(width: width, height: height, bytes: yBuffer.buffer, order: img.ChannelOrder.bgra);
+         }
       }
-    }
-    return image;
-  }
-}
 
-class _IsolateData {
-  final List<Uint8List> planes;
-  final int width;
-  final int height;
-  final int yRowStride;
-  final int uvRowStride;
-  final int uvPixelStride;
-  final bool isYUV;
-  final Map<String, int>? faceBoxData;
-  final int targetSize;
+      final img.Image image = img.Image(width: width, height: height);
+      final int uvRowStride = data.uvRowStride > 0 ? data.uvRowStride : width;
+      final int uvPixelStride = data.uvPixelStride > 0 ? data.uvPixelStride : 2;
+      
+      int uvOffset = isSinglePlane ? (width * height) : 0;
+      final uBuffer = isSinglePlane ? yBuffer : (data.planes.length > 1 ? data.planes[1] : Uint8List(0));
+      final vBuffer = isSinglePlane ? yBuffer : (data.planes.length > 2 ? data.planes[2] : Uint8List(0));
 
-  _IsolateData({
-    required this.planes,
-    required this.width,
-    required this.height,
-    required this.yRowStride,
-    required this.uvRowStride,
-    required this.uvPixelStride,
-    required this.isYUV,
-    required this.faceBoxData,
-    required this.targetSize,
-  });
-}
+      for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+          final int yIndex = y * data.yRowStride + x;
+          if (yIndex >= yBuffer.length) continue;
+          
+          final int yVal = yBuffer[yIndex];
+          int uVal = 128, vVal = 128;
+
+          final int uvIndex = uvOffset + (y >> 1) * uvRowStride + (x >> 1) * uvPixelStride;
+
+          if (isSinglePlane) {
+             if (uvIndex + 1 < yBuffer.length) {
+               vVal = yBuffer[uvIndex];
+               uVal = yBuffer[uvIndex + 1];
+             }
