@@ -76,10 +76,12 @@ class StudentAttendanceItem {
   final String id;
   final String name;
   final String status; // 'Present', 'Absent', or 'Mark Attendance'
+  final bool isLate;
 
   StudentAttendanceItem({
     required this.id,
     required this.name,
     required this.status,
+    this.isLate = false,
   });
 }

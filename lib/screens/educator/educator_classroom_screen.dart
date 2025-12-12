@@ -473,17 +473,23 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
   }
 
   Widget _buildStudentTile(StudentAttendanceItem student) {
-    // Determine color based on status for better visual feedback
-    Color statusColor = Colors.grey;
-    String displayStatus =
-        student.status; // 'Present', 'Absent', or 'Mark Attendance'
+    // Determine color and status based on attendance properties
+    String displayStatus = student.status;
+    Color statusColor = Colors.grey; // Default for 'Mark Attendance'
 
-    if (student.status == 'Present')
+    if (student.status == 'Present') {
       statusColor = const Color(0xFF4CAF50);
-    else if (student.status == 'Absent')
+    } else if (student.status == 'Absent') {
       statusColor = const Color(0xFFE53935);
-    else if (student.status == 'Late')
-      statusColor = const Color(0xFFFF9800); // Assuming Late is tracked
+    } else if (student.status == 'Late') {
+      statusColor = const Color(0xFFFF9800);
+    }
+
+    // The `isLate` flag from the database can override the status for display purposes
+    if (student.isLate) {
+      displayStatus = 'Late';
+      statusColor = const Color(0xFFFF9800);
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
