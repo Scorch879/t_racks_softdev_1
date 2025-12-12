@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/auth_service.dart';
+import 'package:t_racks_softdev_1/commonWidgets/change_password_screen.dart';
 
 void showAccountSettingsDialog(BuildContext context) {
   showDialog(
@@ -55,10 +56,8 @@ class AccountSettingsDialog extends StatelessWidget {
                   child: OutlinedButton(
                     onPressed: () {
                       Navigator.of(context).pop();
-                      showCustomSnackBar(
-                        context,
-                        'Change Password is not implemented yet.',
-                      );
+                      Navigator.of(context).push(MaterialPageRoute(
+                          builder: (context) => const ChangePasswordScreen()));
                     },
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Color(0xFFBFD5E3)),
