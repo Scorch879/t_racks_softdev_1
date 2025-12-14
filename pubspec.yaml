@@ -82,12 +82,13 @@ flutter:
 
   # To add assets to your application, add an assets section like this:
   assets:
-    - assets/images/ # <-- Add this line
+    - assets/images/
     - .env
     - assets/models/model.tflite
     - assets/models/labels.txt
     - assets/models/mobilefacenet.tflite
     - assets/models/facenet_512.tflite
+    - shorebird.yaml
 
 flutter_launcher_icons:
   android: "t_racks" # The name of the icon file on Android
