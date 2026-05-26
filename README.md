@@ -1,68 +1,58 @@
-# T-Racks | Software Development 1 Project
+<div align="center">
 
-## Getting Started
+# 🦖 T-Racks
+**AI-Powered Biometric Attendance System**
+
+[![Flutter](https://img.shields.io/badge/Flutter-%2302569B.svg?style=for-the-badge&logo=Flutter&logoColor=white)](#)
+[![Dart](https://img.shields.io/badge/dart-%230175C2.svg?style=for-the-badge&logo=dart&logoColor=white)](#)
+[![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)](#)
+[![C#](https://img.shields.io/badge/c%23-%23239120.svg?style=for-the-badge&logo=csharp&logoColor=white)](#)
+[![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](#)
+
+*A Software Development 1 Project*
+
+</div>
+
+---
+
+## 📖 About The Project
+
+[cite_start]Traditional attendance methods—such as manual roll calls, paper-based logs, and swipe cards—are often inefficient, prone to errors, and vulnerable to fraudulent practices like buddy punching and proxy attendance[cite: 13, 14, 16, 17]. 
+
+[cite_start]**T-Racks** is an intelligent, mobile-first Information System designed to solve these issues by integrating artificial intelligence[cite: 6, 16, 22, 39]. [cite_start]By utilizing advanced facial and voice recognition technologies, T-Racks provides a secure, accurate, and automated alternative to traditional attendance tracking[cite: 18]. [cite_start]This system reduces human intervention, streamlines classroom management, and establishes a transparent, trustworthy attendance process for instructors and administrators[cite: 19, 20].
+
+## ✨ Core Features
+
+* [cite_start]📸 **Biometric Authentication:** Secure user verification utilizing advanced facial and voice recognition algorithms[cite: 25, 207, 216]. [cite_start]Includes fallback mechanisms for manual check-ins if biometric matching fails[cite: 163, 214, 225].
+* [cite_start]🏫 **Classroom Management:** Comprehensive dashboards allowing administrators and instructors to organize virtual classrooms, assign schedules, and manage student enrollment[cite: 179, 186, 191].
+* [cite_start]✅ **Automated Attendance Tracking:** Automatically records arrival times and marks users as "Present," "Absent," or "Late" upon successful identification[cite: 28, 29]. 
+* [cite_start]📊 **Reporting & Logs:** Generate detailed attendance summaries and logs for individuals, specific classes, or whole departments[cite: 34, 166]. [cite_start]Export data in standard formats like PDF or Excel[cite: 168].
+* [cite_start]📴 **Offline Capability:** Core functionalities are designed to work offline, with a provision for data synchronization once network access is restored[cite: 37].
+* [cite_start]🔔 **Automated Alerts:** Built-in notification system to flag absences or irregular attendance to relevant stakeholders[cite: 170, 171].
+
+## 🏗️ System Architecture
+
+[cite_start]T-Racks is built with a modular architecture to ensure rapid, secure authentication[cite: 62]:
+1.  [cite_start]**User Interface (UI):** Built for cross-platform mobile compatibility[cite: 39, 63].
+2.  [cite_start]**Biometric Module:** Captures and processes facial and voice inputs[cite: 64].
+3.  [cite_start]**Authentication Module:** Verifies live inputs against stored biometric templates[cite: 67].
+4.  [cite_start]**Attendance Manager:** Logs the data into the system's database in real-time[cite: 69].
+
+---
+
+## 🚀 Getting Started
 
 Follow these instructions to get a copy of the project up and running on your local machine for development and testing purposes.
 
 ### Prerequisites
 
 Before you begin, ensure you have the following installed:
-
-* **Flutter SDK**: [Install Flutter](https://docs.flutter.dev/get-started/install) (ensure it's in your PATH).
-* **IDE**: Visual Studio Code (with Flutter/Dart extensions) or Android Studio.
-* **Target Device**: An Android Emulator, iOS Simulator (macOS only), or a physical device connected via USB.
+* **Flutter SDK:** Install [Flutter](https://docs.flutter.dev/get-started/install) (ensure it's added to your PATH).
+* **IDE:** Visual Studio Code (with Flutter/Dart extensions) or Android Studio.
+* **Target Device:** An Android Emulator, iOS Simulator (macOS only), or a physical device connected via USB.
 
 ### Installation
 
-1.  **Clone the repository**
-    Open your terminal and run:
-    ```bash
-    git clone [https://github.com/Scorch879/t_racks_softdev_1.git](https://github.com/Scorch879/t_racks_softdev_1.git)
-    ```
-    or
-    Open Github Desktop and on the toolbar select File > Clone Repository  > URL Tab and then paste the following:
-     ```bash
-     https://github.com/Scorch879/t_racks_softdev_1.git
-     ```
-    Check the local path to ensure you're putting the cloned repository in your desired directory.
-
-    
-3.  **Navigate to the project directory**
-    ```bash
-    cd t_racks_softdev_1
-    ```
-
-4.  **Install dependencies**
-    Fetch all necessary packages listed in `pubspec.yaml`:
-    ```bash
-    flutter pub get
-    ```
-    
-5.  **Set Up Environment Variables**
-    This project uses an .env file for environment variables (like API keys or Supabase URLs).
-    After creating the file, open .env in your editor and fill in the required values.
-    The environmental variables are shared in our private group chat on Discord.
-
-   
-
-### Running the App
-
-1.  Ensure your target device is running and connected. You can check this by running:
-    ```bash
-    flutter devices
-    ```
-2. Ensure you have all the necessary dependencies first
-  ```bash
-    flutter pub get
-```
-   
-3.  Run the app:
-    ```bash
-    flutter run
-    ```
-
-### Troubleshooting
-
-If you encounter issues, run the standard Flutter diagnostic tool to check your environment setup:
+**1. Clone the repository** Open your terminal and run:
 ```bash
-flutter doctor
+git clone [https://github.com/Scorch879/t_racks_softdev_1.git](https://github.com/Scorch879/t_racks_softdev_1.git)
