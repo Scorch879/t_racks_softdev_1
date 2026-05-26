@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
 import 'package:t_racks_softdev_1/screens/forgetPassword/forgot_password_pages.dart';
 import 'package:t_racks_softdev_1/services/auth_service.dart';
@@ -65,13 +66,22 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           return;
         }
 
+        final emailRegExp = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+        if (!emailRegExp.hasMatch(_emailController.text)) {
+          showCustomSnackBar(context, "Please enter a valid email format");
+          setState(() => _isLoading = false);
+          return;
+        }
+
         /// This is the api for sending an otp
         await _authService.forgotPassword(email: _emailController.text);
-        showCustomSnackBar(
-          context,
-          "Reset code sent to the email",
-          isError: false,
-        );
+        if (mounted) {
+          showCustomSnackBar(
+            context,
+            "Reset code sent to the email",
+            isError: false,
+          );
+        }
 
         print("Sending reset code to ${_emailController.text}");
         _goToNextPage();
@@ -130,7 +140,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           return;
         }
 
-        //if all validation suceeds
+        //if all validation succceds
 
         await _authService.updateUserPassword(newPassword: newPassword);
         if (mounted) {
@@ -141,8 +151,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           );
         }
 
-        print("Updating password...");
         Navigator.pop(context); // Go back to login
+      }
+    } on AuthException catch (e) {
+      String errorMessage = "Authentication Error";
+      if (e.message.toLowerCase().contains("invalid") || 
+          e.message.toLowerCase().contains("expired")) {
+        errorMessage = "Invalid or expired code. Please try again.";
+      } else {
+        errorMessage = e.message;
+      }
+      showCustomSnackBar(context, errorMessage);
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     } catch (e) {
       showCustomSnackBar(context, "Error: ${e.toString()}");

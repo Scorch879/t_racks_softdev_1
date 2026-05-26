@@ -6,6 +6,7 @@ import 'package:t_racks_softdev_1/screens/educator/educator_settings_screen.dart
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/in_app_notification_service.dart';
 import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
+
 class EducatorShell extends StatefulWidget {
   final int initialIndex;
   const EducatorShell({super.key, this.initialIndex = 0});
@@ -17,6 +18,7 @@ class EducatorShell extends StatefulWidget {
 class _EducatorShellState extends State<EducatorShell> {
   late int _currentIndex;
   String _educatorName = "Loading...";
+  String? _profilePictureUrl;
 
   @override
   void initState() {
@@ -33,6 +35,7 @@ class _EducatorShellState extends State<EducatorShell> {
       if (mounted) {
         setState(() {
           _educatorName = "${profile.firstName} ${profile.lastName}";
+          _profilePictureUrl = profile.profilePictureUrl;
         });
       }
     }
@@ -50,7 +53,7 @@ class _EducatorShellState extends State<EducatorShell> {
       context: context,
       builder: (context) => const NotificationsDialog(),
     );
-    // Note: I removed the auto-mark-as-read here because your 
+    // Note: I removed the auto-mark-as-read here because your
     // dialog has a specific "Mark all read" button.
   }
 
@@ -63,7 +66,7 @@ class _EducatorShellState extends State<EducatorShell> {
       case 2:
         return const EducatorReportScreen();
       case 3:
-        return const EducatorSettingsScreen();
+        return EducatorSettingsScreen(onProfileUpdated: _loadProfile);
       default:
         return const EducatorHomeScreen();
     }
@@ -77,6 +80,7 @@ class _EducatorShellState extends State<EducatorShell> {
         preferredSize: const Size.fromHeight(64),
         child: _TopBar(
           educatorName: _educatorName,
+          profilePictureUrl: _profilePictureUrl,
           onNotificationTap: _showNotifications,
         ),
       ),
@@ -154,15 +158,21 @@ class _EducatorShellState extends State<EducatorShell> {
 // TopBar remains mostly the same, just keeping it here for completeness
 class _TopBar extends StatelessWidget {
   final String educatorName;
+  final String? profilePictureUrl;
   final VoidCallback onNotificationTap;
 
   const _TopBar({
     required this.educatorName,
+    this.profilePictureUrl,
     required this.onNotificationTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final trimmedProfilePictureUrl = profilePictureUrl?.trim();
+    final hasProfilePicture =
+        trimmedProfilePictureUrl != null && trimmedProfilePictureUrl.isNotEmpty;
+
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
@@ -173,8 +183,14 @@ class _TopBar extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(
           children: [
-            const CircleAvatar(
-                radius: 20, backgroundColor: Color(0xFFB7C5C9)),
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: const Color(0xFFB7C5C9),
+              backgroundImage: hasProfilePicture
+                  ? NetworkImage(trimmedProfilePictureUrl)
+                  : const AssetImage('assets/images/t_racks.png')
+                        as ImageProvider,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -227,7 +243,9 @@ class _TopBar extends StatelessWidget {
                               color: const Color(0xFFE26B6B),
                               shape: BoxShape.circle,
                               border: Border.all(
-                                  color: Colors.white, width: 1.5),
+                                color: Colors.white,
+                                width: 1.5,
+                              ),
                             ),
                             child: Text(
                               '$unreadCount',

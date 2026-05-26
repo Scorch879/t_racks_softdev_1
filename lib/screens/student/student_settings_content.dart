@@ -14,19 +14,22 @@ class StudentSettingsContent extends StatefulWidget {
   const StudentSettingsContent({
     super.key,
     required this.onNotificationsPressed,
+    this.onProfileUpdated,
   });
 
   final VoidCallback onNotificationsPressed;
+  final VoidCallback? onProfileUpdated;
 
   @override
   State<StudentSettingsContent> createState() => _StudentSettingsContentState();
 }
 
 class _StudentSettingsContentState extends State<StudentSettingsContent> {
-  void onProfileSettingsPressed() {
-    Navigator.of(context).push(
+  Future<void> onProfileSettingsPressed() async {
+    await Navigator.of(context).push(
       MaterialPageRoute(builder: (context) => const StudentProfileScreen()),
     );
+    widget.onProfileUpdated?.call();
   }
 
   void onAccountSettingsPressed() {

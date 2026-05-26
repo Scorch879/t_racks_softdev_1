@@ -21,6 +21,7 @@ class StudentShellScreen extends StatefulWidget {
 class _StudentShellScreenState extends State<StudentShellScreen> {
   StudentNavTab _currentTab = StudentNavTab.home;
   String _studentName = "Loading...";
+  String? _profilePictureUrl;
 
   @override
   void initState() {
@@ -51,6 +52,7 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
     if (mounted && profile != null) {
       setState(() {
         _studentName = "${profile.firstName} ${profile.lastName}";
+        _profilePictureUrl = profile.profilePictureUrl;
       });
     }
   }
@@ -84,6 +86,7 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
       case StudentNavTab.settings:
         return StudentSettingsContent(
           onNotificationsPressed: _onNotificationsPressed,
+          onProfileUpdated: _loadProfile,
         );
     }
   }
@@ -103,6 +106,7 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
               scale: scale,
               onNotificationsPressed: _onNotificationsPressed,
               studentName: _studentName,
+              profilePictureUrl: _profilePictureUrl,
             ),
           ),
           body: Stack(
@@ -149,11 +153,13 @@ class _TopBar extends StatefulWidget {
     required this.scale,
     required this.onNotificationsPressed,
     required this.studentName,
+    this.profilePictureUrl,
   });
 
   final double scale;
   final VoidCallback onNotificationsPressed;
   final String studentName;
+  final String? profilePictureUrl;
 
   @override
   State<_TopBar> createState() => _TopBarState();
@@ -163,6 +169,9 @@ class _TopBarState extends State<_TopBar> {
   @override
   Widget build(BuildContext context) {
     final scale = widget.scale;
+    final profilePictureUrl = widget.profilePictureUrl?.trim();
+    final hasProfilePicture =
+        profilePictureUrl != null && profilePictureUrl.isNotEmpty;
 
     return AppBar(
       backgroundColor: Colors.white,
@@ -176,6 +185,10 @@ class _TopBarState extends State<_TopBar> {
             CircleAvatar(
               radius: 20 * scale,
               backgroundColor: const Color(0xFFB7C5C9),
+              backgroundImage: hasProfilePicture
+                  ? NetworkImage(profilePictureUrl)
+                  : const AssetImage('assets/images/t_racks.png')
+                        as ImageProvider,
             ),
             SizedBox(width: 12 * scale),
             Expanded(

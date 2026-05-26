@@ -12,7 +12,9 @@ const _educatorChipGreen = Color(0xFF4CAF50);
 const _educatorStatusRed = Color(0xFFE53935);
 
 class EducatorSettingsScreen extends StatefulWidget {
-  const EducatorSettingsScreen({super.key});
+  const EducatorSettingsScreen({super.key, this.onProfileUpdated});
+
+  final VoidCallback? onProfileUpdated;
 
   @override
   State<EducatorSettingsScreen> createState() => _EducatorSettingsScreenState();
@@ -25,9 +27,7 @@ class _EducatorSettingsScreenState extends State<EducatorSettingsScreen> {
   void _handleLogout() {
     showDialog(
       context: context,
-      builder: (context) => LogoutDialog(
-        onConfirm: _performLogout,
-      ),
+      builder: (context) => LogoutDialog(onConfirm: _performLogout),
     );
   }
 
@@ -70,13 +70,14 @@ class _EducatorSettingsScreenState extends State<EducatorSettingsScreen> {
                     _SettingsCard(
                       scale: scale,
                       radius: cardRadius,
-                      onProfileSettingsPressed: () {
-                        Navigator.push(
+                      onProfileSettingsPressed: () async {
+                        await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => const EducatorProfileScreen(),
                           ),
                         );
+                        widget.onProfileUpdated?.call();
                       },
                       onAccountSettingsPressed: () {
                         showAccountSettingsDialog(context);
@@ -128,8 +129,11 @@ class _SettingsCardState extends State<_SettingsCard> {
           children: [
             Row(
               children: [
-                Icon(Icons.settings,
-                    color: _educatorAccentCyan, size: 24 * scale),
+                Icon(
+                  Icons.settings,
+                  color: _educatorAccentCyan,
+                  size: 24 * scale,
+                ),
                 SizedBox(width: 8 * scale),
                 Text(
                   'Settings',
@@ -200,8 +204,10 @@ class _SettingsPillState extends State<_SettingsPill> {
       borderRadius: BorderRadius.circular(22 * scale),
       onTap: widget.onTap,
       child: Container(
-        padding:
-            EdgeInsets.symmetric(horizontal: 18 * scale, vertical: 16 * scale),
+        padding: EdgeInsets.symmetric(
+          horizontal: 18 * scale,
+          vertical: 16 * scale,
+        ),
         decoration: BoxDecoration(
           color: widget.color,
           borderRadius: BorderRadius.circular(22 * scale),
@@ -227,8 +233,11 @@ class _SettingsPillState extends State<_SettingsPill> {
                 ),
               ),
             ),
-            Icon(Icons.arrow_forward_ios,
-                color: Colors.white, size: 16 * scale),
+            Icon(
+              Icons.arrow_forward_ios,
+              color: Colors.white,
+              size: 16 * scale,
+            ),
           ],
         ),
       ),
@@ -279,10 +288,7 @@ class _CardContainerState extends State<_CardContainer> {
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
-        children: [
-          if (background != null) background,
-          widget.child,
-        ],
+        children: [if (background != null) background, widget.child],
       ),
     );
   }
