@@ -4,11 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/screens/student/student_class_content.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
-import 'package:t_racks_softdev_1/services/models/student_model.dart';// Import StudentCameraScreen
+import 'package:t_racks_softdev_1/services/models/student_model.dart'; // Import StudentCameraScreen
 
 const _blueIcon = Color(0xFF57B0D7);
 const _cardSurface = Color(0xFF0C3343);
 const _cardHeader = Color(0xFF0D3B4E);
+const _lightCardSurface = Colors.white;
+const _lightPanelSurface = Color(0xFFEAF4F7);
+const _lightBorder = Color(0xFFBBD7E2);
+const _lightPrimaryText = Color(0xFF0C3343);
+const _lightSecondaryText = Color(0xFF42697A);
+const _lightAccent = Color(0xFF167C94);
 const _statusYellow = Color(0xFFDAE26B);
 const _chipGreen = Color(0xFF37AA82);
 const _statusGreen = Color(0xFF7FE26B);
@@ -43,7 +49,7 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
     //   ),
     // );
   }
-  
+
   Timer? _timer;
 
   //void onOngoingClassStatusPressed() {} commented this out cuz awas giving errors
@@ -103,13 +109,16 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
         final scale = (width / 430).clamp(0.8, 1.6);
         final horizontalPadding = 16.0 * scale;
         final cardRadius = 16.0 * scale;
+        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+        final primaryTextColor = isDarkMode ? Colors.white : _lightPrimaryText;
+        final loadingColor = isDarkMode ? Colors.white : _lightAccent;
 
         return FutureBuilder<Map<String, dynamic>>(
           future: _dataFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(color: Colors.white),
+              return Center(
+                child: CircularProgressIndicator(color: loadingColor),
               );
             }
 
@@ -117,13 +126,14 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
               return Center(
                 child: Text(
                   'Error: ${snapshot.error}',
-                  style: const TextStyle(color: Colors.white),
+                  style: TextStyle(color: primaryTextColor),
                 ),
               );
             }
 
             final student = snapshot.data?['student'] as Student?;
-            final classes = snapshot.data?['classes'] as List<StudentClass>? ?? [];
+            final classes =
+                snapshot.data?['classes'] as List<StudentClass>? ?? [];
 
             // Find the first ongoing class
             StudentClass? ongoingClass;
@@ -188,12 +198,17 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
                               radius: cardRadius,
 
                               getDynamicStatus: (sClass) => getDynamicStatus(
-                                  sClass,
-                                  _chipGreen, // Ongoing
-                                  _statusRed, // Absent
-                                  _statusOrange, // Late
-                                  _cardSurface, // Upcoming
-                                  Colors.grey.shade600), // Done
+                                sClass,
+                                isDarkMode
+                                    ? _chipGreen
+                                    : _lightAccent, // Ongoing
+                                _statusRed, // Absent
+                                _statusOrange, // Late
+                                isDarkMode
+                                    ? _cardSurface
+                                    : const Color(0xFF2A7FA3), // Upcoming
+                                Colors.grey.shade600,
+                              ), // Done
                               onClassPressed: _showClassDetails,
                             ),
                           ],
@@ -213,7 +228,9 @@ class _StudentHomeContentState extends State<StudentHomeContent> {
 
 DateTime? _parseTime(String timeStr, DateTime now) {
   final isPM = timeStr.toLowerCase().contains('pm');
-  final timeOnly = timeStr.replaceAll(RegExp(r'\s*(am|pm)', caseSensitive: false), '').trim();
+  final timeOnly = timeStr
+      .replaceAll(RegExp(r'\s*(am|pm)', caseSensitive: false), '')
+      .trim();
   final parts = timeOnly.split(':');
   if (parts.length < 2) return null;
 
@@ -222,12 +239,14 @@ DateTime? _parseTime(String timeStr, DateTime now) {
 
   if (hour == null || minute == null) return null;
 
-  if (isPM && hour != 12) { // Convert 1 PM to 11 PM to 24-hour format
+  if (isPM && hour != 12) {
+    // Convert 1 PM to 11 PM to 24-hour format
     hour += 12;
-  } else if (!isPM && hour == 12) { // Handle 12 AM (midnight)
+  } else if (!isPM && hour == 12) {
+    // Handle 12 AM (midnight)
     hour = 0;
   }
-  
+
   return DateTime(now.year, now.month, now.day, hour, minute);
 }
 
@@ -254,6 +273,14 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
   Widget build(BuildContext context) {
     final scale = widget.scale;
     final ongoingClass = widget.ongoingClass;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDarkMode ? Colors.white : _lightPrimaryText;
+    final secondaryTextColor = isDarkMode
+        ? Colors.white70
+        : _lightSecondaryText;
+    final accentColor = isDarkMode ? _chipGreen : _lightAccent;
+    final headerColor = isDarkMode ? _cardHeader : _lightPanelSurface;
+    final shadowColor = Colors.black.withOpacity(isDarkMode ? 0.35 : 0.08);
 
     return _CardContainer(
       radius: widget.radius,
@@ -270,7 +297,7 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                 Text(
                   'Welcome! ${widget.student?.profile?.firstName ?? 'user'}',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: primaryTextColor,
                     fontSize: 22 * scale,
                     fontWeight: FontWeight.w800,
                   ),
@@ -279,7 +306,7 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                 Text(
                   "Today's Status",
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.75),
+                    color: secondaryTextColor,
                     fontSize: 17 * scale,
                     fontWeight: FontWeight.w100,
                   ),
@@ -288,13 +315,16 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                 if (ongoingClass != null)
                   Row(
                     children: [
-                      Icon(Icons.access_time_filled_rounded,
-                          color: _chipGreen, size: 28 * scale),
+                      Icon(
+                        Icons.access_time_filled_rounded,
+                        color: accentColor,
+                        size: 28 * scale,
+                      ),
                       SizedBox(width: 8 * scale),
                       Text(
                         'Ongoing',
                         style: TextStyle(
-                          color: _chipGreen,
+                          color: accentColor,
                           fontSize: 28 * scale,
                           fontWeight: FontWeight.w800,
                         ),
@@ -305,7 +335,7 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                   Text(
                     'No ongoing classes right now.',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
+                      color: secondaryTextColor,
                       fontSize: 18 * scale,
                       fontWeight: FontWeight.w600,
                     ),
@@ -319,7 +349,7 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
               decoration: BoxDecoration(
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.35),
+                    color: shadowColor,
                     blurRadius: 12 * scale,
                     offset: Offset(0, 6 * scale),
                   ),
@@ -328,12 +358,15 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
             ),
             Container(
               width: double.infinity,
-              padding: EdgeInsets.symmetric(horizontal: 16 * scale, vertical: 10 * scale),
-              decoration: const BoxDecoration(color: _cardHeader),
+              padding: EdgeInsets.symmetric(
+                horizontal: 16 * scale,
+                vertical: 10 * scale,
+              ),
+              decoration: BoxDecoration(color: headerColor),
               child: Text(
                 'Ongoing Class',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: primaryTextColor,
                   fontSize: 16 * scale,
                   fontWeight: FontWeight.w800,
                 ),
@@ -367,7 +400,7 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                         Text(
                           ongoingClass.name ?? 'Unnamed Class',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: primaryTextColor,
                             fontSize: 16 * scale,
                             fontWeight: FontWeight.w800,
                           ),
@@ -376,7 +409,7 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                         Text(
                           ongoingClass.schedule ?? 'No schedule',
                           style: TextStyle(
-                            color: Colors.white70,
+                            color: secondaryTextColor,
                             fontSize: 12 * scale,
                             fontWeight: FontWeight.w600,
                           ),
@@ -385,7 +418,7 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                     ),
                   ),
                   Material(
-                    color: const Color(0xFF37AA82),
+                    color: accentColor,
                     borderRadius: BorderRadius.circular(20 * scale),
                     child: InkWell(
                       onTap: widget.onOngoingClassStatusPressed,
@@ -438,10 +471,19 @@ class _MyClassesCardState extends State<_MyClassesCard> {
   @override
   Widget build(BuildContext context) {
     final scale = widget.scale;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDarkMode ? Colors.white : _lightPrimaryText;
+    final secondaryTextColor = isDarkMode
+        ? Colors.white70
+        : _lightSecondaryText;
+    final accentColor = isDarkMode ? _blueIcon : _lightAccent;
+
     return _CardContainer(
       radius: widget.radius,
       scale: scale,
-      borderColor: const Color(0xFF6AAFBF).withOpacity(0.55),
+      borderColor: isDarkMode
+          ? const Color(0xFF6AAFBF).withOpacity(0.55)
+          : _lightBorder,
       background: const _CardBackground(),
       child: Padding(
         padding: EdgeInsets.all(16 * scale),
@@ -449,13 +491,13 @@ class _MyClassesCardState extends State<_MyClassesCard> {
           children: [
             Row(
               children: [
-                Icon(Icons.menu_rounded, color: _blueIcon, size: 24 * scale),
+                Icon(Icons.menu_rounded, color: accentColor, size: 24 * scale),
                 SizedBox(width: 10 * scale),
                 Expanded(
                   child: Text(
                     'My Classes',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: primaryTextColor,
                       fontSize: 22 * scale,
                       fontWeight: FontWeight.w800,
                     ),
@@ -478,7 +520,10 @@ class _MyClassesCardState extends State<_MyClassesCard> {
                 child: Text(
                   'No classes yet',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white70, fontSize: 16 * scale),
+                  style: TextStyle(
+                    color: secondaryTextColor,
+                    fontSize: 16 * scale,
+                  ),
                 ),
               )
             else
@@ -522,16 +567,26 @@ class _ClassDetailsDialogState extends State<ClassDetailsDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDarkMode ? _cardSurface : _lightCardSurface;
+    final primaryTextColor = isDarkMode ? Colors.white : _lightPrimaryText;
+    final secondaryTextColor = isDarkMode
+        ? Colors.white70
+        : _lightSecondaryText;
+    final accentColor = isDarkMode ? _chipGreen : _lightAccent;
+
     return Dialog(
-      backgroundColor: _cardSurface,
+      backgroundColor: cardColor,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: FutureBuilder<StudentClass>(
         future: _classDetailsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const SizedBox(
+            return SizedBox(
               height: 200,
-              child: Center(child: CircularProgressIndicator(color: Colors.white)),
+              child: Center(
+                child: CircularProgressIndicator(color: accentColor),
+              ),
             );
           }
 
@@ -541,11 +596,24 @@ class _ClassDetailsDialogState extends State<ClassDetailsDialog> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('Error', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(
+                    'Error',
+                    style: TextStyle(
+                      color: primaryTextColor,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  Text('Could not load class details. ${snapshot.error}', style: const TextStyle(color: Colors.white70)),
+                  Text(
+                    'Could not load class details. ${snapshot.error}',
+                    style: TextStyle(color: secondaryTextColor),
+                  ),
                   const SizedBox(height: 16),
-                  TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close'))
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text('Close', style: TextStyle(color: accentColor)),
+                  ),
                 ],
               ),
             );
@@ -561,29 +629,49 @@ class _ClassDetailsDialogState extends State<ClassDetailsDialog> {
               children: [
                 Text(
                   sClass.name ?? 'Class Details',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: primaryTextColor,
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
                 const SizedBox(height: 16),
-                _DetailRow(icon: Icons.book_rounded, label: 'Subject', value: sClass.subject ?? 'N/A'),
+                _DetailRow(
+                  icon: Icons.book_rounded,
+                  label: 'Subject',
+                  value: sClass.subject ?? 'N/A',
+                ),
                 const SizedBox(height: 12),
-                _DetailRow(icon: Icons.schedule_rounded, label: 'Schedule', value: sClass.schedule ?? 'N/A'),
+                _DetailRow(
+                  icon: Icons.schedule_rounded,
+                  label: 'Schedule',
+                  value: sClass.schedule ?? 'N/A',
+                ),
                 const SizedBox(height: 12),
-                _DetailRow(icon: Icons.qr_code_2_rounded, label: 'Class Code', value: sClass.classCode ?? 'N/A'),
+                _DetailRow(
+                  icon: Icons.qr_code_2_rounded,
+                  label: 'Class Code',
+                  value: sClass.classCode ?? 'N/A',
+                ),
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
                   child: TextButton(
                     onPressed: () => Navigator.of(context).pop(),
                     style: TextButton.styleFrom(
-                      backgroundColor: _chipGreen,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      backgroundColor: accentColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    child: const Text('Close', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      'Close',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -608,18 +696,35 @@ class _DetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDarkMode ? Colors.white : _lightPrimaryText;
+    final secondaryTextColor = isDarkMode
+        ? Colors.white70
+        : _lightSecondaryText;
+    final iconColor = isDarkMode ? _blueIcon : _lightAccent;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: _blueIcon, size: 20),
+        Icon(icon, color: iconColor, size: 20),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+              Text(
+                label,
+                style: TextStyle(color: secondaryTextColor, fontSize: 14),
+              ),
               const SizedBox(height: 2),
-              Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+              Text(
+                value,
+                style: TextStyle(
+                  color: primaryTextColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ),
@@ -651,6 +756,13 @@ class _FilterChipRowState extends State<_FilterChipRow> {
   @override
   Widget build(BuildContext context) {
     final scale = widget.scale;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDarkMode
+        ? widget.backgroundColor
+        : _lightPanelSurface;
+    final textColor = isDarkMode ? Colors.white : _lightPrimaryText;
+    final shadowColor = Colors.black.withOpacity(isDarkMode ? 0.25 : 0.08);
+
     return GestureDetector(
       onTap: widget.onTap,
       child: Container(
@@ -659,11 +771,12 @@ class _FilterChipRowState extends State<_FilterChipRow> {
           vertical: 12 * scale,
         ),
         decoration: BoxDecoration(
-          color: widget.backgroundColor,
+          color: backgroundColor,
           borderRadius: BorderRadius.circular(15),
+          border: isDarkMode ? null : Border.all(color: _lightBorder),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.25),
+              color: shadowColor,
               blurRadius: 4 * scale,
               offset: Offset(0, 6),
             ),
@@ -675,7 +788,7 @@ class _FilterChipRowState extends State<_FilterChipRow> {
               child: Text(
                 widget.title,
                 style: TextStyle(
-                  color: Colors.white,
+                  color: textColor,
                   fontSize: 18 * scale,
                   fontWeight: FontWeight.w800,
                 ),
@@ -684,7 +797,7 @@ class _FilterChipRowState extends State<_FilterChipRow> {
             Text(
               widget.trailingText,
               style: TextStyle(
-                color: Colors.white,
+                color: textColor,
                 fontSize: 18 * scale,
                 fontWeight: FontWeight.w800,
               ),
@@ -752,6 +865,12 @@ class __ClassRowState extends State<_ClassRow>
   @override
   Widget build(BuildContext context) {
     final scale = widget.scale;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final rowColor = isDarkMode ? widget.statusColor : _lightPanelSurface;
+    final titleColor = isDarkMode ? Colors.white : _lightPrimaryText;
+    final statusTextColor = isDarkMode ? Colors.white : widget.statusColor;
+    final shadowColor = Colors.black.withOpacity(isDarkMode ? 0.25 : 0.08);
+
     return GestureDetector(
       onTap: _handleTap,
       child: ScaleTransition(
@@ -762,11 +881,12 @@ class __ClassRowState extends State<_ClassRow>
             vertical: 16 * scale,
           ),
           decoration: BoxDecoration(
-            color: widget.statusColor,
+            color: rowColor,
             borderRadius: BorderRadius.circular(22 * scale),
+            border: isDarkMode ? null : Border.all(color: _lightBorder),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.25),
+                color: shadowColor,
                 blurRadius: 10 * scale,
                 offset: Offset(0, 6 * scale),
               ),
@@ -778,7 +898,7 @@ class __ClassRowState extends State<_ClassRow>
                 child: Text(
                   widget.title,
                   style: TextStyle(
-                    color: Colors.white,
+                    color: titleColor,
                     fontWeight: FontWeight.w800,
                     fontSize: 18 * scale,
                   ),
@@ -787,7 +907,7 @@ class __ClassRowState extends State<_ClassRow>
               Text(
                 widget.statusText,
                 style: TextStyle(
-                  color: Colors.white,
+                  color: statusTextColor,
                   fontWeight: FontWeight.w800,
                   fontSize: 18 * scale,
                 ),
@@ -822,14 +942,22 @@ class _CardContainer extends StatefulWidget {
 class _CardContainerState extends State<_CardContainer> {
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDarkMode ? _cardSurface : _lightCardSurface;
+    final borderColor =
+        widget.borderColor ?? (isDarkMode ? null : _lightBorder);
+    final shadowColor = Colors.black.withOpacity(isDarkMode ? 0.25 : 0.08);
+
     return Container(
       decoration: BoxDecoration(
-        color: _cardSurface,
+        color: cardColor,
         borderRadius: BorderRadius.circular(widget.radius),
-        border: widget.borderColor != null ? Border.all(color: widget.borderColor!, width: 0.75) : null,
+        border: borderColor != null
+            ? Border.all(color: borderColor, width: 0.75)
+            : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.25),
+            color: shadowColor,
             blurRadius: 10 * widget.scale,
             offset: Offset(0, 6 * widget.scale),
           ),

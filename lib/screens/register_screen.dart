@@ -133,372 +133,387 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          Container(color: Colors.white),
-          Column(
-            children: [
-              // --- TOP BLUE HEADER (Unchanged) ---
-              Expanded(
-                flex: 3,
-                child: ClipPath(
-                  clipper: BottomWaveClipper(),
-                  child: Container(
-                    // ... (your header container)
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Color(0xFF194B61),
-                          Color(0xFF2A7FA3),
-                          Color(0xFF267394),
-                          Color(0xFF349BC7),
-                        ],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
+    return Theme(
+      data: ThemeData.light(
+        useMaterial3: true,
+      ).copyWith(scaffoldBackgroundColor: Colors.white),
+      child: Scaffold(
+        body: Stack(
+          children: [
+            Container(color: Colors.white),
+            Column(
+              children: [
+                // --- TOP BLUE HEADER (Unchanged) ---
+                Expanded(
+                  flex: 3,
+                  child: ClipPath(
+                    clipper: BottomWaveClipper(),
+                    child: Container(
+                      // ... (your header container)
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Color(0xFF194B61),
+                            Color(0xFF2A7FA3),
+                            Color(0xFF267394),
+                            Color(0xFF349BC7),
+                          ],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
                       ),
-                    ),
-                    child: Image.asset(
-                      'assets/images/squigglytexture.png',
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      height: double.infinity,
+                      child: Image.asset(
+                        'assets/images/squigglytexture.png',
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                      ),
                     ),
                   ),
                 ),
-              ),
 
-              // --- BOTTOM WHITE FORM AREA ---
-              Expanded(
-                flex: 9,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 30.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // "Sign up" Title
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              child: const Text(
-                                "Sign up",
-                                style: TextStyle(
-                                  fontSize: 40.0,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF21446D),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 5),
-                            Container(
-                              height: 5,
-                              width: 80,
-                              color: const Color(0xFF21446D),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      Expanded(
-                        child: SingleChildScrollView(
+                // --- BOTTOM WHITE FORM AREA ---
+                Expanded(
+                  flex: 9,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 30.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // "Sign up" Title
+                        Align(
+                          alignment: Alignment.centerLeft,
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Email',
-                                style: TextStyle(
-                                  color: Colors.black54,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              TextField(
-                                controller: _emailController,
-                                textAlignVertical: TextAlignVertical.center,
-                                keyboardType: TextInputType.emailAddress,
-                                decoration: const InputDecoration(
-                                  isDense: true,
-                                  hintText: 'Email address',
-                                  hintStyle: TextStyle(
-                                    color: Color.fromARGB(255, 207, 207, 207),
-                                  ),
-                                  // --- ADD THIS ICON ---
-                                  prefixIcon: Icon(
-                                    Icons.email_outlined,
-                                    color: Colors.grey,
-                                  ),
-                                  enabledBorder: UnderlineInputBorder(
-                                    borderSide: BorderSide(color: Colors.grey),
-                                  ),
-                                  focusedBorder: UnderlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: Color(0xFF21446D),
-                                    ),
+                              Container(
+                                child: const Text(
+                                  "Sign up",
+                                  style: TextStyle(
+                                    fontSize: 40.0,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF21446D),
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 20),
-
-                              // Phone no Field
-                              const Text(
-                                'Phone no',
-                                style: TextStyle(
-                                  color: Colors.black54,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                              const SizedBox(height: 5),
+                              Container(
+                                height: 5,
+                                width: 80,
+                                color: const Color(0xFF21446D),
                               ),
-                              TextField(
-                                controller: _phoneController,
-                                textAlignVertical: TextAlignVertical.center,
-                                keyboardType: TextInputType.phone,
-                                decoration: const InputDecoration(
-                                  isDense: true,
-                                  hintText: 'Phone number',
-                                  hintStyle: TextStyle(
-                                    color: Color.fromARGB(255, 207, 207, 207),
-                                  ),
-                                  // --- ADD THIS ICON ---
-                                  prefixIcon: Icon(
-                                    Icons.phone_android_outlined,
-                                    color: Colors.grey,
-                                  ),
-                                  enabledBorder: UnderlineInputBorder(
-                                    borderSide: BorderSide(color: Colors.grey),
-                                  ),
-                                  focusedBorder: UnderlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: Color(0xFF21446D),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-
-                              // Password Field
-                              const Text(
-                                'Password',
-                                style: TextStyle(
-                                  color: Colors.black54,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              TextField(
-                                controller: _passwordController,
-                                textAlignVertical: TextAlignVertical.center,
-                                obscureText: _passwordVisible,
-                                decoration: InputDecoration(
-                                  // Removed const
-                                  isDense: true,
-                                  hintText: 'Password',
-                                  hintStyle: TextStyle(
-                                    color: Color.fromARGB(255, 207, 207, 207),
-                                  ),
-                                  // --- ADD THIS ICON ---
-                                  prefixIcon: const Icon(
-                                    Icons.lock_outline,
-                                    color: Colors.grey,
-                                  ),
-                                  suffixIcon: IconButton(
-                                    icon: Icon(
-                                      _passwordVisible
-                                          ? Icons.visibility_off
-                                          : Icons.visibility,
-                                      color: Colors.grey,
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        _passwordVisible = !_passwordVisible;
-                                      });
-                                    },
-                                  ),
-                                  enabledBorder: const UnderlineInputBorder(
-                                    borderSide: BorderSide(color: Colors.grey),
-                                  ),
-                                  focusedBorder: const UnderlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: Color(0xFF21446D),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-
-                              // Confirm Password Field
-                              const Text(
-                                'Confirm Password',
-                                style: TextStyle(
-                                  color: Colors.black54,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              TextField(
-                                controller: _confirmPasswordController,
-                                textAlignVertical: TextAlignVertical.center,
-                                obscureText: _confirmPasswordVisible,
-                                decoration: InputDecoration(
-                                  // Removed const
-                                  isDense: true,
-                                  hintText: 'Confirm Password',
-                                  hintStyle: TextStyle(
-                                    color: Color.fromARGB(255, 207, 207, 207),
-                                  ),
-                                  // --- ADD THIS ICON ---
-                                  prefixIcon: const Icon(
-                                    Icons.lock_outline,
-                                    color: Colors.grey,
-                                  ),
-                                  suffixIcon: IconButton(
-                                    icon: Icon(
-                                      _confirmPasswordVisible
-                                          ? Icons.visibility_off
-                                          : Icons.visibility,
-                                      color: Colors.grey,
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        _confirmPasswordVisible =
-                                            !_confirmPasswordVisible;
-                                      });
-                                    },
-                                  ),
-                                  enabledBorder: const UnderlineInputBorder(
-                                    borderSide: BorderSide(color: Colors.grey),
-                                  ),
-                                  focusedBorder: const UnderlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: Color(0xFF21446D),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 24),
-
-                              // Checkbox Section
-                              const Text(
-                                'Are you a student or an educator?',
-                                style: TextStyle(
-                                  color: Colors.black54,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              Row(
-                                children: [
-                                  Checkbox(
-                                    value: _isStudent,
-                                    activeColor: const Color(
-                                      0xFF21446D,
-                                    ), // Added active color
-                                    onChanged: (bool? value) {
-                                      // --- ADD THIS ---
-                                      setState(() {
-                                        _isStudent = true;
-                                        _isEducator = false;
-                                      });
-                                      // -----------------
-                                    },
-                                  ),
-                                  const Text('Student'),
-                                  const SizedBox(width: 20),
-                                  Checkbox(
-                                    value: _isEducator,
-                                    activeColor: const Color(
-                                      0xFF21446D,
-                                    ), // Added active color
-                                    onChanged: (bool? value) {
-                                      // --- ADD THIS ---
-                                      setState(() {
-                                        _isEducator = true;
-                                        _isStudent = false;
-                                      });
-                                      // -----------------
-                                    },
-                                  ),
-                                  const Text('Educator'),
-                                ],
-                              ),
-                              SizedBox(
-                                width: double.infinity,
-                                height: 50,
-                                child: ElevatedButton(
-                                  onPressed: _isLoading
-                                      ? null
-                                      : _handleRegister,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(
-                                      0xFF26A69A,
-                                    ), // Green/teal
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'Create Account',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 18,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 24),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Text(
-                                    "Already have an account? ",
-                                    style: TextStyle(color: Colors.black54),
-                                  ),
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              const LoginScreen(),
-                                        ),
-                                      );
-                                    },
-                                    // You might need this style to rFmove default padding
-                                    style: TextButton.styleFrom(
-                                      padding: EdgeInsets.zero,
-                                      minimumSize: Size.zero,
-                                      tapTargetSize:
-                                          MaterialTapTargetSize.shrinkWrap,
-                                    ),
-                                    child: const Text(
-                                      'Log In',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF26A69A), // Green/teal
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 20),
                             ],
                           ),
                         ),
-                      ),
+                        const SizedBox(height: 24),
 
-                      // This Spacer WILL work, but will cause an overflow
+                        Expanded(
+                          child: SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const Text(
+                                  'Email',
+                                  style: TextStyle(
+                                    color: Colors.black54,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                TextField(
+                                  controller: _emailController,
+                                  textAlignVertical: TextAlignVertical.center,
+                                  keyboardType: TextInputType.emailAddress,
+                                  decoration: const InputDecoration(
+                                    isDense: true,
+                                    hintText: 'Email address',
+                                    hintStyle: TextStyle(
+                                      color: Color.fromARGB(255, 207, 207, 207),
+                                    ),
+                                    // --- ADD THIS ICON ---
+                                    prefixIcon: Icon(
+                                      Icons.email_outlined,
+                                      color: Colors.grey,
+                                    ),
+                                    enabledBorder: UnderlineInputBorder(
+                                      borderSide: BorderSide(
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                    focusedBorder: UnderlineInputBorder(
+                                      borderSide: BorderSide(
+                                        color: Color(0xFF21446D),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
 
-                      // Create Account Button
+                                // Phone no Field
+                                const Text(
+                                  'Phone no',
+                                  style: TextStyle(
+                                    color: Colors.black54,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                TextField(
+                                  controller: _phoneController,
+                                  textAlignVertical: TextAlignVertical.center,
+                                  keyboardType: TextInputType.phone,
+                                  decoration: const InputDecoration(
+                                    isDense: true,
+                                    hintText: 'Phone number',
+                                    hintStyle: TextStyle(
+                                      color: Color.fromARGB(255, 207, 207, 207),
+                                    ),
+                                    // --- ADD THIS ICON ---
+                                    prefixIcon: Icon(
+                                      Icons.phone_android_outlined,
+                                      color: Colors.grey,
+                                    ),
+                                    enabledBorder: UnderlineInputBorder(
+                                      borderSide: BorderSide(
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                    focusedBorder: UnderlineInputBorder(
+                                      borderSide: BorderSide(
+                                        color: Color(0xFF21446D),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
 
-                      // "Already have an Account?" Row
-                    ],
+                                // Password Field
+                                const Text(
+                                  'Password',
+                                  style: TextStyle(
+                                    color: Colors.black54,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                TextField(
+                                  controller: _passwordController,
+                                  textAlignVertical: TextAlignVertical.center,
+                                  obscureText: _passwordVisible,
+                                  decoration: InputDecoration(
+                                    // Removed const
+                                    isDense: true,
+                                    hintText: 'Password',
+                                    hintStyle: TextStyle(
+                                      color: Color.fromARGB(255, 207, 207, 207),
+                                    ),
+                                    // --- ADD THIS ICON ---
+                                    prefixIcon: const Icon(
+                                      Icons.lock_outline,
+                                      color: Colors.grey,
+                                    ),
+                                    suffixIcon: IconButton(
+                                      icon: Icon(
+                                        _passwordVisible
+                                            ? Icons.visibility_off
+                                            : Icons.visibility,
+                                        color: Colors.grey,
+                                      ),
+                                      onPressed: () {
+                                        setState(() {
+                                          _passwordVisible = !_passwordVisible;
+                                        });
+                                      },
+                                    ),
+                                    enabledBorder: const UnderlineInputBorder(
+                                      borderSide: BorderSide(
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                    focusedBorder: const UnderlineInputBorder(
+                                      borderSide: BorderSide(
+                                        color: Color(0xFF21446D),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+
+                                // Confirm Password Field
+                                const Text(
+                                  'Confirm Password',
+                                  style: TextStyle(
+                                    color: Colors.black54,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                TextField(
+                                  controller: _confirmPasswordController,
+                                  textAlignVertical: TextAlignVertical.center,
+                                  obscureText: _confirmPasswordVisible,
+                                  decoration: InputDecoration(
+                                    // Removed const
+                                    isDense: true,
+                                    hintText: 'Confirm Password',
+                                    hintStyle: TextStyle(
+                                      color: Color.fromARGB(255, 207, 207, 207),
+                                    ),
+                                    // --- ADD THIS ICON ---
+                                    prefixIcon: const Icon(
+                                      Icons.lock_outline,
+                                      color: Colors.grey,
+                                    ),
+                                    suffixIcon: IconButton(
+                                      icon: Icon(
+                                        _confirmPasswordVisible
+                                            ? Icons.visibility_off
+                                            : Icons.visibility,
+                                        color: Colors.grey,
+                                      ),
+                                      onPressed: () {
+                                        setState(() {
+                                          _confirmPasswordVisible =
+                                              !_confirmPasswordVisible;
+                                        });
+                                      },
+                                    ),
+                                    enabledBorder: const UnderlineInputBorder(
+                                      borderSide: BorderSide(
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                    focusedBorder: const UnderlineInputBorder(
+                                      borderSide: BorderSide(
+                                        color: Color(0xFF21446D),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+
+                                // Checkbox Section
+                                const Text(
+                                  'Are you a student or an educator?',
+                                  style: TextStyle(
+                                    color: Colors.black54,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                Row(
+                                  children: [
+                                    Checkbox(
+                                      value: _isStudent,
+                                      activeColor: const Color(
+                                        0xFF21446D,
+                                      ), // Added active color
+                                      onChanged: (bool? value) {
+                                        // --- ADD THIS ---
+                                        setState(() {
+                                          _isStudent = true;
+                                          _isEducator = false;
+                                        });
+                                        // -----------------
+                                      },
+                                    ),
+                                    const Text('Student'),
+                                    const SizedBox(width: 20),
+                                    Checkbox(
+                                      value: _isEducator,
+                                      activeColor: const Color(
+                                        0xFF21446D,
+                                      ), // Added active color
+                                      onChanged: (bool? value) {
+                                        // --- ADD THIS ---
+                                        setState(() {
+                                          _isEducator = true;
+                                          _isStudent = false;
+                                        });
+                                        // -----------------
+                                      },
+                                    ),
+                                    const Text('Educator'),
+                                  ],
+                                ),
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 50,
+                                  child: ElevatedButton(
+                                    onPressed: _isLoading
+                                        ? null
+                                        : _handleRegister,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(
+                                        0xFF26A69A,
+                                      ), // Green/teal
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      'Create Account',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Text(
+                                      "Already have an account? ",
+                                      style: TextStyle(color: Colors.black54),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                const LoginScreen(),
+                                          ),
+                                        );
+                                      },
+                                      // You might need this style to rFmove default padding
+                                      style: TextButton.styleFrom(
+                                        padding: EdgeInsets.zero,
+                                        minimumSize: Size.zero,
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                      child: const Text(
+                                        'Log In',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(
+                                            0xFF26A69A,
+                                          ), // Green/teal
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 20),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // This Spacer WILL work, but will cause an overflow
+
+                        // Create Account Button
+
+                        // "Already have an Account?" Row
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

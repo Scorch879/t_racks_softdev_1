@@ -888,12 +888,15 @@ class DatabaseService {
 
       // C. Present, Absent, Late Today
       final todayAttendanceList = todayAttendanceResponse as List;
-      final presentTodayCount =
-          todayAttendanceList.where((r) => r['isPresent'] == true).length;
-      final absentTodayCount =
-          todayAttendanceList.where((r) => r['isPresent'] == false).length;
-      final lateTodayCount =
-          todayAttendanceList.where((r) => r['isLate'] == true).length;
+      final presentTodayCount = todayAttendanceList
+          .where((r) => r['isPresent'] == true)
+          .length;
+      final absentTodayCount = todayAttendanceList
+          .where((r) => r['isPresent'] == false)
+          .length;
+      final lateTodayCount = todayAttendanceList
+          .where((r) => r['isLate'] == true)
+          .length;
 
       // D. Class Metrics & Alerts (Same as before)
       List<ClassMetric> classMetrics = [];
@@ -1097,11 +1100,7 @@ class DatabaseService {
     }).toList();
 
     if (students.isEmpty) {
-      return {
-        'students': [],
-        'dates': [],
-        'attendanceMatrix': {},
-      };
+      return {'students': [], 'dates': [], 'attendanceMatrix': {}};
     }
 
     final studentIds = students.map((s) => s['id'] as String).toList();
@@ -1115,8 +1114,10 @@ class DatabaseService {
         .order('date', ascending: true);
 
     // 3. Get a unique, sorted list of all dates
-    final dates =
-        attendanceRecords.map((r) => r['date'] as String).toSet().toList();
+    final dates = attendanceRecords
+        .map((r) => r['date'] as String)
+        .toSet()
+        .toList();
     dates.sort();
 
     // 4. Create a matrix for easy lookup: Map<studentId, Map<date, status>>

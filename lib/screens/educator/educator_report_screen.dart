@@ -24,6 +24,22 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
   String? _error;
   DashboardData? _data;
 
+  bool get _isDarkMode => Theme.of(context).brightness == Brightness.dark;
+  Color get _panelColor => _isDarkMode
+      ? const Color(0xFF0F3951).withValues(alpha: 0.85)
+      : Colors.white.withValues(alpha: 0.94);
+  Color get _nestedPanelColor =>
+      _isDarkMode ? const Color(0xFF133A53) : const Color(0xFFEAF4F7);
+  Color get _primaryTextColor =>
+      _isDarkMode ? Colors.white : const Color(0xFF0C3343);
+  Color get _secondaryTextColor =>
+      _isDarkMode ? Colors.white70 : const Color(0xFF376375);
+  Color get _borderColor => _isDarkMode
+      ? Colors.white.withValues(alpha: 0.15)
+      : const Color(0xFF93C0D3).withValues(alpha: 0.75);
+  Color get _accentColor =>
+      _isDarkMode ? Colors.white : const Color(0xFF2A7FA3);
+
   @override
   void initState() {
     super.initState();
@@ -163,22 +179,31 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final gradientColors = _isDarkMode
+        ? const [
+            Color(0xFF092633),
+            Color(0xFF0F3951),
+            Color(0xFF15516B),
+            Color(0xFF1A6686),
+          ]
+        : const [
+            Color(0xFFEAF7FB),
+            Color(0xFFD9EEF5),
+            Color(0xFFC7E4EE),
+            Color(0xFFEFF9FC),
+          ];
+
     Widget buildBackground() {
       return Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              Color(0xFF194B61),
-              Color(0xFF2A7FA3),
-              Color(0xFF267394),
-              Color(0xFF349BC7),
-            ],
+            colors: gradientColors,
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
         ),
         child: Opacity(
-          opacity: 0.3,
+          opacity: _isDarkMode ? 0.3 : 0.12,
           child: Image.asset(
             'assets/images/squigglytexture.png',
             fit: BoxFit.cover,
@@ -192,14 +217,12 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
     Widget content;
 
     if (_isLoading) {
-      content = const Center(
-        child: CircularProgressIndicator(color: Colors.white),
-      );
+      content = Center(child: CircularProgressIndicator(color: _accentColor));
     } else if (_error != null) {
       content = Center(
         child: Text(
           'Error loading data: $_error',
-          style: const TextStyle(color: Colors.white),
+          style: TextStyle(color: _primaryTextColor),
         ),
       );
     } else if (_data == null) {
@@ -280,21 +303,18 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F3951).withValues(alpha: 0.85),
+        color: _panelColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.15),
-          width: 2,
-        ),
+        border: Border.all(color: _borderColor, width: 2),
       ),
       child: Column(
         children: [
-          Icon(icon, color: Colors.white, size: 32),
+          Icon(icon, color: _accentColor, size: 32),
           const SizedBox(height: 8),
           Text(
             value,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: _primaryTextColor,
               fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
@@ -302,7 +322,7 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
           const SizedBox(height: 4),
           Text(
             label,
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
+            style: TextStyle(color: _secondaryTextColor, fontSize: 12),
             textAlign: TextAlign.center,
           ),
         ],
@@ -316,14 +336,14 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
         margin: const EdgeInsets.symmetric(horizontal: 16),
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: const Color(0xFF0F3951).withOpacity(0.85),
+          color: _panelColor,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withOpacity(0.15), width: 2),
+          border: Border.all(color: _borderColor, width: 2),
         ),
-        child: const Center(
+        child: Center(
           child: Text(
             "No attendance history available yet",
-            style: TextStyle(color: Colors.white70),
+            style: TextStyle(color: _secondaryTextColor),
           ),
         ),
       );
@@ -333,21 +353,21 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F3951).withOpacity(0.85),
+        color: _panelColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.15), width: 2),
+        border: Border.all(color: _borderColor, width: 2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: const [
-              Icon(Icons.trending_up, color: Colors.white),
-              SizedBox(width: 8),
+            children: [
+              Icon(Icons.trending_up, color: _accentColor),
+              const SizedBox(width: 8),
               Text(
                 'Attendance Trends',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: _primaryTextColor,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
@@ -379,8 +399,8 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
                           padding: const EdgeInsets.only(top: 8.0),
                           child: Text(
                             "${date.month}/${date.day}",
-                            style: const TextStyle(
-                              color: Colors.white70,
+                            style: TextStyle(
+                              color: _secondaryTextColor,
                               fontSize: 10,
                             ),
                           ),
@@ -397,8 +417,8 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
                         if (value == 0 || value == 50 || value == 100) {
                           return Text(
                             '${value.toInt()}%',
-                            style: const TextStyle(
-                              color: Colors.white70,
+                            style: TextStyle(
+                              color: _secondaryTextColor,
                               fontSize: 10,
                             ),
                           );
@@ -431,7 +451,7 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
                     dotData: FlDotData(show: false),
                     belowBarData: BarAreaData(
                       show: true,
-                      color: const Color(0xFF4CAF50).withOpacity(0.2),
+                      color: const Color(0xFF4CAF50).withValues(alpha: 0.2),
                     ),
                   ),
                 ],
@@ -448,24 +468,21 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F3951).withValues(alpha: 0.85),
+        color: _panelColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.15),
-          width: 2,
-        ),
+        border: Border.all(color: _borderColor, width: 2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: const [
-              Icon(Icons.bar_chart, color: Colors.white),
-              SizedBox(width: 8),
+            children: [
+              Icon(Icons.bar_chart, color: _accentColor),
+              const SizedBox(width: 8),
               Text(
                 'Class Attendance (Today)',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: _primaryTextColor,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
@@ -474,9 +491,9 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
           ),
           const SizedBox(height: 16),
           if (_data!.classMetrics.isEmpty)
-            const Text(
+            Text(
               "No classes found",
-              style: TextStyle(color: Colors.white70),
+              style: TextStyle(color: _secondaryTextColor),
             ),
           ..._data!.classMetrics.map(
             (metric) => Column(
@@ -507,20 +524,17 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF133A53),
+        color: _nestedPanelColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.1),
-          width: 1,
-        ),
+        border: Border.all(color: _borderColor, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             className,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: _primaryTextColor,
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
@@ -531,7 +545,7 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
             child: LinearProgressIndicator(
               value: percentage / 100,
               minHeight: 8,
-              backgroundColor: Colors.white.withValues(alpha: 0.2),
+              backgroundColor: _borderColor.withValues(alpha: 0.4),
               valueColor: AlwaysStoppedAnimation<Color>(
                 percentage < 50
                     ? const Color(0xFFE53935)
@@ -545,11 +559,11 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
             children: [
               Text(
                 '$totalStudents Students',
-                style: const TextStyle(color: Colors.white70, fontSize: 14),
+                style: TextStyle(color: _secondaryTextColor, fontSize: 14),
               ),
               Text(
                 '$present Present',
-                style: const TextStyle(color: Colors.white70, fontSize: 14),
+                style: TextStyle(color: _secondaryTextColor, fontSize: 14),
               ),
             ],
           ),
@@ -563,24 +577,21 @@ class _EducatorReportScreenState extends State<EducatorReportScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F3951).withValues(alpha: 0.85),
+        color: _panelColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.15),
-          width: 2,
-        ),
+        border: Border.all(color: _borderColor, width: 2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: const [
-              Icon(Icons.warning, color: Colors.white),
-              SizedBox(width: 8),
+            children: [
+              Icon(Icons.warning, color: _accentColor),
+              const SizedBox(width: 8),
               Text(
                 'Attendance Alert',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: _primaryTextColor,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),

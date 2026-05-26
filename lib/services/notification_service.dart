@@ -17,7 +17,7 @@ class NotificationService {
     // 2. Android Settings
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings(
-          '@mipmap/ic_launcher',
+          '@mipmap/t_racks',
         ); // Ensure you have this icon
 
     // 3. iOS Settings

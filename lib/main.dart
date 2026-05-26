@@ -3,10 +3,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:t_racks_softdev_1/screens/splash_screen.dart';
 import 'package:t_racks_softdev_1/services/camera_service.dart';
-import 'package:camera/camera.dart';
 import 'package:t_racks_softdev_1/screens/student/student_home_screen.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_shell.dart';
 import 'package:t_racks_softdev_1/services/notification_service.dart';
+import 'package:t_racks_softdev_1/services/theme_service.dart';
 
 Future<void> main() async {
   // Ensure Flutter bindings are initialized before any async operations.
@@ -26,6 +26,7 @@ Future<void> main() async {
   }
 
   await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
+  await AppThemeController.instance.load();
   runApp(const MyApp());
 }
 
@@ -34,13 +35,21 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'T-racks',
-      home: const SplashScreen(),
-      routes: {
-        '/studentHome': (context) => const StudentHomeScreen(),
-        '/educatorHome': (context) => const EducatorShell(),
+    return AnimatedBuilder(
+      animation: AppThemeController.instance,
+      builder: (context, _) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'T-racks',
+          theme: buildLightTheme(),
+          darkTheme: buildDarkTheme(),
+          themeMode: AppThemeController.instance.themeMode,
+          home: const SplashScreen(),
+          routes: {
+            '/studentHome': (context) => const StudentHomeScreen(),
+            '/educatorHome': (context) => const EducatorShell(),
+          },
+        );
       },
     );
   }

@@ -6,6 +6,7 @@ import 'package:t_racks_softdev_1/screens/educator/educator_settings_screen.dart
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/in_app_notification_service.dart';
 import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
+
 class EducatorShell extends StatefulWidget {
   final int initialIndex;
   const EducatorShell({super.key, this.initialIndex = 0});
@@ -17,6 +18,7 @@ class EducatorShell extends StatefulWidget {
 class _EducatorShellState extends State<EducatorShell> {
   late int _currentIndex;
   String _educatorName = "Loading...";
+  String? _profilePictureUrl;
 
   @override
   void initState() {
@@ -33,6 +35,7 @@ class _EducatorShellState extends State<EducatorShell> {
       if (mounted) {
         setState(() {
           _educatorName = "${profile.firstName} ${profile.lastName}";
+          _profilePictureUrl = profile.profilePictureUrl;
         });
       }
     }
@@ -50,7 +53,7 @@ class _EducatorShellState extends State<EducatorShell> {
       context: context,
       builder: (context) => const NotificationsDialog(),
     );
-    // Note: I removed the auto-mark-as-read here because your 
+    // Note: I removed the auto-mark-as-read here because your
     // dialog has a specific "Mark all read" button.
   }
 
@@ -63,7 +66,7 @@ class _EducatorShellState extends State<EducatorShell> {
       case 2:
         return const EducatorReportScreen();
       case 3:
-        return const EducatorSettingsScreen();
+        return EducatorSettingsScreen(onProfileUpdated: _loadProfile);
       default:
         return const EducatorHomeScreen();
     }
@@ -71,12 +74,28 @@ class _EducatorShellState extends State<EducatorShell> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final gradientColors = isDarkMode
+        ? const [
+            Color(0xFF092633),
+            Color(0xFF0F3951),
+            Color(0xFF15516B),
+            Color(0xFF1A6686),
+          ]
+        : const [
+            Color(0xFFEAF7FB),
+            Color(0xFFD9EEF5),
+            Color(0xFFC7E4EE),
+            Color(0xFFEFF9FC),
+          ];
+
     return Scaffold(
       extendBody: true,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(64),
         child: _TopBar(
           educatorName: _educatorName,
+          profilePictureUrl: _profilePictureUrl,
           onNotificationTap: _showNotifications,
         ),
       ),
@@ -84,20 +103,15 @@ class _EducatorShellState extends State<EducatorShell> {
         children: [
           Positioned.fill(
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [
-                    Color(0xFF194B61),
-                    Color(0xFF2A7FA3),
-                    Color(0xFF267394),
-                    Color(0xFF349BC7),
-                  ],
+                  colors: gradientColors,
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
               ),
               child: Opacity(
-                opacity: 0.3,
+                opacity: isDarkMode ? 0.3 : 0.12,
                 child: Image.asset(
                   'assets/images/squigglytexture.png',
                   fit: BoxFit.cover,
@@ -119,9 +133,13 @@ class _EducatorShellState extends State<EducatorShell> {
   }
 
   Widget _buildBottomNavBar() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.only(left: 24, right: 24, top: 10, bottom: 20),
-      decoration: const BoxDecoration(color: Colors.white),
+      decoration: BoxDecoration(
+        color: isDarkMode ? const Color(0xFF0C3343) : Colors.white,
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
@@ -136,6 +154,8 @@ class _EducatorShellState extends State<EducatorShell> {
 
   Widget _buildNavItem(IconData icon, int index) {
     final isSelected = _currentIndex == index;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: () => _onItemTapped(index),
@@ -145,7 +165,11 @@ class _EducatorShellState extends State<EducatorShell> {
           color: isSelected ? const Color(0xFF93C0D3) : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Icon(icon, color: Colors.black87, size: 24),
+        child: Icon(
+          icon,
+          color: isDarkMode ? Colors.white : Colors.black87,
+          size: 24,
+        ),
       ),
     );
   }
@@ -154,17 +178,26 @@ class _EducatorShellState extends State<EducatorShell> {
 // TopBar remains mostly the same, just keeping it here for completeness
 class _TopBar extends StatelessWidget {
   final String educatorName;
+  final String? profilePictureUrl;
   final VoidCallback onNotificationTap;
 
   const _TopBar({
     required this.educatorName,
+    this.profilePictureUrl,
     required this.onNotificationTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final trimmedProfilePictureUrl = profilePictureUrl?.trim();
+    final hasProfilePicture =
+        trimmedProfilePictureUrl != null && trimmedProfilePictureUrl.isNotEmpty;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final foregroundColor = isDarkMode ? Colors.white : Colors.black87;
+    final subtitleColor = isDarkMode ? Colors.white70 : Colors.black54;
+
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: isDarkMode ? const Color(0xFF0C3343) : Colors.white,
       elevation: 0,
       centerTitle: false,
       titleSpacing: 0,
@@ -173,8 +206,14 @@ class _TopBar extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(
           children: [
-            const CircleAvatar(
-                radius: 20, backgroundColor: Color(0xFFB7C5C9)),
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: const Color(0xFFB7C5C9),
+              backgroundImage: hasProfilePicture
+                  ? NetworkImage(trimmedProfilePictureUrl)
+                  : const AssetImage('assets/images/t_racks.png')
+                        as ImageProvider,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -183,15 +222,15 @@ class _TopBar extends StatelessWidget {
                 children: [
                   Text(
                     educatorName,
-                    style: const TextStyle(
-                      color: Colors.black87,
+                    style: TextStyle(
+                      color: foregroundColor,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const Text(
+                  Text(
                     'Teacher',
-                    style: TextStyle(color: Colors.black54, fontSize: 12),
+                    style: TextStyle(color: subtitleColor, fontSize: 12),
                   ),
                 ],
               ),
@@ -209,10 +248,10 @@ class _TopBar extends StatelessWidget {
                       onTap: onNotificationTap,
                       child: Padding(
                         padding: const EdgeInsets.all(8.0),
-                        child: const Icon(
+                        child: Icon(
                           Icons.notifications_none_rounded,
                           size: 23,
-                          color: Colors.black87,
+                          color: foregroundColor,
                         ),
                       ),
                     ),
@@ -227,7 +266,9 @@ class _TopBar extends StatelessWidget {
                               color: const Color(0xFFE26B6B),
                               shape: BoxShape.circle,
                               border: Border.all(
-                                  color: Colors.white, width: 1.5),
+                                color: Colors.white,
+                                width: 1.5,
+                              ),
                             ),
                             child: Text(
                               '$unreadCount',
