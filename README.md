@@ -22,12 +22,12 @@ Traditional attendance methods—such as manual roll calls, paper-based logs, an
 
 ## ✨ Core Features
 
-* [cite_start]📸 **Biometric Authentication:** Secure user verification utilizing advanced facial and voice recognition algorithms. Includes fallback mechanisms for manual check-ins if biometric matching fails.
-* [cite_start]🏫 **Classroom Management:** Comprehensive dashboards allowing administrators and instructors to organize virtual classrooms, assign schedules, and manage student enrollment.
-* [cite_start]✅ **Automated Attendance Tracking:** Automatically records arrival times and marks users as "Present," "Absent," or "Late" upon successful identification[cite: 28, 29]. 
-* [cite_start]📊 **Reporting & Logs:** Generate detailed attendance summaries and logs for individuals, specific classes, or whole departments. [Export data in standard formats like PDF or Excel[cite: 168].
-* [cite_start]📴 **Offline Capability:** Core functionalities are designed to work offline, with a provision for data synchronization once network access is restored.
-* [cite_start]🔔 **Automated Alerts:** Built-in notification system to flag absences or irregular attendance to relevant stakeholders
+* 📸 **Biometric Authentication:** Secure user verification utilizing advanced facial and voice recognition algorithms. Includes fallback mechanisms for manual check-ins if biometric matching fails.
+* 🏫 **Classroom Management:** Comprehensive dashboards allowing administrators and instructors to organize virtual classrooms, assign schedules, and manage student enrollment.
+* ✅ **Automated Attendance Tracking:** Automatically records arrival times and marks users as "Present," "Absent," or "Late" upon successful identification[cite: 28, 29]. 
+* 📊 **Reporting & Logs:** Generate detailed attendance summaries and logs for individuals, specific classes, or whole departments. [Export data in standard formats like PDF or Excel[cite: 168].
+* 📴 **Offline Capability:** Core functionalities are designed to work offline, with a provision for data synchronization once network access is restored.
+* 🔔 **Automated Alerts:** Built-in notification system to flag absences or irregular attendance to relevant stakeholders
 
 ## 🏗️ System Architecture
 
