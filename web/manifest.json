@@ -1,6 +1,6 @@
 {
-    "name": "t_racks_softdev_1",
-    "short_name": "t_racks_softdev_1",
+    "name": "T-racks",
+    "short_name": "T-racks",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
