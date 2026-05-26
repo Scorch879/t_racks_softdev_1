@@ -16,18 +16,18 @@
 
 ## 📖 About The Project
 
-[cite_start]Traditional attendance methods—such as manual roll calls, paper-based logs, and swipe cards—are often inefficient, prone to errors, and vulnerable to fraudulent practices like buddy punching and proxy attendance[cite: 13, 14, 16, 17]. 
+Traditional attendance methods—such as manual roll calls, paper-based logs, and swipe cards—are often inefficient, prone to errors, and vulnerable to fraudulent practices like buddy punching and proxy attendance
 
-[cite_start]**T-Racks** is an intelligent, mobile-first Information System designed to solve these issues by integrating artificial intelligence[cite: 6, 16, 22, 39]. [cite_start]By utilizing advanced facial and voice recognition technologies, T-Racks provides a secure, accurate, and automated alternative to traditional attendance tracking[cite: 18]. [cite_start]This system reduces human intervention, streamlines classroom management, and establishes a transparent, trustworthy attendance process for instructors and administrators[cite: 19, 20].
+**T-Racks** is an intelligent, mobile-first Information System designed to solve these issues by integrating artificial intelligence. By utilizing advanced facial and voice recognition technologies, T-Racks provides a secure, accurate, and automated alternative to traditional attendance tracking. This system reduces human intervention, streamlines classroom management, and establishes a transparent, trustworthy attendance process for instructors and administrators
 
 ## ✨ Core Features
 
-* [cite_start]📸 **Biometric Authentication:** Secure user verification utilizing advanced facial and voice recognition algorithms[cite: 25, 207, 216]. [cite_start]Includes fallback mechanisms for manual check-ins if biometric matching fails[cite: 163, 214, 225].
-* [cite_start]🏫 **Classroom Management:** Comprehensive dashboards allowing administrators and instructors to organize virtual classrooms, assign schedules, and manage student enrollment[cite: 179, 186, 191].
+* [cite_start]📸 **Biometric Authentication:** Secure user verification utilizing advanced facial and voice recognition algorithms. Includes fallback mechanisms for manual check-ins if biometric matching fails.
+* [cite_start]🏫 **Classroom Management:** Comprehensive dashboards allowing administrators and instructors to organize virtual classrooms, assign schedules, and manage student enrollment.
 * [cite_start]✅ **Automated Attendance Tracking:** Automatically records arrival times and marks users as "Present," "Absent," or "Late" upon successful identification[cite: 28, 29]. 
-* [cite_start]📊 **Reporting & Logs:** Generate detailed attendance summaries and logs for individuals, specific classes, or whole departments[cite: 34, 166]. [cite_start]Export data in standard formats like PDF or Excel[cite: 168].
-* [cite_start]📴 **Offline Capability:** Core functionalities are designed to work offline, with a provision for data synchronization once network access is restored[cite: 37].
-* [cite_start]🔔 **Automated Alerts:** Built-in notification system to flag absences or irregular attendance to relevant stakeholders[cite: 170, 171].
+* [cite_start]📊 **Reporting & Logs:** Generate detailed attendance summaries and logs for individuals, specific classes, or whole departments. [Export data in standard formats like PDF or Excel[cite: 168].
+* [cite_start]📴 **Offline Capability:** Core functionalities are designed to work offline, with a provision for data synchronization once network access is restored.
+* [cite_start]🔔 **Automated Alerts:** Built-in notification system to flag absences or irregular attendance to relevant stakeholders
 
 ## 🏗️ System Architecture
 
