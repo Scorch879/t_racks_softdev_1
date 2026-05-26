@@ -3,6 +3,11 @@
 # 🦖 T-Racks
 **Facial Recognition Biometric Attendance System**
 
+
+Scan the QR Code to download apk release:
+<img width="1113" height="1113" alt="qr-code" src="https://github.com/user-attachments/assets/d72514d0-9e83-4f66-934a-5f5a806bf4f6" />
+
+
 [![Flutter](https://img.shields.io/badge/Flutter-%2302569B.svg?style=for-the-badge&logo=Flutter&logoColor=white)](#)
 [![Dart](https://img.shields.io/badge/dart-%230175C2.svg?style=for-the-badge&logo=dart&logoColor=white)](#)
 [![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)](#)
