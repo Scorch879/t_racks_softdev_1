@@ -18,6 +18,23 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
   late Future<List<EducatorClassSummary>> _classesFuture;
   Timer? _timer;
 
+  bool get _isDarkMode => Theme.of(context).brightness == Brightness.dark;
+  Color get _panelColor => _isDarkMode
+      ? const Color(0xFF0C3343)
+      : Colors.white.withValues(alpha: 0.94);
+  Color get _classCardColor =>
+      _isDarkMode ? const Color(0xFF376375) : const Color(0xFFEAF4F7);
+  Color get _primaryTextColor =>
+      _isDarkMode ? Colors.white : const Color(0xFF0C3343);
+  Color get _secondaryTextColor =>
+      _isDarkMode ? Colors.white70 : const Color(0xFF376375);
+  Color get _borderColor =>
+      _isDarkMode ? const Color(0xFFBDBBBB) : const Color(0xFF93C0D3);
+  Color get _accentColor =>
+      _isDarkMode ? const Color(0xFF7FE26B) : const Color(0xFF2A7FA3);
+  Color get _accentTextColor =>
+      _isDarkMode ? const Color(0xFF0C3343) : Colors.white;
+
   @override
   void initState() {
     super.initState();
@@ -106,8 +123,8 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return SizedBox(
                 height: constraints.maxHeight,
-                child: const Center(
-                  child: CircularProgressIndicator(color: Colors.white),
+                child: Center(
+                  child: CircularProgressIndicator(color: _accentColor),
                 ),
               );
             }
@@ -210,8 +227,8 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
               ? Icons.access_time_filled
               : (i == 0 ? Icons.calendar_today : Icons.next_plan_outlined),
           iconColor: isOngoing
-              ? const Color(0xFF7FE26B)
-              : (i == 0 ? const Color(0xFF68D080) : Colors.white70),
+              ? _accentColor
+              : (i == 0 ? const Color(0xFF68D080) : _secondaryTextColor),
           value: data.className,
           label: isOngoing
               ? "Ongoing Class"
@@ -237,14 +254,14 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
     bool isOngoing = false,
   }) {
     final borderColor = isOngoing
-        ? const Color(0xFF7FE26B)
-        : const Color(0xFFBDBBBB).withValues(alpha: 1);
+        ? _accentColor
+        : _borderColor.withValues(alpha: 1);
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF0C3343),
+        color: _panelColor,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: borderColor, width: isOngoing ? 1.5 : 0.75),
         boxShadow: [
@@ -269,13 +286,13 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF7FE26B).withValues(alpha: 0.2),
+                    color: _accentColor.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Text(
+                  child: Text(
                     "NOW",
                     style: TextStyle(
-                      color: Color(0xFF7FE26B),
+                      color: _accentColor,
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                     ),
@@ -295,16 +312,16 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
                     value,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: _primaryTextColor,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     label,
-                    style: const TextStyle(fontSize: 13, color: Colors.white70),
+                    style: TextStyle(fontSize: 13, color: _secondaryTextColor),
                   ),
                 ],
               ),
@@ -314,7 +331,7 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
-                    color: isOngoing ? const Color(0xFF7FE26B) : Colors.white,
+                    color: isOngoing ? _accentColor : _primaryTextColor,
                   ),
                 ),
             ],
@@ -328,8 +345,8 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
               child: ElevatedButton.icon(
                 onPressed: _navigateToAttendance,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF7FE26B),
-                  foregroundColor: const Color(0xFF0C3343),
+                  backgroundColor: _accentColor,
+                  foregroundColor: _accentTextColor,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -353,10 +370,10 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0C3343),
+        color: _panelColor,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: const Color(0xFFBDBBBB).withValues(alpha: 1),
+          color: _borderColor.withValues(alpha: 1),
           width: 0.75,
         ),
         boxShadow: [
@@ -369,12 +386,12 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'My Classes',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: _primaryTextColor,
                 ),
               ),
               SizedBox(
@@ -388,8 +405,8 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
                     _refreshClasses();
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF7FE26B),
-                    foregroundColor: const Color(0xFF0C3343),
+                    backgroundColor: _accentColor,
+                    foregroundColor: _accentTextColor,
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     shape: RoundedRectangleBorder(
@@ -407,12 +424,12 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
           ),
           const SizedBox(height: 15),
           if (classes.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
               child: Center(
                 child: Text(
                   "No classes found.",
-                  style: TextStyle(color: Colors.white70),
+                  style: TextStyle(color: _secondaryTextColor),
                 ),
               ),
             )
@@ -429,7 +446,7 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
 
   Widget _buildClassCard(EducatorClassSummary classData) {
     return GestureDetector(
-      onTap: () async { 
+      onTap: () async {
         final result = await Navigator.push(
           context,
           MaterialPageRoute(
@@ -453,10 +470,10 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
           bottom: 20,
         ),
         decoration: BoxDecoration(
-          color: const Color(0xFF376375),
+          color: _classCardColor,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: const Color(0xFFBDBBBB).withValues(alpha: 1),
+            color: _borderColor.withValues(alpha: 1),
             width: 0.75,
           ),
           boxShadow: [
@@ -475,10 +492,10 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
                   padding: const EdgeInsets.only(right: 80.0),
                   child: Text(
                     classData.className,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: _primaryTextColor,
                     ),
                   ),
                 ),
@@ -496,10 +513,7 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
                 const SizedBox(height: 12),
                 Text(
                   'Schedule: ${classData.schedule}',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFFD5D5D5),
-                  ),
+                  style: TextStyle(fontSize: 14, color: _secondaryTextColor),
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
@@ -538,17 +552,14 @@ class _EducatorClassesContentState extends State<EducatorClassesScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 13, color: Colors.white60),
-        ),
+        Text(label, style: TextStyle(fontSize: 13, color: _secondaryTextColor)),
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: _primaryTextColor,
           ),
           overflow: TextOverflow.ellipsis,
           maxLines: 1,

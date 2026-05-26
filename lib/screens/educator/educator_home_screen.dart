@@ -18,6 +18,23 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
   List<StudentAttendanceItem> studentList = [];
   bool isLoadingStudents = false;
 
+  bool get _isDarkMode => Theme.of(context).brightness == Brightness.dark;
+  Color get _panelColor => _isDarkMode
+      ? const Color(0xFF0C3343)
+      : Colors.white.withValues(alpha: 0.94);
+  Color get _tileColor =>
+      _isDarkMode ? const Color(0xFF32657D) : const Color(0xFFEAF4F7);
+  Color get _primaryTextColor =>
+      _isDarkMode ? Colors.white : const Color(0xFF0C3343);
+  Color get _secondaryTextColor =>
+      _isDarkMode ? Colors.white70 : const Color(0xFF376375);
+  Color get _borderColor =>
+      _isDarkMode ? const Color(0xFFB4B4B4) : const Color(0xFF93C0D3);
+  Color get _accentColor =>
+      _isDarkMode ? const Color(0xFF7FE26B) : const Color(0xFF2A7FA3);
+  Color get _accentTextColor =>
+      _isDarkMode ? const Color(0xFF0C3343) : Colors.white;
+
   @override
   void initState() {
     super.initState();
@@ -93,10 +110,10 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF0C3343),
+        color: _panelColor,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: const Color(0xFFB4B4B4).withValues(alpha: 1),
+          color: _borderColor.withValues(alpha: 1),
           width: 0.7,
         ),
         boxShadow: [
@@ -110,16 +127,16 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Select Class',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: _primaryTextColor,
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.menu, color: Colors.white),
+                icon: Icon(Icons.menu, color: _primaryTextColor),
                 onPressed: () {},
               ),
             ],
@@ -138,8 +155,8 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
                 future: _dbService.getEducatorClasses(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                      child: CircularProgressIndicator(color: Colors.white),
+                    return Center(
+                      child: CircularProgressIndicator(color: _accentColor),
                     );
                   }
 
@@ -208,9 +225,7 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
         // Reduced padding for smaller buttons
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected
-              ? const Color(0xFF3AB389)
-              : const Color(0xFF277D5F).withValues(alpha: 0.8),
+          color: isSelected ? _accentColor : _tileColor,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
@@ -229,8 +244,8 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: isSelected ? _accentTextColor : _primaryTextColor,
                   fontWeight: FontWeight.w500,
                   fontSize: 15,
                 ),
@@ -238,7 +253,10 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
             ),
             Text(
               '$count students',
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
+              style: TextStyle(
+                color: isSelected ? _accentTextColor : _secondaryTextColor,
+                fontSize: 13,
+              ),
             ),
           ],
         ),
@@ -251,10 +269,10 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF0C3343),
+        color: _panelColor,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: const Color(0xFFB4B4B4).withValues(alpha: 1),
+          color: _borderColor.withValues(alpha: 1),
           width: 0.7,
         ),
         boxShadow: [
@@ -266,22 +284,22 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.person, color: Colors.white, size: 40),
+              Icon(Icons.person, color: _primaryTextColor, size: 40),
               const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     "Today's Attendance",
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: _primaryTextColor,
                     ),
                   ),
                   Text(
                     selectedClass?.className ?? "",
-                    style: const TextStyle(fontSize: 14, color: Colors.white70),
+                    style: TextStyle(fontSize: 14, color: _secondaryTextColor),
                   ),
                 ],
               ),
@@ -290,9 +308,7 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
           const SizedBox(height: 16),
 
           isLoadingStudents
-              ? const Center(
-                  child: CircularProgressIndicator(color: Colors.white),
-                )
+              ? Center(child: CircularProgressIndicator(color: _accentColor))
               : _buildStudentList(),
         ],
       ),
@@ -301,11 +317,11 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
 
   Widget _buildStudentList() {
     if (studentList.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(20.0),
+      return Padding(
+        padding: const EdgeInsets.all(20.0),
         child: Text(
           "No students enrolled.",
-          style: TextStyle(color: Colors.white70),
+          style: TextStyle(color: _secondaryTextColor),
         ),
       );
     }
@@ -344,10 +360,10 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF32657D),
+        color: _tileColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: const Color(0xFFC8C8C8).withValues(alpha: 1),
+          color: _borderColor.withValues(alpha: 1),
           width: 0.7,
         ),
         boxShadow: [
@@ -372,19 +388,19 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
               children: [
                 Text(
                   student.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w400,
-                    color: Colors.white,
+                    color: _primaryTextColor,
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   "8:00 AM", // Hardcoded time for now
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w400,
-                    color: Color(0xFFBABABA),
+                    color: _secondaryTextColor,
                   ),
                 ),
               ],
@@ -547,10 +563,10 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF0C3343),
+          color: _panelColor,
           borderRadius: BorderRadius.circular(13),
           border: Border.all(
-            color: const Color(0xFFB4B4B4).withValues(alpha: 1),
+            color: _borderColor.withValues(alpha: 1),
             width: 0.7,
           ),
           boxShadow: [
@@ -569,17 +585,17 @@ class _EducatorHomeScreenState extends State<EducatorHomeScreen> {
             const Spacer(),
             Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: _primaryTextColor,
                 height: 1.0,
               ),
             ),
             const SizedBox(height: 4),
             Text(
               label,
-              style: const TextStyle(fontSize: 14, color: Colors.white70),
+              style: TextStyle(fontSize: 14, color: _secondaryTextColor),
             ),
           ],
         ),

@@ -38,6 +38,18 @@ class _StudentClassClassesContentState
   final _searchController = TextEditingController();
   String _searchQuery = '';
 
+  bool get _isDarkMode => Theme.of(context).brightness == Brightness.dark;
+  Color get _panelColor =>
+      _isDarkMode ? _darkBluePanel : Colors.white.withValues(alpha: 0.94);
+  Color get _classCardColor =>
+      _isDarkMode ? _myClassCardSurface : const Color(0xFFEAF4F7);
+  Color get _primaryTextColor => _isDarkMode ? Colors.white : _cardSurface;
+  Color get _secondaryTextColor =>
+      _isDarkMode ? Colors.white70 : const Color(0xFF376375);
+  Color get _borderColor =>
+      _isDarkMode ? const Color(0xFFBDBBBB) : const Color(0xFF93C0D3);
+  Color get _accentColor => _isDarkMode ? _chipGreen : const Color(0xFF2A7FA3);
+
   @override
   void initState() {
     super.initState();
@@ -90,8 +102,8 @@ class _StudentClassClassesContentState
           future: _classesFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(color: Colors.white),
+              return Center(
+                child: CircularProgressIndicator(color: _accentColor),
               );
             }
 
@@ -99,7 +111,7 @@ class _StudentClassClassesContentState
               return Center(
                 child: Text(
                   'Error: ${snapshot.error}',
-                  style: const TextStyle(color: Colors.white),
+                  style: TextStyle(color: _primaryTextColor),
                 ),
               );
             }
@@ -198,10 +210,10 @@ class _StudentClassClassesContentState
                             Container(
                               padding: EdgeInsets.all(16 * scale),
                               decoration: BoxDecoration(
-                                color: _darkBluePanel,
+                                color: _panelColor,
                                 borderRadius: BorderRadius.circular(16 * scale),
                                 border: Border.all(
-                                  color: const Color(0xFFBDBBBB),
+                                  color: _borderColor,
                                   width: 0.75,
                                 ),
                                 boxShadow: [
@@ -242,7 +254,7 @@ class _StudentClassClassesContentState
                                         'No classes yet',
                                         textAlign: TextAlign.center,
                                         style: TextStyle(
-                                          color: Colors.white70,
+                                          color: _secondaryTextColor,
                                           fontSize: 18 * scale,
                                         ),
                                       ),
@@ -259,7 +271,7 @@ class _StudentClassClassesContentState
                                         _chipGreen, // Ongoing
                                         _statusRed, // Absent
                                         _statusOrange, // Late
-                                        _darkBluePanel, // Upcoming
+                                        _accentColor, // Upcoming
                                         Colors.grey.shade600,
                                       ); // Done
                                       return Padding(
@@ -281,7 +293,7 @@ class _StudentClassClassesContentState
                                                 'No schedule',
                                             status: dynamicStatus.text,
                                             statusColor: dynamicStatus.color,
-                                            cardColor: _myClassCardSurface,
+                                            cardColor: _classCardColor,
                                           ),
                                         ),
                                       );
@@ -606,11 +618,24 @@ class _SummaryCard extends StatefulWidget {
 class _SummaryCardState extends State<_SummaryCard> {
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final panelColor = isDarkMode
+        ? _darkBluePanel
+        : Colors.white.withValues(alpha: 0.94);
+    final primaryTextColor = isDarkMode ? Colors.white : _cardSurface;
+    final secondaryTextColor = isDarkMode
+        ? Colors.white70
+        : const Color(0xFF376375);
+
     return Container(
       padding: EdgeInsets.all(20 * widget.scale),
       decoration: BoxDecoration(
-        color: _darkBluePanel,
+        color: panelColor,
         borderRadius: BorderRadius.circular(16 * widget.scale),
+        border: Border.all(
+          color: isDarkMode ? Colors.transparent : const Color(0xFF93C0D3),
+          width: isDarkMode ? 0 : 0.75,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.25),
@@ -627,7 +652,7 @@ class _SummaryCardState extends State<_SummaryCard> {
           Text(
             widget.value,
             style: TextStyle(
-              color: Colors.white,
+              color: primaryTextColor,
               fontSize: 32 * widget.scale,
               fontWeight: FontWeight.w800,
             ),
@@ -636,7 +661,7 @@ class _SummaryCardState extends State<_SummaryCard> {
           Text(
             widget.label,
             style: TextStyle(
-              color: Colors.white70,
+              color: secondaryTextColor,
               fontSize: 14 * widget.scale,
               fontWeight: FontWeight.w600,
             ),
@@ -659,15 +684,20 @@ class _MyClassesHeader extends StatefulWidget {
 class _MyClassesHeaderState extends State<_MyClassesHeader> {
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDarkMode ? Colors.white : _cardSurface;
+    final accentColor = isDarkMode ? _chipGreen : const Color(0xFF2A7FA3);
+    final accentTextColor = isDarkMode ? _cardSurface : Colors.white;
+
     return Row(
       children: [
-        Icon(Icons.star_rounded, color: _accentCyan, size: 28 * widget.scale),
+        Icon(Icons.star_rounded, color: accentColor, size: 28 * widget.scale),
         SizedBox(width: 8 * widget.scale),
         Expanded(
           child: Text(
             'My Classes',
             style: TextStyle(
-              color: Colors.white,
+              color: primaryTextColor,
               fontSize: 28 * widget.scale,
               fontWeight: FontWeight.w800,
             ),
@@ -683,7 +713,7 @@ class _MyClassesHeaderState extends State<_MyClassesHeader> {
               vertical: 8 * widget.scale,
             ),
             decoration: BoxDecoration(
-              color: _chipGreen,
+              color: accentColor,
               borderRadius: BorderRadius.circular(20 * widget.scale),
             ),
             child: Row(
@@ -691,14 +721,14 @@ class _MyClassesHeaderState extends State<_MyClassesHeader> {
               children: [
                 Icon(
                   Icons.add,
-                  color: _cardSurface, // Dark icon for contrast
+                  color: accentTextColor,
                   size: 20 * widget.scale,
                 ),
                 SizedBox(width: 6 * widget.scale),
                 Text(
                   'Join class',
                   style: TextStyle(
-                    color: _cardSurface, // Dark text for contrast
+                    color: accentTextColor,
                     fontSize: 14 * widget.scale,
                     fontWeight: FontWeight.bold,
                   ),
@@ -724,22 +754,32 @@ class _SearchBar extends StatefulWidget {
 class _SearchBarState extends State<_SearchBar> {
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDarkMode ? Colors.white : _cardSurface;
+    final secondaryTextColor = isDarkMode
+        ? Colors.white70
+        : const Color(0xFF376375);
+    final fillColor = isDarkMode
+        ? const Color(0xFF6AAFBF).withValues(alpha: 0.3)
+        : const Color(0xFFEAF4F7);
+    final focusColor = isDarkMode ? _chipGreen : const Color(0xFF2A7FA3);
+
     return TextFormField(
       controller: widget.controller,
-      style: TextStyle(color: Colors.white, fontSize: 16 * widget.scale),
+      style: TextStyle(color: primaryTextColor, fontSize: 16 * widget.scale),
       decoration: InputDecoration(
         hintText: 'Search Class by Name or Subject',
         hintStyle: TextStyle(
-          color: Colors.white70,
+          color: secondaryTextColor,
           fontSize: 16 * widget.scale,
         ),
         prefixIcon: Icon(
           Icons.search_rounded,
-          color: Colors.white70,
+          color: secondaryTextColor,
           size: 20 * widget.scale,
         ),
         filled: true,
-        fillColor: const Color(0xFF6AAFBF).withOpacity(0.3),
+        fillColor: fillColor,
         contentPadding: EdgeInsets.symmetric(
           horizontal: 16 * widget.scale,
           vertical: 12 * widget.scale,
@@ -750,7 +790,7 @@ class _SearchBarState extends State<_SearchBar> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(22 * widget.scale),
-          borderSide: const BorderSide(color: _chipGreen, width: 2),
+          borderSide: BorderSide(color: focusColor, width: 2),
         ),
       ),
     );
@@ -818,7 +858,11 @@ class __ClassCardState extends State<_ClassCard>
 
   @override
   Widget build(BuildContext context) {
-    // If the statusColor is our bright green, change text color to dark for readability
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDarkMode ? Colors.white : _cardSurface;
+    final secondaryTextColor = isDarkMode
+        ? Colors.white70
+        : const Color(0xFF376375);
     final textColor = widget.statusColor == _chipGreen
         ? _cardSurface
         : Colors.white;
@@ -830,6 +874,9 @@ class __ClassCardState extends State<_ClassCard>
         decoration: BoxDecoration(
           color: widget.cardColor ?? _cardSurface,
           borderRadius: BorderRadius.circular(16 * widget.scale),
+          border: isDarkMode
+              ? null
+              : Border.all(color: const Color(0xFF93C0D3), width: 0.75),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.25),
@@ -844,7 +891,7 @@ class __ClassCardState extends State<_ClassCard>
             Text(
               widget.title,
               style: TextStyle(
-                color: Colors.white,
+                color: primaryTextColor,
                 fontSize: 20 * widget.scale,
                 fontWeight: FontWeight.w800,
               ),
@@ -854,7 +901,7 @@ class __ClassCardState extends State<_ClassCard>
               Text(
                 widget.subject!,
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.8),
+                  color: secondaryTextColor,
                   fontSize: 14 * widget.scale,
                   fontWeight: FontWeight.w600,
                 ),
@@ -865,14 +912,14 @@ class __ClassCardState extends State<_ClassCard>
               children: [
                 Icon(
                   Icons.group,
-                  color: Colors.white70,
+                  color: secondaryTextColor,
                   size: 16 * widget.scale,
                 ),
                 SizedBox(width: 6 * widget.scale),
                 Text(
                   '${widget.students} Students',
                   style: TextStyle(
-                    color: Colors.white70,
+                    color: secondaryTextColor,
                     fontSize: 14 * widget.scale,
                     fontWeight: FontWeight.w600,
                   ),
@@ -883,7 +930,7 @@ class __ClassCardState extends State<_ClassCard>
             Text(
               widget.time,
               style: TextStyle(
-                color: Colors.white60,
+                color: secondaryTextColor,
                 fontSize: 12 * widget.scale,
                 fontWeight: FontWeight.w500,
               ),

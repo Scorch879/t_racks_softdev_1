@@ -74,6 +74,21 @@ class _EducatorShellState extends State<EducatorShell> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final gradientColors = isDarkMode
+        ? const [
+            Color(0xFF092633),
+            Color(0xFF0F3951),
+            Color(0xFF15516B),
+            Color(0xFF1A6686),
+          ]
+        : const [
+            Color(0xFFEAF7FB),
+            Color(0xFFD9EEF5),
+            Color(0xFFC7E4EE),
+            Color(0xFFEFF9FC),
+          ];
+
     return Scaffold(
       extendBody: true,
       appBar: PreferredSize(
@@ -88,20 +103,15 @@ class _EducatorShellState extends State<EducatorShell> {
         children: [
           Positioned.fill(
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [
-                    Color(0xFF194B61),
-                    Color(0xFF2A7FA3),
-                    Color(0xFF267394),
-                    Color(0xFF349BC7),
-                  ],
+                  colors: gradientColors,
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
               ),
               child: Opacity(
-                opacity: 0.3,
+                opacity: isDarkMode ? 0.3 : 0.12,
                 child: Image.asset(
                   'assets/images/squigglytexture.png',
                   fit: BoxFit.cover,
@@ -123,9 +133,13 @@ class _EducatorShellState extends State<EducatorShell> {
   }
 
   Widget _buildBottomNavBar() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.only(left: 24, right: 24, top: 10, bottom: 20),
-      decoration: const BoxDecoration(color: Colors.white),
+      decoration: BoxDecoration(
+        color: isDarkMode ? const Color(0xFF0C3343) : Colors.white,
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
@@ -140,6 +154,8 @@ class _EducatorShellState extends State<EducatorShell> {
 
   Widget _buildNavItem(IconData icon, int index) {
     final isSelected = _currentIndex == index;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: () => _onItemTapped(index),
@@ -149,7 +165,11 @@ class _EducatorShellState extends State<EducatorShell> {
           color: isSelected ? const Color(0xFF93C0D3) : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Icon(icon, color: Colors.black87, size: 24),
+        child: Icon(
+          icon,
+          color: isDarkMode ? Colors.white : Colors.black87,
+          size: 24,
+        ),
       ),
     );
   }
@@ -172,9 +192,12 @@ class _TopBar extends StatelessWidget {
     final trimmedProfilePictureUrl = profilePictureUrl?.trim();
     final hasProfilePicture =
         trimmedProfilePictureUrl != null && trimmedProfilePictureUrl.isNotEmpty;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final foregroundColor = isDarkMode ? Colors.white : Colors.black87;
+    final subtitleColor = isDarkMode ? Colors.white70 : Colors.black54;
 
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: isDarkMode ? const Color(0xFF0C3343) : Colors.white,
       elevation: 0,
       centerTitle: false,
       titleSpacing: 0,
@@ -199,15 +222,15 @@ class _TopBar extends StatelessWidget {
                 children: [
                   Text(
                     educatorName,
-                    style: const TextStyle(
-                      color: Colors.black87,
+                    style: TextStyle(
+                      color: foregroundColor,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const Text(
+                  Text(
                     'Teacher',
-                    style: TextStyle(color: Colors.black54, fontSize: 12),
+                    style: TextStyle(color: subtitleColor, fontSize: 12),
                   ),
                 ],
               ),
@@ -225,10 +248,10 @@ class _TopBar extends StatelessWidget {
                       onTap: onNotificationTap,
                       child: Padding(
                         padding: const EdgeInsets.all(8.0),
-                        child: const Icon(
+                        child: Icon(
                           Icons.notifications_none_rounded,
                           size: 23,
-                          color: Colors.black87,
+                          color: foregroundColor,
                         ),
                       ),
                     ),

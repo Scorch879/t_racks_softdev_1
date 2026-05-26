@@ -6,7 +6,6 @@ import 'package:t_racks_softdev_1/screens/student/student_class_content.dart';
 import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/services/in_app_notification_service.dart'; // Import service for badge count
 
-const _bgTeal = Color(0xFF167C94);
 const _accentCyan = Color(0xFF93C0D3);
 
 enum StudentNavTab { home, schedule, settings }
@@ -93,6 +92,21 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final gradientColors = isDarkMode
+        ? const [
+            Color(0xFF092633),
+            Color(0xFF0F3951),
+            Color(0xFF15516B),
+            Color(0xFF1A6686),
+          ]
+        : const [
+            Color(0xFFEAF7FB),
+            Color(0xFFD9EEF5),
+            Color(0xFFC7E4EE),
+            Color(0xFFEFF9FC),
+          ];
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
@@ -113,20 +127,15 @@ class _StudentShellScreenState extends State<StudentShellScreen> {
             children: [
               Positioned.fill(
                 child: Container(
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [
-                        Color(0xFF194B61),
-                        Color(0xFF2A7FA3),
-                        Color(0xFF267394),
-                        Color(0xFF349BC7),
-                      ],
+                      colors: gradientColors,
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                     ),
                   ),
                   child: Opacity(
-                    opacity: 0.3,
+                    opacity: isDarkMode ? 0.3 : 0.12,
                     child: Image.asset(
                       'assets/images/squigglytexture.png',
                       fit: BoxFit.cover,
@@ -172,9 +181,12 @@ class _TopBarState extends State<_TopBar> {
     final profilePictureUrl = widget.profilePictureUrl?.trim();
     final hasProfilePicture =
         profilePictureUrl != null && profilePictureUrl.isNotEmpty;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final foregroundColor = isDarkMode ? Colors.white : Colors.black87;
+    final subtitleColor = isDarkMode ? Colors.white70 : Colors.black54;
 
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: isDarkMode ? const Color(0xFF0C3343) : Colors.white,
       elevation: 0,
       centerTitle: false,
       titleSpacing: 0,
@@ -199,7 +211,7 @@ class _TopBarState extends State<_TopBar> {
                   Text(
                     widget.studentName,
                     style: TextStyle(
-                      color: Colors.black87,
+                      color: foregroundColor,
                       fontSize: 16 * scale,
                       fontWeight: FontWeight.w600,
                     ),
@@ -207,7 +219,7 @@ class _TopBarState extends State<_TopBar> {
                   Text(
                     'Student',
                     style: TextStyle(
-                      color: Colors.black54,
+                      color: subtitleColor,
                       fontSize: 12 * scale,
                     ),
                   ),
@@ -226,7 +238,7 @@ class _TopBarState extends State<_TopBar> {
                       iconSize: 22 * scale + 1,
                       onPressed: widget.onNotificationsPressed,
                       icon: const Icon(Icons.notifications_none_rounded),
-                      color: Colors.black87,
+                      color: foregroundColor,
                     ),
                     if (count > 0)
                       Positioned(
@@ -272,6 +284,9 @@ class _BottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDarkMode ? const Color(0xFF0C3343) : Colors.white;
+
     return Container(
       padding: EdgeInsets.only(
         left: 24 * scale,
@@ -279,7 +294,7 @@ class _BottomNav extends StatelessWidget {
         top: 10 * scale,
         bottom: 20 * scale,
       ),
-      decoration: const BoxDecoration(color: Colors.white),
+      decoration: BoxDecoration(color: backgroundColor),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
@@ -327,8 +342,9 @@ class _BottomItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color iconAndTextColor = Colors.black87;
-    final Color activeBg = _accentCyan;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final Color iconAndTextColor = isDarkMode ? Colors.white : Colors.black87;
+    final Color activeBg = isDarkMode ? const Color(0xFF32657D) : _accentCyan;
     return Semantics(
       label: label,
       button: true,

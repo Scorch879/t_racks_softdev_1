@@ -7,6 +7,11 @@ const _bgTeal = Color(0xFF167C94);
 const _cardSurface = Color(0xFF173C45);
 const _cardHeader = Color(0xFF1B4A55);
 const _accentCyan = Color(0xFF93C0D3);
+const _lightPanelSurface = Color(0xFFEAF4F7);
+const _lightBorder = Color(0xFFBBD7E2);
+const _lightPrimaryText = Color(0xFF0C3343);
+const _lightSecondaryText = Color(0xFF42697A);
+const _lightAccent = Color(0xFF167C94);
 const _chipGreen = Color(0xFF4DBD88);
 const _statusRed = Color(0xFFDA6A6A);
 const _titleRed = Color(0xFFE57373);
@@ -153,9 +158,12 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         final scale = (width / 430).clamp(0.8, 1.6);
         final horizontalPadding = 16.0 * scale;
         final cardRadius = 16.0 * scale;
+        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
         return Scaffold(
-          backgroundColor: _bgTeal,
+          backgroundColor: isDarkMode
+              ? _bgTeal
+              : Theme.of(context).scaffoldBackgroundColor,
           appBar: PreferredSize(
             preferredSize: Size.fromHeight(64 * scale),
             child: _TopBar(
@@ -238,10 +246,20 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
   Widget build(BuildContext context) {
     final scale = widget.scale;
     final radius = widget.radius;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDarkMode ? Colors.white : _lightPrimaryText;
+    final secondaryTextColor = isDarkMode
+        ? Colors.white70
+        : _lightSecondaryText;
+    final headerColor = isDarkMode ? _cardHeader : _lightPanelSurface;
+    final shadowColor = Colors.black.withOpacity(isDarkMode ? 0.35 : 0.08);
+
     return _CardContainer(
       radius: radius,
       scale: scale,
-      borderColor: const Color(0xFF6AAFBF).withOpacity(0.35),
+      borderColor: isDarkMode
+          ? const Color(0xFF6AAFBF).withOpacity(0.35)
+          : _lightBorder,
       background: const _CardBackground(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -254,7 +272,7 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                 Text(
                   'Welcome! user',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: primaryTextColor,
                     fontSize: 18 * scale,
                     fontWeight: FontWeight.w800,
                   ),
@@ -262,7 +280,10 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                 SizedBox(height: 4 * scale),
                 Text(
                   "Today's Status",
-                  style: TextStyle(color: Colors.white70, fontSize: 12 * scale),
+                  style: TextStyle(
+                    color: secondaryTextColor,
+                    fontSize: 12 * scale,
+                  ),
                 ),
                 SizedBox(height: 12 * scale),
                 Row(
@@ -291,7 +312,7 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
             decoration: BoxDecoration(
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.35),
+                  color: shadowColor,
                   blurRadius: 12 * scale,
                   offset: Offset(0, 6 * scale),
                 ),
@@ -304,11 +325,11 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
               horizontal: 16 * scale,
               vertical: 10 * scale,
             ),
-            decoration: const BoxDecoration(color: _cardHeader),
+            decoration: BoxDecoration(color: headerColor),
             child: Text(
               'Ongoing Class',
               style: TextStyle(
-                color: Colors.white,
+                color: primaryTextColor,
                 fontSize: 16 * scale,
                 fontWeight: FontWeight.w800,
               ),
@@ -342,7 +363,7 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                       Text(
                         'Calculus 137',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: primaryTextColor,
                           fontSize: 16 * scale,
                           fontWeight: FontWeight.w800,
                         ),
@@ -351,7 +372,7 @@ class _WelcomeAndOngoingCardState extends State<_WelcomeAndOngoingCard> {
                       Text(
                         '10:00 AM',
                         style: TextStyle(
-                          color: Colors.white70,
+                          color: secondaryTextColor,
                           fontSize: 12 * scale,
                           fontWeight: FontWeight.w600,
                         ),
@@ -411,6 +432,10 @@ class _MyClassesCardState extends State<_MyClassesCard> {
   @override
   Widget build(BuildContext context) {
     final scale = widget.scale;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDarkMode ? Colors.white : _lightPrimaryText;
+    final iconColor = isDarkMode ? Colors.white : _lightAccent;
+
     return _CardContainer(
       radius: widget.radius,
       scale: scale,
@@ -425,7 +450,7 @@ class _MyClassesCardState extends State<_MyClassesCard> {
                 Text(
                   'My Classes',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: primaryTextColor,
                     fontSize: 18 * scale,
                     fontWeight: FontWeight.w800,
                   ),
@@ -434,7 +459,7 @@ class _MyClassesCardState extends State<_MyClassesCard> {
                   onTap: widget.onFilterAllClasses,
                   child: Icon(
                     Icons.filter_list_rounded,
-                    color: Colors.white,
+                    color: iconColor,
                     size: 24 * scale,
                   ),
                 ),
@@ -484,8 +509,13 @@ class _TopBarState extends State<_TopBar> {
   @override
   Widget build(BuildContext context) {
     final scale = widget.scale;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDarkMode ? _cardSurface : Colors.white;
+    final primaryTextColor = isDarkMode ? Colors.white : Colors.black87;
+    final secondaryTextColor = isDarkMode ? Colors.white70 : Colors.black54;
+
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: backgroundColor,
       elevation: 0,
       centerTitle: false,
       titleSpacing: 0,
@@ -506,7 +536,7 @@ class _TopBarState extends State<_TopBar> {
                   Text(
                     'Student',
                     style: TextStyle(
-                      color: Colors.black87,
+                      color: primaryTextColor,
                       fontSize: 16 * scale,
                       fontWeight: FontWeight.w600,
                     ),
@@ -514,7 +544,7 @@ class _TopBarState extends State<_TopBar> {
                   Text(
                     'Student',
                     style: TextStyle(
-                      color: Colors.black54,
+                      color: secondaryTextColor,
                       fontSize: 12 * scale,
                     ),
                   ),
@@ -528,7 +558,7 @@ class _TopBarState extends State<_TopBar> {
                   iconSize: 22 * scale + 1,
                   onPressed: widget.onNotificationsPressed,
                   icon: const Icon(Icons.notifications_none_rounded),
-                  color: Colors.black87,
+                  color: primaryTextColor,
                 ),
                 Positioned(
                   right: 8 * scale,
@@ -536,9 +566,9 @@ class _TopBarState extends State<_TopBar> {
                   child: Container(
                     padding: EdgeInsets.all(2.5 * scale),
                     decoration: BoxDecoration(
-                      color: _bgTeal,
+                      color: isDarkMode ? _lightAccent : _bgTeal,
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 1.5),
+                      border: Border.all(color: backgroundColor, width: 1.5),
                     ),
                     child: Text(
                       '1',
@@ -582,6 +612,12 @@ class _ClassRowState extends State<_ClassRow> {
   @override
   Widget build(BuildContext context) {
     final scale = widget.scale;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final rowColor = isDarkMode ? widget.statusColor : _lightPanelSurface;
+    final titleColor = isDarkMode ? Colors.white : _lightPrimaryText;
+    final statusTextColor = isDarkMode ? Colors.white : widget.statusColor;
+    final shadowColor = Colors.black.withOpacity(isDarkMode ? 0.25 : 0.08);
+
     return GestureDetector(
       onTap: widget.onTap,
       child: Container(
@@ -590,11 +626,12 @@ class _ClassRowState extends State<_ClassRow> {
           vertical: 16 * scale,
         ),
         decoration: BoxDecoration(
-          color: widget.statusColor,
+          color: rowColor,
           borderRadius: BorderRadius.circular(22 * scale),
+          border: isDarkMode ? null : Border.all(color: _lightBorder),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.25),
+              color: shadowColor,
               blurRadius: 10 * scale,
               offset: Offset(0, 6 * scale),
             ),
@@ -606,7 +643,7 @@ class _ClassRowState extends State<_ClassRow> {
               child: Text(
                 widget.title,
                 style: TextStyle(
-                  color: Colors.white,
+                  color: titleColor,
                   fontWeight: FontWeight.w800,
                   fontSize: 18 * scale,
                 ),
@@ -615,7 +652,7 @@ class _ClassRowState extends State<_ClassRow> {
             Text(
               widget.statusText,
               style: TextStyle(
-                color: Colors.white,
+                color: statusTextColor,
                 fontWeight: FontWeight.w800,
                 fontSize: 18 * scale,
               ),
@@ -652,15 +689,20 @@ class _CardContainerState extends State<_CardContainer> {
     final radius = widget.radius;
     final scale = widget.scale;
     final background = widget.background;
-    final borderColor = widget.borderColor;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDarkMode ? _cardSurface : Colors.white;
+    final borderColor =
+        widget.borderColor ?? (isDarkMode ? null : _lightBorder);
+    final shadowColor = Colors.black.withOpacity(isDarkMode ? 0.25 : 0.08);
+
     return Container(
       decoration: BoxDecoration(
-        color: _cardSurface,
+        color: cardColor,
         borderRadius: BorderRadius.circular(radius),
         border: borderColor != null ? Border.all(color: borderColor) : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.25),
+            color: shadowColor,
             blurRadius: 10 * scale,
             offset: Offset(0, 6 * scale),
           ),
@@ -716,6 +758,9 @@ class _BottomNavState extends State<_BottomNav> {
   @override
   Widget build(BuildContext context) {
     final scale = widget.scale;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDarkMode ? _cardSurface : Colors.white;
+
     return Container(
       padding: EdgeInsets.only(
         left: 24 * scale,
@@ -723,7 +768,7 @@ class _BottomNavState extends State<_BottomNav> {
         top: 10 * scale,
         bottom: 20 * scale,
       ),
-      decoration: const BoxDecoration(color: Colors.white),
+      decoration: BoxDecoration(color: backgroundColor),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
@@ -775,8 +820,10 @@ class _BottomItemState extends State<_BottomItem> {
   @override
   Widget build(BuildContext context) {
     final scale = widget.scale;
-    final Color iconAndTextColor = Colors.black87;
-    final Color activeBg = _accentCyan;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final Color iconAndTextColor = isDarkMode ? Colors.white : Colors.black87;
+    final Color activeBg = isDarkMode ? _accentCyan : _lightPanelSurface;
+
     return Semantics(
       label: widget.label,
       button: true,

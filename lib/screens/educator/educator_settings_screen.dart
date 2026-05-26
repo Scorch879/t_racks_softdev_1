@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:t_racks_softdev_1/services/auth_service.dart';
 import 'package:t_racks_softdev_1/screens/login_screen.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_profile_screen.dart';
+import 'package:t_racks_softdev_1/commonWidgets/theme_mode_switch_tile.dart';
 // Import the separated dialog
 import 'package:t_racks_softdev_1/commonWidgets/commonwidgets.dart';
 
@@ -118,10 +119,25 @@ class _SettingsCardState extends State<_SettingsCard> {
   Widget build(BuildContext context) {
     final scale = widget.scale;
     final radius = widget.radius;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final foregroundColor = isDarkMode ? Colors.white : _educatorCardSurface;
+    final cardBackground = isDarkMode
+        ? _educatorCardSurface
+        : Colors.white.withValues(alpha: 0.9);
+    final optionColor = isDarkMode
+        ? _educatorChipGreen
+        : const Color(0xFFEAF4F7);
+    final optionForegroundColor = isDarkMode
+        ? Colors.white
+        : _educatorCardSurface;
+
     return _CardContainer(
       radius: radius,
       scale: scale,
-      borderColor: Colors.white.withValues(alpha: 0.15),
+      backgroundColor: cardBackground,
+      borderColor: isDarkMode
+          ? Colors.white.withValues(alpha: 0.15)
+          : _educatorAccentCyan.withValues(alpha: 0.5),
       child: Padding(
         padding: EdgeInsets.all(18 * scale),
         child: Column(
@@ -131,14 +147,14 @@ class _SettingsCardState extends State<_SettingsCard> {
               children: [
                 Icon(
                   Icons.settings,
-                  color: _educatorAccentCyan,
+                  color: isDarkMode ? _educatorAccentCyan : foregroundColor,
                   size: 24 * scale,
                 ),
                 SizedBox(width: 8 * scale),
                 Text(
                   'Settings',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: foregroundColor,
                     fontSize: 20 * scale,
                     fontWeight: FontWeight.bold,
                   ),
@@ -149,7 +165,8 @@ class _SettingsCardState extends State<_SettingsCard> {
             _SettingsPill(
               label: 'Profile Settings',
               icon: Icons.person,
-              color: _educatorChipGreen,
+              color: optionColor,
+              foregroundColor: optionForegroundColor,
               scale: scale,
               onTap: widget.onProfileSettingsPressed,
             ),
@@ -157,22 +174,35 @@ class _SettingsCardState extends State<_SettingsCard> {
             _SettingsPill(
               label: 'Account Settings',
               icon: Icons.settings,
-              color: _educatorChipGreen,
+              color: optionColor,
+              foregroundColor: optionForegroundColor,
               scale: scale,
               onTap: widget.onAccountSettingsPressed,
+            ),
+            SizedBox(height: 14 * scale),
+            ThemeModeSwitchTile(
+              scale: scale,
+              backgroundColor: isDarkMode
+                  ? const Color(0xFF32657D)
+                  : const Color(0xFFEAF4F7),
+              foregroundColor: foregroundColor,
+              iconColor: foregroundColor,
+              borderColor: isDarkMode
+                  ? Colors.white.withValues(alpha: 0.12)
+                  : null,
             ),
             SizedBox(height: 14 * scale),
             _SettingsPill(
               label: 'Log Out',
               icon: Icons.logout,
               color: _educatorStatusRed,
+              foregroundColor: Colors.white,
               scale: scale,
               onTap: widget.onLogoutPressed,
             ),
           ],
         ),
       ),
-      background: null,
     );
   }
 }
@@ -182,6 +212,7 @@ class _SettingsPill extends StatefulWidget {
     required this.label,
     required this.icon,
     required this.color,
+    required this.foregroundColor,
     required this.scale,
     required this.onTap,
   });
@@ -189,6 +220,7 @@ class _SettingsPill extends StatefulWidget {
   final String label;
   final IconData icon;
   final Color color;
+  final Color foregroundColor;
   final double scale;
   final VoidCallback onTap;
 
@@ -221,13 +253,13 @@ class _SettingsPillState extends State<_SettingsPill> {
         ),
         child: Row(
           children: [
-            Icon(widget.icon, color: Colors.white, size: 20 * scale),
+            Icon(widget.icon, color: widget.foregroundColor, size: 20 * scale),
             SizedBox(width: 12 * scale),
             Expanded(
               child: Text(
                 widget.label,
                 style: TextStyle(
-                  color: Colors.white,
+                  color: widget.foregroundColor,
                   fontSize: 16 * scale,
                   fontWeight: FontWeight.w700,
                 ),
@@ -235,7 +267,7 @@ class _SettingsPillState extends State<_SettingsPill> {
             ),
             Icon(
               Icons.arrow_forward_ios,
-              color: Colors.white,
+              color: widget.foregroundColor,
               size: 16 * scale,
             ),
           ],
@@ -250,15 +282,15 @@ class _CardContainer extends StatefulWidget {
     required this.child,
     required this.radius,
     required this.scale,
+    required this.backgroundColor,
     this.borderColor,
-    this.background,
   });
 
   final Widget child;
   final double radius;
   final double scale;
+  final Color backgroundColor;
   final Color? borderColor;
-  final Widget? background;
 
   @override
   State<_CardContainer> createState() => _CardContainerState();
@@ -269,11 +301,10 @@ class _CardContainerState extends State<_CardContainer> {
   Widget build(BuildContext context) {
     final radius = widget.radius;
     final scale = widget.scale;
-    final background = widget.background;
     final borderColor = widget.borderColor;
     return Container(
       decoration: BoxDecoration(
-        color: _educatorCardSurface.withValues(alpha: 0.85),
+        color: widget.backgroundColor,
         borderRadius: BorderRadius.circular(radius),
         border: borderColor != null
             ? Border.all(color: borderColor, width: 2)
@@ -287,9 +318,7 @@ class _CardContainerState extends State<_CardContainer> {
         ],
       ),
       clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [if (background != null) background, widget.child],
-      ),
+      child: widget.child,
     );
   }
 }
