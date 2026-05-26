@@ -31,11 +31,11 @@
 
 ## 🏗️ System Architecture
 
-[cite_start]T-Racks is built with a modular architecture to ensure rapid, secure authentication[cite: 62]:
-1.  [cite_start]**User Interface (UI):** Built for cross-platform mobile compatibility[cite: 39, 63].
-2.  [cite_start]**Biometric Module:** Captures and processes facial and voice inputs[cite: 64].
-3.  [cite_start]**Authentication Module:** Verifies live inputs against stored biometric templates[cite: 67].
-4.  [cite_start]**Attendance Manager:** Logs the data into the system's database in real-time[cite: 69].
+T-Racks is built with a modular architecture to ensure rapid, secure authentication
+1.  **User Interface (UI):** Built for cross-platform mobile compatibility
+2.  **Biometric Module:** Captures and processes facial and voice inputs
+3.  **Authentication Module:** Verifies live inputs against stored biometric templates
+4.  **Attendance Manager:** Logs the data into the system's database in real-time
 
 ---
 
