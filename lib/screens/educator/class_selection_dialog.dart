@@ -32,20 +32,29 @@ class _ClassSelectionDialogState extends State<_ClassSelectionDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final dialogColor = isDarkMode ? const Color(0xFF0C3343) : Colors.white;
+    final primaryTextColor = isDarkMode
+        ? Colors.white
+        : const Color(0xFF1A2B3C);
+    final borderColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.18)
+        : const Color(0xFFBFD5E3);
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      backgroundColor: Colors.white,
+      backgroundColor: dialogColor,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'Select a class to generate a report for',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Color(0xFF1A2B3C), // Dark blueish color
+                color: primaryTextColor,
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.5,
@@ -80,11 +89,11 @@ class _ClassSelectionDialogState extends State<_ClassSelectionDialog> {
                               Navigator.of(context).pop(aClass);
                             },
                             style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Color(0xFFBFD5E3)),
+                              side: BorderSide(color: borderColor),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
                               ),
-                              foregroundColor: const Color(0xFF1A2B3C),
+                              foregroundColor: primaryTextColor,
                             ),
                             child: Text(
                               aClass.className,

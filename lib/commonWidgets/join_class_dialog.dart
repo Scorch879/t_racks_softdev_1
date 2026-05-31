@@ -82,8 +82,19 @@ class _JoinClassDialogContentState extends State<_JoinClassDialogContent> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final dialogColor = isDarkMode ? const Color(0xFF0C3343) : _lightBackground;
+    final inputFillColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.1)
+        : _inputFill;
+    final primaryTextColor = isDarkMode ? Colors.white : _textBlack;
+    final secondaryTextColor = isDarkMode ? Colors.white70 : _textGrey;
+    final borderColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.12)
+        : Colors.black.withOpacity(0.05);
+
     return Dialog(
-      backgroundColor: _lightBackground,
+      backgroundColor: dialogColor,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Container(
         padding: const EdgeInsets.all(24.0),
@@ -95,17 +106,17 @@ class _JoinClassDialogContentState extends State<_JoinClassDialogContent> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Join a Class',
                   style: TextStyle(
-                    color: _textBlack, // Black text
+                    color: primaryTextColor,
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close, color: _textGrey),
+                  icon: Icon(Icons.close, color: secondaryTextColor),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   splashRadius: 20,
@@ -121,10 +132,10 @@ class _JoinClassDialogContentState extends State<_JoinClassDialogContent> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Label outside the box (matches image style)
-                  const Text(
+                  Text(
                     'Class Code',
                     style: TextStyle(
-                      color: _textBlack, // Black text
+                      color: primaryTextColor,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
@@ -135,18 +146,16 @@ class _JoinClassDialogContentState extends State<_JoinClassDialogContent> {
                   TextFormField(
                     controller: _classCodeController,
                     focusNode: _focusNode,
-                    style: const TextStyle(
-                      color: _textBlack,
-                    ), // Black text input
+                    style: TextStyle(color: primaryTextColor),
                     textCapitalization: TextCapitalization.characters,
                     decoration: InputDecoration(
                       hintText: 'Enter 6-digit code',
                       hintStyle: TextStyle(
-                        color: _textBlack.withOpacity(0.4),
+                        color: secondaryTextColor,
                         fontSize: 14,
                       ),
                       filled: true,
-                      fillColor: _inputFill, // Light background
+                      fillColor: inputFillColor,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 14,
@@ -154,9 +163,7 @@ class _JoinClassDialogContentState extends State<_JoinClassDialogContent> {
                       // Rounded borders matching image
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: Colors.black.withOpacity(0.05),
-                        ),
+                        borderSide: BorderSide(color: borderColor),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),

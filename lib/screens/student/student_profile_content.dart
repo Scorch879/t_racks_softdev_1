@@ -169,15 +169,27 @@ class _StudentProfileContentState extends State<StudentProfileContent> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Failed to update picture: $e'),
-              backgroundColor: _statusRed),
+            content: Text('Failed to update picture: $e'),
+            backgroundColor: _statusRed,
+          ),
         );
       }
     }
   }
+
   @override
   Widget build(BuildContext context) {
     final scale = widget.scale;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDarkMode
+        ? Colors.white
+        : const Color(0xFF1A2B3C);
+    final secondaryTextColor = isDarkMode
+        ? Colors.white70
+        : const Color(0xFF167C94);
+    final actionColor = isDarkMode
+        ? const Color(0xFF93C0D3)
+        : const Color(0xFF167C94);
 
     // Using PopScope to intercept back button
     return PopScope(
@@ -207,7 +219,7 @@ class _StudentProfileContentState extends State<StudentProfileContent> {
                   Text(
                     _student.fullName,
                     style: TextStyle(
-                      color: _textDarkBlue,
+                      color: primaryTextColor,
                       fontSize: 28 * scale,
                       fontWeight: FontWeight.w800,
                     ),
@@ -217,7 +229,7 @@ class _StudentProfileContentState extends State<StudentProfileContent> {
                     '${_student.educationalLevel ?? 'Student'} | ${_student.gradeYearLevel ?? ''}',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: _textTeal,
+                      color: secondaryTextColor,
                       fontSize: 14 * scale,
                       fontWeight: FontWeight.w500,
                     ),
@@ -257,17 +269,17 @@ class _StudentProfileContentState extends State<StudentProfileContent> {
                     child: OutlinedButton(
                       onPressed: (_hasChanges && !_isSaving) ? _onSave : null,
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: _textTeal),
+                        side: BorderSide(color: actionColor),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16 * scale),
                         ),
-                        foregroundColor: _textTeal,
+                        foregroundColor: actionColor,
                         disabledForegroundColor: Colors.grey,
                       ),
                       child: _isSaving
-                          ? const CircularProgressIndicator(
+                          ? CircularProgressIndicator(
                               valueColor: AlwaysStoppedAnimation<Color>(
-                                _textTeal,
+                                actionColor,
                               ),
                             )
                           : Text(
@@ -303,6 +315,12 @@ class _ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final headerColor = isDarkMode ? const Color(0xFF0C3343) : _bgTeal;
+    final cameraColor = isDarkMode
+        ? const Color(0xFF93C0D3)
+        : const Color(0xFF167C94);
+
     return SizedBox(
       height: 280 * scale,
       child: Stack(
@@ -312,7 +330,7 @@ class _ProfileHeader extends StatelessWidget {
             clipper: _HeaderClipper(),
             child: Container(
               height: 220 * scale,
-              color: _bgTeal,
+              color: headerColor,
               child: Stack(
                 children: [
                   Positioned.fill(
@@ -366,9 +384,13 @@ class _ProfileHeader extends StatelessWidget {
                           width: 4 * scale,
                         ),
                         image: DecorationImage(
-                          image: (profilePictureUrl != null
-                                  ? NetworkImage(profilePictureUrl!)
-                                  : const AssetImage('assets/images/t_racks.png')) as ImageProvider,
+                          image:
+                              (profilePictureUrl != null
+                                      ? NetworkImage(profilePictureUrl!)
+                                      : const AssetImage(
+                                          'assets/images/t_racks.png',
+                                        ))
+                                  as ImageProvider,
                           fit: BoxFit.cover,
                         ),
                         boxShadow: [
@@ -389,7 +411,7 @@ class _ProfileHeader extends StatelessWidget {
                           width: 36 * scale,
                           height: 36 * scale,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF93C0D3),
+                            color: cameraColor,
                             shape: BoxShape.circle,
                             border: Border.all(
                               color: Colors.white,
@@ -470,13 +492,27 @@ class _ProfileTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDarkMode
+        ? Colors.white
+        : const Color(0xFF1B4A55);
+    final inputTextColor = isDarkMode ? Colors.white : _textDarkBlue;
+    final hintTextColor = isDarkMode ? Colors.white70 : const Color(0xFF93C0D3);
+    final fillColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.1)
+        : Colors.white;
+    final borderColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.22)
+        : const Color(0xFF93C0D3);
+    final focusedBorderColor = isDarkMode ? const Color(0xFF93C0D3) : _textTeal;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
           style: TextStyle(
-            color: const Color(0xFF1B4A55),
+            color: primaryTextColor,
             fontSize: 16 * scale,
             fontWeight: FontWeight.w700,
           ),
@@ -486,30 +522,27 @@ class _ProfileTextField extends StatelessWidget {
           controller: controller,
           maxLines: maxLines,
           style: TextStyle(
-            color: _textDarkBlue,
+            color: inputTextColor,
             fontSize: 16 * scale,
             fontWeight: FontWeight.w500,
           ),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(
-              color: const Color(0xFF93C0D3),
-              fontSize: 16 * scale,
-            ),
+            hintStyle: TextStyle(color: hintTextColor, fontSize: 16 * scale),
             contentPadding: EdgeInsets.symmetric(
               horizontal: 16 * scale,
               vertical: 20 * scale,
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12 * scale),
-              borderSide: const BorderSide(color: Color(0xFF93C0D3)),
+              borderSide: BorderSide(color: borderColor),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12 * scale),
-              borderSide: const BorderSide(color: _textTeal, width: 1.5),
+              borderSide: BorderSide(color: focusedBorderColor, width: 1.5),
             ),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: fillColor,
           ),
         ),
       ],
@@ -522,9 +555,18 @@ class _UnsavedChangesDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final dialogColor = isDarkMode ? const Color(0xFF0C3343) : Colors.white;
+    final primaryTextColor = isDarkMode
+        ? Colors.white
+        : const Color(0xFF1A2B3C);
+    final borderColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.18)
+        : const Color(0xFFBFD5E3);
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      backgroundColor: Colors.white,
+      backgroundColor: dialogColor,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
@@ -541,11 +583,11 @@ class _UnsavedChangesDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
+            Text(
               'You haven’t finished saving your\ndetails.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Color(0xFF1A2B3C),
+                color: primaryTextColor,
                 fontSize: 16,
                 height: 1.5,
                 fontWeight: FontWeight.w500,
@@ -561,11 +603,11 @@ class _UnsavedChangesDialog extends StatelessWidget {
                       onPressed: () =>
                           Navigator.of(context).pop(false), // Continue editing
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFFBFD5E3)),
+                        side: BorderSide(color: borderColor),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        foregroundColor: const Color(0xFF1A2B3C),
+                        foregroundColor: primaryTextColor,
                       ),
                       child: const Text(
                         'Continue',
@@ -584,11 +626,11 @@ class _UnsavedChangesDialog extends StatelessWidget {
                     child: OutlinedButton(
                       onPressed: () => Navigator.of(context).pop(true), // Leave
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFFBFD5E3)),
+                        side: BorderSide(color: borderColor),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        foregroundColor: const Color(0xFF1A2B3C),
+                        foregroundColor: primaryTextColor,
                       ),
                       child: const Text(
                         'Leave',
