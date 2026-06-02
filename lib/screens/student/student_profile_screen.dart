@@ -25,24 +25,43 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDarkMode ? const Color(0xFF071E29) : Colors.white;
+    final primaryTextColor = isDarkMode
+        ? Colors.white
+        : const Color(0xFF1A2B3C);
+    final accentColor = isDarkMode
+        ? const Color(0xFF93C0D3)
+        : const Color(0xFF167C94);
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: backgroundColor,
       body: FutureBuilder<Student?>(
         future: _studentDataFuture,
         builder: (context, snapshot) {
           // 1. While data is loading, show a spinner.
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(child: CircularProgressIndicator(color: accentColor));
           }
 
           // 2. If an error occurred during fetching.
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(
+              child: Text(
+                'Error: ${snapshot.error}',
+                style: TextStyle(color: primaryTextColor),
+              ),
+            );
           }
 
           // 3. If no data was returned (profile not found or not a student).
           if (!snapshot.hasData || snapshot.data == null) {
-            return const Center(child: Text('No student profile data found.'));
+            return Center(
+              child: Text(
+                'No student profile data found.',
+                style: TextStyle(color: primaryTextColor),
+              ),
+            );
           }
 
           // 4. If data is available, build the profile content.

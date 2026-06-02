@@ -7,9 +7,18 @@ class DeleteAccountConfirmationDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final dialogColor = isDarkMode ? const Color(0xFF0C3343) : Colors.white;
+    final primaryTextColor = isDarkMode
+        ? Colors.white
+        : const Color(0xFF1A2B3C);
+    final borderColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.18)
+        : const Color(0xFFBFD5E3);
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      backgroundColor: Colors.white,
+      backgroundColor: dialogColor,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
@@ -26,11 +35,11 @@ class DeleteAccountConfirmationDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
+            Text(
               'Are you sure you want to delete your Profile? This action is irreversible.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Color(0xFF1A2B3C),
+                color: primaryTextColor,
                 fontSize: 16,
                 height: 1.5,
                 fontWeight: FontWeight.w500,
@@ -46,11 +55,11 @@ class DeleteAccountConfirmationDialog extends StatelessWidget {
                       onPressed: () =>
                           Navigator.of(context).pop(false), // Return false
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFFBFD5E3)),
+                        side: BorderSide(color: borderColor),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        foregroundColor: const Color(0xFF1A2B3C),
+                        foregroundColor: primaryTextColor,
                       ),
                       child: const Text(
                         'Cancel',

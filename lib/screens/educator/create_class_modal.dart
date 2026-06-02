@@ -165,11 +165,29 @@ class _CreateClassModalState extends State<CreateClassModal> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDarkMode ? const Color(0xFF0C3343) : Colors.white;
+    final fieldColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.1)
+        : const Color(0xFFEBEBEB);
+    final primaryTextColor = isDarkMode
+        ? Colors.white
+        : const Color(0xFF0C3343);
+    final secondaryTextColor = isDarkMode
+        ? Colors.white70
+        : const Color(0xFF607D8B);
+    final borderColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.16)
+        : Colors.grey.shade400;
+    final selectedColor = isDarkMode
+        ? const Color(0xFF2A7FA3)
+        : const Color(0xFF0C3343);
+
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.all(16),
       child: Material(
-        color: Colors.white,
+        color: surfaceColor,
         borderRadius: BorderRadius.circular(24),
         clipBehavior: Clip.antiAlias,
         child: SingleChildScrollView(
@@ -185,21 +203,21 @@ class _CreateClassModalState extends State<CreateClassModal> {
                   Stack(
                     alignment: Alignment.center,
                     children: [
-                      const Align(
+                      Align(
                         alignment: Alignment.center,
                         child: Text(
                           "Add a new class",
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF0C3343),
+                            color: primaryTextColor,
                           ),
                         ),
                       ),
                       Align(
                         alignment: Alignment.centerRight,
                         child: IconButton(
-                          icon: const Icon(Icons.close),
+                          icon: Icon(Icons.close, color: primaryTextColor),
                           onPressed: () => Navigator.pop(context),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
@@ -210,19 +228,20 @@ class _CreateClassModalState extends State<CreateClassModal> {
                   const SizedBox(height: 24),
 
                   // --- Class Name ---
-                  const Text(
+                  Text(
                     "Class Name",
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF0C3343),
+                      color: primaryTextColor,
                     ),
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _classNameController,
+                    style: TextStyle(color: primaryTextColor),
                     decoration: InputDecoration(
                       filled: true,
-                      fillColor: const Color(0xFFEBEBEB),
+                      fillColor: fieldColor,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
@@ -238,19 +257,20 @@ class _CreateClassModalState extends State<CreateClassModal> {
                   const SizedBox(height: 16),
 
                   // --- Class Subject ---
-                  const Text(
+                  Text(
                     "Class Subject",
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF0C3343),
+                      color: primaryTextColor,
                     ),
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _subjectController,
+                    style: TextStyle(color: primaryTextColor),
                     decoration: InputDecoration(
                       filled: true,
-                      fillColor: const Color(0xFFEBEBEB),
+                      fillColor: fieldColor,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
@@ -266,11 +286,11 @@ class _CreateClassModalState extends State<CreateClassModal> {
                   const SizedBox(height: 16),
 
                   // --- Select Schedule (Days) ---
-                  const Text(
+                  Text(
                     "Select Schedule",
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF0C3343),
+                      color: primaryTextColor,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -290,9 +310,9 @@ class _CreateClassModalState extends State<CreateClassModal> {
                           children: [
                             Text(
                               day,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
-                                color: Color(0xFF0C3343),
+                                color: primaryTextColor,
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -300,13 +320,11 @@ class _CreateClassModalState extends State<CreateClassModal> {
                               width: 36,
                               height: 36,
                               decoration: BoxDecoration(
-                                color: isSelected
-                                    ? const Color(0xFF0C3343)
-                                    : const Color(0xFFEBEBEB),
+                                color: isSelected ? selectedColor : fieldColor,
                                 borderRadius: BorderRadius.circular(8),
                                 border: isSelected
                                     ? null
-                                    : Border.all(color: Colors.grey.shade400),
+                                    : Border.all(color: borderColor),
                               ),
                               child: isSelected
                                   ? const Icon(
@@ -331,11 +349,11 @@ class _CreateClassModalState extends State<CreateClassModal> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               "Starting Time",
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF0C3343),
+                                color: primaryTextColor,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -348,16 +366,17 @@ class _CreateClassModalState extends State<CreateClassModal> {
                                 ),
                                 alignment: Alignment.centerLeft,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFEBEBEB),
+                                  color: fieldColor,
                                   borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: borderColor),
                                 ),
                                 child: Text(
                                   _formatTime(_startTime), // Use helper
                                   style: TextStyle(
                                     fontSize: 16,
                                     color: _startTime == null
-                                        ? Colors.grey
-                                        : Colors.black,
+                                        ? secondaryTextColor
+                                        : primaryTextColor,
                                   ),
                                 ),
                               ),
@@ -371,11 +390,11 @@ class _CreateClassModalState extends State<CreateClassModal> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               "Ending Time",
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF0C3343),
+                                color: primaryTextColor,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -388,16 +407,17 @@ class _CreateClassModalState extends State<CreateClassModal> {
                                 ),
                                 alignment: Alignment.centerLeft,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFEBEBEB),
+                                  color: fieldColor,
                                   borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: borderColor),
                                 ),
                                 child: Text(
                                   _formatTime(_endTime), // Use helper
                                   style: TextStyle(
                                     fontSize: 16,
                                     color: _endTime == null
-                                        ? Colors.grey
-                                        : Colors.black,
+                                        ? secondaryTextColor
+                                        : primaryTextColor,
                                   ),
                                 ),
                               ),

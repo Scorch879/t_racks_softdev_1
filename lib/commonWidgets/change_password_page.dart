@@ -23,40 +23,54 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDarkMode
+        ? Colors.white
+        : const Color(0xFF21446D);
+    final secondaryTextColor = isDarkMode ? Colors.white70 : Colors.black54;
+    final inputTextColor = isDarkMode ? Colors.white : Colors.black87;
+    final borderColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.28)
+        : Colors.grey;
+    final focusedBorderColor = isDarkMode
+        ? const Color(0xFF93C0D3)
+        : const Color(0xFF21446D);
+    final iconColor = isDarkMode ? Colors.white70 : Colors.grey;
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             "Set your new password",
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF21446D),
+              color: primaryTextColor,
             ),
           ),
           const SizedBox(height: 30),
 
           // --- CURRENT PASSWORD FIELD ---
-          const Text(
+          Text(
             "Current Password",
             style: TextStyle(
-              color: Colors.black54,
+              color: secondaryTextColor,
               fontWeight: FontWeight.w600,
             ),
           ),
           TextField(
             controller: widget.currentPasswordController,
             obscureText: _currentPassVisible,
+            style: TextStyle(color: inputTextColor),
             decoration: InputDecoration(
               hintText: "Enter your current password",
-              prefixIcon: const Icon(Icons.lock_outline, color: Colors.grey),
+              hintStyle: TextStyle(color: secondaryTextColor),
+              prefixIcon: Icon(Icons.lock_outline, color: iconColor),
               suffixIcon: IconButton(
                 icon: Icon(
-                  _currentPassVisible
-                      ? Icons.visibility_off
-                      : Icons.visibility,
-                  color: Colors.grey,
+                  _currentPassVisible ? Icons.visibility_off : Icons.visibility,
+                  color: iconColor,
                 ),
                 onPressed: () {
                   setState(() {
@@ -64,34 +78,36 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   });
                 },
               ),
-              enabledBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.grey),
+              enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: borderColor),
               ),
-              focusedBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: Color(0xFF21446D)),
+              focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: focusedBorderColor),
               ),
             ),
           ),
           const SizedBox(height: 20),
 
           // --- NEW PASSWORD FIELD ---
-          const Text(
+          Text(
             "New Password",
             style: TextStyle(
-              color: Colors.black54,
+              color: secondaryTextColor,
               fontWeight: FontWeight.w600,
             ),
           ),
           TextField(
             controller: widget.newPasswordController,
             obscureText: _newPassVisible,
+            style: TextStyle(color: inputTextColor),
             decoration: InputDecoration(
               hintText: "Enter your new password",
-              prefixIcon: const Icon(Icons.lock_outline, color: Colors.grey),
+              hintStyle: TextStyle(color: secondaryTextColor),
+              prefixIcon: Icon(Icons.lock_outline, color: iconColor),
               suffixIcon: IconButton(
                 icon: Icon(
                   _newPassVisible ? Icons.visibility_off : Icons.visibility,
-                  color: Colors.grey,
+                  color: iconColor,
                 ),
                 onPressed: () {
                   setState(() {
@@ -99,36 +115,36 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   });
                 },
               ),
-              enabledBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.grey),
+              enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: borderColor),
               ),
-              focusedBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: Color(0xFF21446D)),
+              focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: focusedBorderColor),
               ),
             ),
           ),
           const SizedBox(height: 20),
 
           // --- CONFIRM NEW PASSWORD FIELD ---
-          const Text(
+          Text(
             "Confirm New Password",
             style: TextStyle(
-              color: Colors.black54,
+              color: secondaryTextColor,
               fontWeight: FontWeight.w600,
             ),
           ),
           TextField(
             controller: widget.confirmPasswordController,
             obscureText: _confirmPassVisible,
+            style: TextStyle(color: inputTextColor),
             decoration: InputDecoration(
               hintText: "Confirm your new password",
-              prefixIcon: const Icon(Icons.lock_outline, color: Colors.grey),
+              hintStyle: TextStyle(color: secondaryTextColor),
+              prefixIcon: Icon(Icons.lock_outline, color: iconColor),
               suffixIcon: IconButton(
                 icon: Icon(
-                  _confirmPassVisible
-                      ? Icons.visibility_off
-                      : Icons.visibility,
-                  color: Colors.grey,
+                  _confirmPassVisible ? Icons.visibility_off : Icons.visibility,
+                  color: iconColor,
                 ),
                 onPressed: () {
                   setState(() {
@@ -136,11 +152,11 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   });
                 },
               ),
-              enabledBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.grey),
+              enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: borderColor),
               ),
-              focusedBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: Color(0xFF21446D)),
+              focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: focusedBorderColor),
               ),
             ),
           ),

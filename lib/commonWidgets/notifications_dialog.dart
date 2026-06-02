@@ -15,8 +15,20 @@ class NotificationsDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDarkMode ? _accentCyan : _bgWhite;
+    final primaryTextColor = isDarkMode ? Colors.white : _textBlack;
+    final secondaryTextColor = isDarkMode ? Colors.white70 : _textGrey;
+    final readTileColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.grey.shade50;
+    final readBorderColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.12)
+        : Colors.grey.shade200;
+    final unreadTileColor = _chipGreen.withOpacity(isDarkMode ? 0.22 : 0.15);
+
     return Dialog(
-      backgroundColor: _bgWhite,
+      backgroundColor: backgroundColor,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       insetPadding: const EdgeInsets.all(20),
       child: Container(
@@ -32,10 +44,10 @@ class NotificationsDialog extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Notifications',
                   style: TextStyle(
-                    color: _textBlack,
+                    color: primaryTextColor,
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
@@ -43,7 +55,10 @@ class NotificationsDialog extends StatelessWidget {
                 Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.done_all, color: _accentCyan),
+                      icon: Icon(
+                        Icons.done_all,
+                        color: isDarkMode ? Colors.white : _accentCyan,
+                      ),
                       tooltip: "Mark all read",
                       splashRadius: 20,
                       onPressed: () {
@@ -52,7 +67,7 @@ class NotificationsDialog extends StatelessWidget {
                     ),
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close, color: _textGrey),
+                      icon: Icon(Icons.close, color: secondaryTextColor),
                       splashRadius: 20,
                     ),
                   ],
@@ -80,12 +95,15 @@ class NotificationsDialog extends StatelessWidget {
                         Icon(
                           Icons.notifications_off_outlined,
                           size: 40,
-                          color: Colors.grey.shade300,
+                          color: secondaryTextColor.withValues(alpha: 0.45),
                         ),
                         const SizedBox(height: 12),
-                        const Text(
+                        Text(
                           "No new notifications",
-                          style: TextStyle(color: Colors.grey, fontSize: 14),
+                          style: TextStyle(
+                            color: secondaryTextColor,
+                            fontSize: 14,
+                          ),
                         ),
                       ],
                     ),
@@ -125,12 +143,12 @@ class NotificationsDialog extends StatelessWidget {
                         child: Container(
                           decoration: BoxDecoration(
                             color: item.isRead
-                                ? Colors.grey.shade50
-                                : _chipGreen.withOpacity(0.15),
+                                ? readTileColor
+                                : unreadTileColor,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: item.isRead
-                                  ? Colors.grey.shade200
+                                  ? readBorderColor
                                   : _chipGreen.withOpacity(0.3),
                             ),
                           ),
@@ -154,7 +172,7 @@ class NotificationsDialog extends StatelessWidget {
                                 fontWeight: item.isRead
                                     ? FontWeight.normal
                                     : FontWeight.bold,
-                                color: _textBlack,
+                                color: primaryTextColor,
                                 fontSize: 14,
                               ),
                             ),
@@ -164,13 +182,16 @@ class NotificationsDialog extends StatelessWidget {
                                 const SizedBox(height: 4),
                                 Text(
                                   item.message,
-                                  style: const TextStyle(fontSize: 13),
+                                  style: TextStyle(
+                                    color: secondaryTextColor,
+                                    fontSize: 13,
+                                  ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   DateFormat('h:mm a').format(item.timestamp),
                                   style: TextStyle(
-                                    color: Colors.grey.shade500,
+                                    color: secondaryTextColor,
                                     fontSize: 11,
                                   ),
                                 ),

@@ -31,7 +31,7 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
   String _initialFirstName = '';
   String _initialLastName = '';
   String _initialBio = '';
-  
+
   bool _hasChanges = false;
   bool _isLoading = true;
 
@@ -81,15 +81,16 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
         setState(() {
           _isLoading = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading profile: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading profile: $e')));
       }
     }
   }
 
   void _checkForChanges() {
-    final hasChanges = _firstNameController.text != _initialFirstName ||
+    final hasChanges =
+        _firstNameController.text != _initialFirstName ||
         _lastNameController.text != _initialLastName ||
         _bioController.text != _initialBio;
 
@@ -114,7 +115,7 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
         _initialFirstName = _firstNameController.text;
         _initialLastName = _lastNameController.text;
         _initialBio = _bioController.text;
-        
+
         setState(() {
           _hasChanges = false;
           _isLoading = false;
@@ -131,7 +132,10 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving changes: $e'), backgroundColor: _statusRed),
+          SnackBar(
+            content: Text('Error saving changes: $e'),
+            backgroundColor: _statusRed,
+          ),
         );
       }
     }
@@ -156,12 +160,14 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Failed to update picture: $e'),
-              backgroundColor: _statusRed),
+            content: Text('Failed to update picture: $e'),
+            backgroundColor: _statusRed,
+          ),
         );
       }
     }
   }
+
   Future<bool> _onWillPop() async {
     if (!_hasChanges) return true;
 
@@ -179,16 +185,32 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
       builder: (context, constraints) {
         final width = constraints.maxWidth;
         final scale = (width / 430).clamp(0.8, 1.6);
+        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+        final backgroundColor = isDarkMode
+            ? const Color(0xFF071E29)
+            : Colors.white;
+        final primaryTextColor = isDarkMode
+            ? Colors.white
+            : const Color(0xFF1A2B3C);
+        final secondaryTextColor = isDarkMode
+            ? Colors.white70
+            : const Color(0xFF93C0D3);
+        final actionColor = isDarkMode
+            ? const Color(0xFF93C0D3)
+            : const Color(0xFF167C94);
+        final disabledColor = isDarkMode
+            ? Colors.white.withValues(alpha: 0.24)
+            : _borderGrey;
 
         if (_isLoading) {
-          return const Scaffold(
-            backgroundColor: Colors.white,
-            body: Center(child: CircularProgressIndicator(color: _bgDarkBlue)),
+          return Scaffold(
+            backgroundColor: backgroundColor,
+            body: Center(child: CircularProgressIndicator(color: actionColor)),
           );
         }
 
         return Scaffold(
-          backgroundColor: Colors.white,
+          backgroundColor: backgroundColor,
           body: PopScope(
             canPop: !_hasChanges,
             onPopInvokedWithResult: (didPop, result) async {
@@ -201,7 +223,11 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  _ProfileHeader(scale: scale, profilePictureUrl: _educator?.profile.profilePictureUrl, onCameraTap: _changeProfilePicture,),
+                  _ProfileHeader(
+                    scale: scale,
+                    profilePictureUrl: _educator?.profile.profilePictureUrl,
+                    onCameraTap: _changeProfilePicture,
+                  ),
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 24 * scale),
                     child: Column(
@@ -210,17 +236,19 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
                         Text(
                           '${_firstNameController.text} ${_lastNameController.text}',
                           style: TextStyle(
-                            color: _textDarkBlue,
+                            color: primaryTextColor,
                             fontSize: 28 * scale,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
                         SizedBox(height: 8 * scale),
                         Text(
-                          _bioController.text.isEmpty ? "No bio yet" : _bioController.text,
+                          _bioController.text.isEmpty
+                              ? "No bio yet"
+                              : _bioController.text,
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: _textCyan,
+                            color: secondaryTextColor,
                             fontSize: 14 * scale,
                             fontWeight: FontWeight.w500,
                           ),
@@ -256,22 +284,26 @@ class _EducatorProfileScreenState extends State<EducatorProfileScreen> {
                             onPressed: _hasChanges ? _saveChanges : null,
                             style: OutlinedButton.styleFrom(
                               side: BorderSide(
-                                color: _hasChanges ? _textCyan : _borderGrey
+                                color: _hasChanges
+                                    ? actionColor
+                                    : disabledColor,
                               ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16 * scale),
                               ),
-                              foregroundColor: _hasChanges ? _textCyan : _borderGrey,
+                              foregroundColor: _hasChanges
+                                  ? actionColor
+                                  : disabledColor,
                             ),
-                            child: _isLoading 
-                              ? const CircularProgressIndicator()
-                              : Text(
-                                  'Save Changes',
-                                  style: TextStyle(
-                                    fontSize: 20 * scale,
-                                    fontWeight: FontWeight.w700,
+                            child: _isLoading
+                                ? CircularProgressIndicator(color: actionColor)
+                                : Text(
+                                    'Save Changes',
+                                    style: TextStyle(
+                                      fontSize: 20 * scale,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
-                                ),
                           ),
                         ),
                         SizedBox(height: 40 * scale),
@@ -302,6 +334,12 @@ class _ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final headerColor = isDarkMode ? const Color(0xFF0C3343) : _bgDarkBlue;
+    final cameraColor = isDarkMode
+        ? const Color(0xFF93C0D3)
+        : const Color(0xFF167C94);
+
     return SizedBox(
       height: 280 * scale,
       child: Stack(
@@ -311,7 +349,7 @@ class _ProfileHeader extends StatelessWidget {
             clipper: _HeaderClipper(),
             child: Container(
               height: 220 * scale,
-              color: _bgDarkBlue,
+              color: headerColor,
               child: Stack(
                 children: [
                   Positioned.fill(
@@ -360,12 +398,18 @@ class _ProfileHeader extends StatelessWidget {
                     Container(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border:
-                            Border.all(color: Colors.white, width: 4 * scale),
+                        border: Border.all(
+                          color: Colors.white,
+                          width: 4 * scale,
+                        ),
                         image: DecorationImage(
-                          image: (profilePictureUrl != null
-                                  ? NetworkImage(profilePictureUrl!)
-                                  : const AssetImage('assets/images/t_racks.png')) as ImageProvider,
+                          image:
+                              (profilePictureUrl != null
+                                      ? NetworkImage(profilePictureUrl!)
+                                      : const AssetImage(
+                                          'assets/images/t_racks.png',
+                                        ))
+                                  as ImageProvider,
                           fit: BoxFit.cover,
                         ),
                         boxShadow: [
@@ -386,9 +430,12 @@ class _ProfileHeader extends StatelessWidget {
                           width: 36 * scale,
                           height: 36 * scale,
                           decoration: BoxDecoration(
-                            color: _textCyan,
+                            color: cameraColor,
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2.5 * scale),
+                            border: Border.all(
+                              color: Colors.white,
+                              width: 2.5 * scale,
+                            ),
                           ),
                           child: Icon(
                             Icons.camera_alt_outlined,
@@ -434,6 +481,7 @@ class _HeaderClipper extends CustomClipper<Path> {
     path.close();
     return path;
   }
+
   @override
   bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }
@@ -457,13 +505,27 @@ class _ProfileTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final labelColor = isDarkMode ? Colors.white : _bgDarkBlue;
+    final inputTextColor = isDarkMode
+        ? Colors.white
+        : (readOnly ? Colors.grey[600] : _textDarkBlue);
+    final hintTextColor = isDarkMode ? Colors.white70 : _textCyan;
+    final fillColor = readOnly
+        ? (isDarkMode ? Colors.white.withValues(alpha: 0.05) : Colors.grey[100])
+        : (isDarkMode ? Colors.white.withValues(alpha: 0.1) : Colors.white);
+    final borderColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.22)
+        : const Color(0xFF93C0D3);
+    final focusedBorderColor = isDarkMode ? const Color(0xFF93C0D3) : _textCyan;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
           style: TextStyle(
-            color: _bgDarkBlue,
+            color: labelColor,
             fontSize: 16 * scale,
             fontWeight: FontWeight.w700,
           ),
@@ -474,30 +536,27 @@ class _ProfileTextField extends StatelessWidget {
           maxLines: maxLines,
           readOnly: readOnly,
           style: TextStyle(
-            color: readOnly ? Colors.grey[600] : _textDarkBlue,
+            color: inputTextColor,
             fontSize: 16 * scale,
             fontWeight: FontWeight.w500,
           ),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(
-              color: _textCyan,
-              fontSize: 16 * scale,
-            ),
+            hintStyle: TextStyle(color: hintTextColor, fontSize: 16 * scale),
             contentPadding: EdgeInsets.symmetric(
               horizontal: 16 * scale,
               vertical: 20 * scale,
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12 * scale),
-              borderSide: const BorderSide(color: Color(0xFF93C0D3)),
+              borderSide: BorderSide(color: borderColor),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12 * scale),
-              borderSide: const BorderSide(color: _textCyan, width: 1.5),
+              borderSide: BorderSide(color: focusedBorderColor, width: 1.5),
             ),
             filled: true,
-            fillColor: readOnly ? Colors.grey[100] : Colors.white,
+            fillColor: fillColor,
           ),
         ),
       ],
@@ -509,9 +568,18 @@ class _UnsavedChangesDialog extends StatelessWidget {
   const _UnsavedChangesDialog();
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final dialogColor = isDarkMode ? const Color(0xFF0C3343) : Colors.white;
+    final primaryTextColor = isDarkMode
+        ? Colors.white
+        : const Color(0xFF1A2B3C);
+    final borderColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.18)
+        : _borderGrey;
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      backgroundColor: Colors.white,
+      backgroundColor: dialogColor,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
@@ -528,11 +596,11 @@ class _UnsavedChangesDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
+            Text(
               'You haven’t finished saving your\ndetails.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Color(0xFF1A2B3C),
+                color: primaryTextColor,
                 fontSize: 16,
                 height: 1.5,
                 fontWeight: FontWeight.w500,
@@ -547,11 +615,19 @@ class _UnsavedChangesDialog extends StatelessWidget {
                     child: OutlinedButton(
                       onPressed: () => Navigator.of(context).pop(false),
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: _borderGrey),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        foregroundColor: const Color(0xFF1A2B3C),
+                        side: BorderSide(color: borderColor),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        foregroundColor: primaryTextColor,
                       ),
-                      child: const Text('Continue', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                      child: const Text(
+                        'Continue',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -562,11 +638,19 @@ class _UnsavedChangesDialog extends StatelessWidget {
                     child: OutlinedButton(
                       onPressed: () => Navigator.of(context).pop(true),
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: _borderGrey),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        foregroundColor: const Color(0xFF1A2B3C),
+                        side: BorderSide(color: borderColor),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        foregroundColor: primaryTextColor,
                       ),
-                      child: const Text('Leave', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                      child: const Text(
+                        'Leave',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -583,9 +667,18 @@ class _PermissionDialog extends StatelessWidget {
   const _PermissionDialog();
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final dialogColor = isDarkMode ? const Color(0xFF0C3343) : Colors.white;
+    final primaryTextColor = isDarkMode
+        ? Colors.white
+        : const Color(0xFF1A2B3C);
+    final borderColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.18)
+        : _borderGrey;
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      backgroundColor: Colors.white,
+      backgroundColor: dialogColor,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
@@ -603,11 +696,11 @@ class _PermissionDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
+            Text(
               'We need your permission to access\nthe camera.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Color(0xFF1A2B3C),
+                color: primaryTextColor,
                 fontSize: 16,
                 height: 1.5,
                 fontWeight: FontWeight.w500,
@@ -622,11 +715,19 @@ class _PermissionDialog extends StatelessWidget {
                     child: OutlinedButton(
                       onPressed: () => Navigator.of(context).pop(),
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: _borderGrey),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        foregroundColor: const Color(0xFF1A2B3C),
+                        side: BorderSide(color: borderColor),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        foregroundColor: primaryTextColor,
                       ),
-                      child: const Text('Allow', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                      child: const Text(
+                        'Allow',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -637,11 +738,21 @@ class _PermissionDialog extends StatelessWidget {
                     child: OutlinedButton(
                       onPressed: () => Navigator.of(context).pop(),
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: _borderGrey),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        foregroundColor: const Color(0xFF1A2B3C),
+                        side: BorderSide(color: borderColor),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        foregroundColor: primaryTextColor,
                       ),
-                      child: const Text('Do not allow', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                      child: const Text(
+                        'Do not allow',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
                 ),

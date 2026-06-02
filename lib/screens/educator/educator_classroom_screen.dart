@@ -4,6 +4,15 @@ import 'package:t_racks_softdev_1/services/database_service.dart';
 import 'package:t_racks_softdev_1/screens/educator/educator_add_student_screen.dart';
 import 'package:t_racks_softdev_1/services/models/class_model.dart';
 
+const _darkSurface = Color(0xFF0C3343);
+const _darkTile = Color(0xFF133A53);
+const _lightSurface = Colors.white;
+const _lightPanel = Color(0xFFEAF4F7);
+const _lightBorder = Color(0xFFBBD7E2);
+const _lightPrimaryText = Color(0xFF0C3343);
+const _lightSecondaryText = Color(0xFF42697A);
+const _accentColor = Color(0xFF2A7FA3);
+
 class EducatorClassroomScreen extends StatefulWidget {
   final String classId;
   final String className;
@@ -75,67 +84,78 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
   void _showAttendanceDialog(StudentAttendanceItem student) {
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: Colors.white,
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                "Mark Attendance",
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0F3951),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                student.name,
-                style: const TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-              const SizedBox(height: 24),
+      builder: (context) {
+        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+        final dialogColor = isDarkMode ? _darkSurface : _lightSurface;
+        final primaryTextColor = isDarkMode ? Colors.white : _lightPrimaryText;
+        final secondaryTextColor = isDarkMode
+            ? Colors.white70
+            : _lightSecondaryText;
 
-              // Option: Present
-              _buildAttendanceOption(
-                label: "Present",
-                color: const Color(0xFF4CAF50),
-                icon: Icons.check_circle_outline,
-                onTap: () => _submitAttendance(student, "Present"),
-              ),
-              const SizedBox(height: 12),
-
-              // Option: Late
-              _buildAttendanceOption(
-                label: "Late",
-                color: const Color(0xFFFF9800),
-                icon: Icons.access_time,
-                onTap: () => _submitAttendance(student, "Late"),
-              ),
-              const SizedBox(height: 12),
-
-              // Option: Absent
-              _buildAttendanceOption(
-                label: "Absent",
-                color: const Color(0xFFE53935),
-                icon: Icons.cancel_outlined,
-                onTap: () => _submitAttendance(student, "Absent"),
-              ),
-
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text(
-                  "Cancel",
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ),
-            ],
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
-        ),
-      ),
+          backgroundColor: dialogColor,
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "Mark Attendance",
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: primaryTextColor,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  student.name,
+                  style: TextStyle(fontSize: 16, color: secondaryTextColor),
+                ),
+                const SizedBox(height: 24),
+
+                // Option: Present
+                _buildAttendanceOption(
+                  label: "Present",
+                  color: const Color(0xFF4CAF50),
+                  icon: Icons.check_circle_outline,
+                  onTap: () => _submitAttendance(student, "Present"),
+                ),
+                const SizedBox(height: 12),
+
+                // Option: Late
+                _buildAttendanceOption(
+                  label: "Late",
+                  color: const Color(0xFFFF9800),
+                  icon: Icons.access_time,
+                  onTap: () => _submitAttendance(student, "Late"),
+                ),
+                const SizedBox(height: 12),
+
+                // Option: Absent
+                _buildAttendanceOption(
+                  label: "Absent",
+                  color: const Color(0xFFE53935),
+                  icon: Icons.cancel_outlined,
+                  onTap: () => _submitAttendance(student, "Absent"),
+                ),
+
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    "Cancel",
+                    style: TextStyle(color: secondaryTextColor),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -207,26 +227,28 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final appBarForegroundColor = isDarkMode ? Colors.white : _lightPrimaryText;
+    final backgroundColor = isDarkMode ? const Color(0xFF071E29) : Colors.white;
+
     return Scaffold(
       extendBodyBehindAppBar: true,
+      backgroundColor: backgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new,
-            color: Color.fromARGB(221, 255, 255, 255),
-          ),
+          icon: Icon(Icons.arrow_back_ios_new, color: appBarForegroundColor),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           "Classroom",
-          style: TextStyle(color: Color.fromARGB(221, 255, 255, 255)),
+          style: TextStyle(color: appBarForegroundColor),
         ),
 
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete_outline, color: Colors.white70),
+            icon: Icon(Icons.delete_outline, color: appBarForegroundColor),
             tooltip: 'Delete Class',
             onPressed: _confirmDeleteClass,
           ),
@@ -238,20 +260,23 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
           // Background
           Positioned.fill(
             child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Color(0xFF194B61),
-                    Color(0xFF2A7FA3),
-                    Color(0xFF267394),
-                    Color(0xFF349BC7),
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
+              decoration: BoxDecoration(
+                color: isDarkMode ? null : backgroundColor,
+                gradient: isDarkMode
+                    ? const LinearGradient(
+                        colors: [
+                          Color(0xFF194B61),
+                          Color(0xFF2A7FA3),
+                          Color(0xFF267394),
+                          Color(0xFF349BC7),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      )
+                    : null,
               ),
               child: Opacity(
-                opacity: 0.3,
+                opacity: isDarkMode ? 0.3 : 0.08,
                 child: Image.asset(
                   'assets/images/squigglytexture.png',
                   fit: BoxFit.cover,
@@ -279,15 +304,31 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
   }
 
   Widget _buildClassroomCard() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDarkMode
+        ? _darkSurface.withValues(alpha: 0.95)
+        : _lightSurface.withValues(alpha: 0.96);
+    final borderColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.15)
+        : _lightBorder;
+    final primaryTextColor = isDarkMode ? Colors.white : _lightPrimaryText;
+    final secondaryTextColor = isDarkMode
+        ? Colors.white70
+        : _lightSecondaryText;
+    final fieldColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.1)
+        : _lightPanel;
+    final iconBackgroundColor = isDarkMode
+        ? Colors.white.withOpacity(0.1)
+        : _lightPanel;
+    final loadingColor = isDarkMode ? Colors.white : _accentColor;
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFF0C3343).withValues(alpha: 0.95),
+        color: cardColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.15),
-          width: 2,
-        ),
+        border: Border.all(color: borderColor, width: 2),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -300,10 +341,10 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: iconBackgroundColor,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.star, color: Colors.white, size: 20),
+                child: Icon(Icons.star, color: _accentColor, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -312,8 +353,8 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
                   children: [
                     Text(
                       widget.className,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: primaryTextColor,
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
@@ -321,10 +362,7 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
                     const SizedBox(height: 4),
                     Text(
                       widget.schedule,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: secondaryTextColor, fontSize: 12),
                     ),
                   ],
                 ),
@@ -376,12 +414,12 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
           // Search Bar
           TextField(
             controller: _searchController,
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(color: primaryTextColor),
             decoration: InputDecoration(
               hintText: 'Search Student',
-              hintStyle: const TextStyle(color: Colors.white70),
+              hintStyle: TextStyle(color: secondaryTextColor),
               filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.1),
+              fillColor: fieldColor,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 12,
@@ -390,7 +428,7 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
               ),
-              prefixIcon: const Icon(Icons.search, color: Colors.white70),
+              prefixIcon: Icon(Icons.search, color: secondaryTextColor),
             ),
           ),
           const SizedBox(height: 16),
@@ -399,16 +437,14 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
           Flexible(
             fit: FlexFit.loose,
             child: isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(color: Colors.white),
-                  )
+                ? Center(child: CircularProgressIndicator(color: loadingColor))
                 : studentList.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.all(20.0),
+                ? Padding(
+                    padding: const EdgeInsets.all(20.0),
                     child: Center(
                       child: Text(
                         "No students enrolled",
-                        style: TextStyle(color: Colors.white70),
+                        style: TextStyle(color: secondaryTextColor),
                       ),
                     ),
                   )
@@ -473,6 +509,14 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
   }
 
   Widget _buildStudentTile(StudentAttendanceItem student) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final tileColor = isDarkMode ? _darkTile : _lightPanel;
+    final primaryTextColor = isDarkMode ? Colors.white : _lightPrimaryText;
+    final avatarBackgroundColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.1)
+        : Colors.white;
+    final avatarIconColor = isDarkMode ? Colors.white : const Color(0xFF2A7FA3);
+
     // Determine color and status based on attendance properties
     String displayStatus = student.status;
     Color statusColor = Colors.grey; // Default for 'Mark Attendance'
@@ -495,21 +539,22 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF133A53),
+        color: tileColor,
         borderRadius: BorderRadius.circular(16),
+        border: isDarkMode ? null : Border.all(color: _lightBorder),
       ),
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: Colors.white.withValues(alpha: 0.1),
-            child: const Icon(Icons.person_outline, color: Colors.white),
+            backgroundColor: avatarBackgroundColor,
+            child: Icon(Icons.person_outline, color: avatarIconColor),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               student.name,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: primaryTextColor,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
@@ -581,7 +626,10 @@ class _EducatorClassroomScreenState extends State<EducatorClassroomScreen> {
 
       if (mounted) {
         Navigator.pop(context); // Pop loading dialog
-        Navigator.pop(context, true); // Pop the Classroom Screen to go back to list
+        Navigator.pop(
+          context,
+          true,
+        ); // Pop the Classroom Screen to go back to list
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

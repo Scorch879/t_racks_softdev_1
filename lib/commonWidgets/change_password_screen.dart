@@ -50,7 +50,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     }
     if (!RegExp(r'[A-Z]').hasMatch(newPassword)) {
       showCustomSnackBar(
-          context, "Password must contain at least one uppercase letter.");
+        context,
+        "Password must contain at least one uppercase letter.",
+      );
       setState(() => _isLoading = false);
       return;
     }
@@ -105,10 +107,14 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDarkMode ? const Color(0xFF071E29) : Colors.white;
+
     return Scaffold(
+      backgroundColor: backgroundColor,
       body: Stack(
         children: [
-          Container(color: Colors.white),
+          Container(color: backgroundColor),
           Column(
             children: [
               Expanded(
@@ -144,11 +150,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   child: Column(
                     children: [
                       Expanded(
-                          child: ChangePasswordPage(
-                        currentPasswordController: _currentPasswordController,
-                        newPasswordController: _newPasswordController,
-                        confirmPasswordController: _confirmPasswordController,
-                      )),
+                        child: ChangePasswordPage(
+                          currentPasswordController: _currentPasswordController,
+                          newPasswordController: _newPasswordController,
+                          confirmPasswordController: _confirmPasswordController,
+                        ),
+                      ),
                       SizedBox(
                         width: double.infinity,
                         height: 50,

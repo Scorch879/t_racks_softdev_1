@@ -50,8 +50,11 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
     } else {
       // Filter based on name (case-insensitive)
       results = _studentsList
-          .where((user) =>
-              user["name"]!.toLowerCase().contains(enteredKeyword.toLowerCase()))
+          .where(
+            (user) => user["name"]!.toLowerCase().contains(
+              enteredKeyword.toLowerCase(),
+            ),
+          )
           .toList();
     }
 
@@ -80,7 +83,7 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
           // 4. IMPORTANT FIX: Remove by ID, not Index!
           // Since the list might be filtered, "Index 0" might delete the wrong person.
           _studentsList.removeWhere((student) => student['id'] == studentId);
-          
+
           // Re-run the filter so the UI updates correctly
           _runFilter(_searchController.text);
         });
@@ -99,25 +102,38 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDarkMode ? const Color(0xFF071E29) : Colors.white;
+    final primaryTextColor = isDarkMode
+        ? Colors.white
+        : const Color(0xFF0C3343);
+    final secondaryTextColor = isDarkMode
+        ? Colors.white70
+        : const Color(0xFF42697A);
+
     return Scaffold(
+      backgroundColor: backgroundColor,
       body: Stack(
         children: [
           Positioned.fill(
             child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Color(0xFF194B61),
-                    Color(0xFF2A7FA3),
-                    Color(0xFF267394),
-                    Color(0xFF349BC7),
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
+              decoration: BoxDecoration(
+                color: isDarkMode ? null : backgroundColor,
+                gradient: isDarkMode
+                    ? const LinearGradient(
+                        colors: [
+                          Color(0xFF194B61),
+                          Color(0xFF2A7FA3),
+                          Color(0xFF267394),
+                          Color(0xFF349BC7),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      )
+                    : null,
               ),
               child: Opacity(
-                opacity: 0.2,
+                opacity: isDarkMode ? 0.2 : 0.08,
                 child: Image.asset(
                   'assets/images/squigglytexture.png',
                   fit: BoxFit.cover,
@@ -135,24 +151,24 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
                   const SizedBox(height: 16),
                   Text(
                     'Add Student: ${widget.className}',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: primaryTextColor,
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // 5. Connect the search field
                   _buildSearchField(),
-                  
+
                   const SizedBox(height: 16),
                   Expanded(
                     child: _filteredList.isEmpty
-                        ? const Center(
+                        ? Center(
                             child: Text(
                               'No students found',
-                              style: TextStyle(color: Colors.white70),
+                              style: TextStyle(color: secondaryTextColor),
                             ),
                           )
                         : ListView.separated(
@@ -179,36 +195,51 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
   }
 
   Widget _buildTopBar(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final iconColor = isDarkMode ? Colors.white : const Color(0xFF0C3343);
+
     return Row(
       children: [
         IconButton(
           onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+          icon: Icon(Icons.arrow_back_ios_new, color: iconColor),
         ),
       ],
     );
   }
 
   Widget _buildSearchField() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final fieldColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.15)
+        : const Color(0xFFEAF4F7);
+    final primaryTextColor = isDarkMode
+        ? Colors.white
+        : const Color(0xFF0C3343);
+    final secondaryTextColor = isDarkMode
+        ? Colors.white70
+        : const Color(0xFF42697A);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.15),
+        color: fieldColor,
         borderRadius: BorderRadius.circular(20),
+        border: isDarkMode ? null : Border.all(color: const Color(0xFFBBD7E2)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.search, color: Colors.white70, size: 18),
+          Icon(Icons.search, color: secondaryTextColor, size: 18),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
               controller: _searchController,
               // 7. Call _runFilter whenever text changes
               onChanged: (value) => _runFilter(value),
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
+              style: TextStyle(color: primaryTextColor),
+              decoration: InputDecoration(
                 hintText: 'Search Student',
-                hintStyle: TextStyle(color: Colors.white70),
+                hintStyle: TextStyle(color: secondaryTextColor),
                 border: InputBorder.none,
                 isDense: true,
               ),
@@ -224,12 +255,30 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
     required String subtitle,
     required VoidCallback onAdd,
   }) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDarkMode
+        ? const Color(0xFF10324A).withValues(alpha: 0.85)
+        : Colors.white.withValues(alpha: 0.96);
+    final primaryTextColor = isDarkMode
+        ? Colors.white
+        : const Color(0xFF0C3343);
+    final secondaryTextColor = isDarkMode
+        ? Colors.white70
+        : const Color(0xFF42697A);
+    final avatarBackgroundColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.2)
+        : const Color(0xFFEAF4F7);
+    final avatarIconColor = isDarkMode ? Colors.white : const Color(0xFF2A7FA3);
+    final borderColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.1)
+        : const Color(0xFFBBD7E2);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       decoration: BoxDecoration(
-        color: const Color(0xFF10324A).withValues(alpha: 0.85),
+        color: cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.2),
@@ -242,8 +291,8 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
         children: [
           CircleAvatar(
             radius: 24,
-            backgroundColor: Colors.white.withValues(alpha: 0.2),
-            child: const Icon(Icons.person_outline, color: Colors.white),
+            backgroundColor: avatarBackgroundColor,
+            child: Icon(Icons.person_outline, color: avatarIconColor),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -252,8 +301,8 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
               children: [
                 Text(
                   name,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: primaryTextColor,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -261,14 +310,14 @@ class _EducatorAddStudentScreenState extends State<EducatorAddStudentScreen> {
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  style: TextStyle(color: secondaryTextColor, fontSize: 12),
                 ),
               ],
             ),
           ),
           IconButton(
             onPressed: onAdd,
-            icon: const Icon(Icons.add_circle_outline, color: Colors.white70),
+            icon: Icon(Icons.add_circle_outline, color: secondaryTextColor),
           ),
         ],
       ),
